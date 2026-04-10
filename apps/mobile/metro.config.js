@@ -6,6 +6,9 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
+// Allow SVG files to be bundled as static assets (for expo-image)
+config.resolver.assetExts = [...config.resolver.assetExts, 'svg'];
+
 // Watch the entire monorepo so Metro can resolve shared packages
 config.watchFolders = [monorepoRoot];
 

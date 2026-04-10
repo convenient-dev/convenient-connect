@@ -29,6 +29,7 @@ const ASSETS = {
 };
 
 const { primary, text, background, neutral } = Colors;
+const BANNER_GAP = 12;
 const BANNER_WIDTH = SCREEN_WIDTH - 44;
 
 const banners = [
@@ -41,7 +42,7 @@ export default function HomeScreen() {
   const bannerRef = useRef<FlatList>(null);
 
   const handleBannerScroll = (event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / BANNER_WIDTH);
+    const index = Math.round(event.nativeEvent.contentOffset.x / (BANNER_WIDTH + BANNER_GAP));
     setActiveBanner(index);
   };
 
@@ -63,7 +64,11 @@ export default function HomeScreen() {
           {/* Address + Menu */}
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.locationRow}>
-              <Ionicons name="location-outline" size={22} color={primary[400]} />
+              <Ionicons
+                name="location-outline"
+                size={22}
+                color={primary[400]}
+              />
               <Text style={styles.locationText}>47 W 13th St.</Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
@@ -125,7 +130,7 @@ export default function HomeScreen() {
               keyExtractor={(item) => item.id}
               horizontal
               pagingEnabled
-              snapToInterval={BANNER_WIDTH}
+              snapToInterval={BANNER_WIDTH + BANNER_GAP}
               decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
               onScroll={handleBannerScroll}
@@ -288,6 +293,7 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: BANNER_WIDTH,
     height: 120,
+    marginRight: BANNER_GAP,
     borderRadius: 8,
   },
   swipeDots: {
@@ -332,12 +338,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   roundShadow: {
-    borderRadius: 100,
-    backgroundColor: Colors.background.card,
+    width: 40,
+    height: 40,
+    borderRadius: 23,
+    backgroundColor: neutral[0],
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 40,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
 });

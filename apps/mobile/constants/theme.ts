@@ -65,6 +65,11 @@ export const Colors = {
     subtle: 'rgba(234,234,234,0.3)',
   },
 
+  status: {
+    active:   '#00b383',
+    inactive: '#c0830f',
+  },
+
   border: {
     default: '#ebebeb',
   },

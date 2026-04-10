@@ -2,7 +2,7 @@ import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -37,12 +37,37 @@ const banners = [
   { id: "2", src: ASSETS.promoBanner2 },
 ];
 
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+
 export default function HomeScreen() {
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
+  const [user, setUser] = useState<{
+    firstName: string;
+    lastName: string;
+    address: string | null;
+    avatarUrl: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/users/1`)
+      .then((res) => res.json())
+      .then((data) =>
+        setUser({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          address: data.address,
+          avatarUrl: data.avatarUrl,
+        }),
+      )
+      .catch(() => {});
+  }, []);
 
   const handleBannerScroll = (event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / (BANNER_WIDTH + BANNER_GAP));
+    const index = Math.round(
+      event.nativeEvent.contentOffset.x / (BANNER_WIDTH + BANNER_GAP),
+    );
     setActiveBanner(index);
   };
 
@@ -56,7 +81,11 @@ export default function HomeScreen() {
         <View style={styles.header}>
           {/* Avatar */}
           <ExpoImage
-            source={require("@/assets/default-avatar-square.svg")}
+            source={
+              user?.avatarUrl
+                ? { uri: user.avatarUrl }
+                : require("@/assets/default-avatar-square.svg")
+            }
             style={styles.avatar}
             contentFit="contain"
           />
@@ -69,7 +98,7 @@ export default function HomeScreen() {
                 size={22}
                 color={primary[400]}
               />
-              <Text style={styles.locationText}>47 W 13th St.</Text>
+              <Text style={styles.locationText}>{user?.address ?? "—"}</Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
                 size={18}
@@ -85,7 +114,9 @@ export default function HomeScreen() {
 
         {/* Greeting */}
         <View style={styles.greeting}>
-          <Text style={styles.greetingName}>Hi Smith Jones!</Text>
+          <Text style={styles.greetingName}>
+            {user ? `Hi ${user.firstName} ${user.lastName}!` : "Hi!"}
+          </Text>
           <Text style={styles.greetingSubtitle}>
             Welcome to Convenient Connect
           </Text>

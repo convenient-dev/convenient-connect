@@ -32,3 +32,16 @@ model User {
   isVerified      Boolean     @default(false)
   avatarUrl       String?
 }
+
+model Category {
+  id            Int           @id @default(autoincrement())
+  name          String
+  subcategories Subcategory[]
+}
+
+model Subcategory {
+  id         Int       @id @default(autoincrement())
+  name       String
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId Int?
+}

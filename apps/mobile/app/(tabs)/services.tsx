@@ -135,7 +135,11 @@ export default function ServicesScreen() {
           <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Services</Text>
-        <TouchableOpacity style={styles.addButton} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.addButton}
+          hitSlop={8}
+          onPress={() => router.push("/create-service")}
+        >
           <MaterialIcons name="add" size={22} color={primary[400]} />
         </TouchableOpacity>
       </View>

@@ -19,18 +19,49 @@ enum AccountType {
 }
 
 model User {
-  id              Int         @id @default(autoincrement())
-  email           String?     @unique
-  firstName       String?
-  lastName        String?
-  password        String?
-  phoneNumber     String?
-  address         String?
-  accountType     AccountType
-  businessName    String?
-  businessAddress String?
-  isVerified      Boolean     @default(false)
-  avatarUrl       String?
+  id           Int         @id @default(autoincrement())
+  email        String?     @unique
+  firstName    String?
+  lastName     String?
+  password     String?
+  phoneNumber  String?
+  address      Address[]
+  accountType  AccountType
+  isVerified   Boolean     @default(false)
+  avatarUrl    String?
+
+  ownedBusiness        Business?             @relation("BusinessOwner")
+  businessAffiliations BusinessAffiliation[]
+}
+
+model Business {
+  id      Int     @id @default(autoincrement())
+  name    String
+  address String?
+
+  ownerId      Int                   @unique
+  owner        User                  @relation("BusinessOwner", fields: [ownerId], references: [id])
+  affiliations BusinessAffiliation[]
+}
+
+model BusinessAffiliation {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  businessId Int
+  user       User     @relation(fields: [userId], references: [id])
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@unique([userId, businessId])
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+  address   String
+  latitude  String
+  longitude String
+  isDefault Boolean @default(false)
 }
 
 model Category {

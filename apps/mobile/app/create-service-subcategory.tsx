@@ -242,9 +242,9 @@ export default function CreateServiceSubcategoryScreen() {
 
       {/* Title */}
       <View style={styles.titleBlock}>
-        <Text style={styles.title}>Service Subcategories</Text>
+        <Text style={styles.title}>{categoryName}</Text>
         <Text style={styles.subtitle}>
-          Select a subcategory within {categoryName}
+          Which service are you providing your customers?
         </Text>
       </View>
 
@@ -284,6 +284,13 @@ export default function CreateServiceSubcategoryScreen() {
         <TouchableOpacity
           style={[styles.nextButton, canProceed && styles.nextButtonActive]}
           disabled={!canProceed}
+          onPress={() => {
+            if (!canProceed) return;
+            router.push({
+              pathname: "/create-service-form",
+              params: { subcategoryId: String(selected) },
+            });
+          }}
           activeOpacity={0.8}
         >
           <Text

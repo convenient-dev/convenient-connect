@@ -1,7 +1,8 @@
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,20 +17,16 @@ const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
 const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
 
-type OptionId = "freelance" | "boston-pet-care" | "elite-home";
+// TODO: replace with real auth user id
+const USER_ID = 1;
 
 interface Option {
-  id: OptionId;
+  id: string;
   label: string;
 }
 
 const INDIVIDUAL_OPTIONS: Option[] = [
   { id: "freelance", label: "Freelance work" },
-];
-
-const BUSINESS_OPTIONS: Option[] = [
-  { id: "boston-pet-care", label: "Boston Pet Care Co." },
-  { id: "elite-home", label: "Elite Home Services" },
 ];
 
 function RadioOption({
@@ -39,7 +36,7 @@ function RadioOption({
 }: {
   option: Option;
   selected: boolean;
-  onSelect: (id: OptionId) => void;
+  onSelect: (id: string) => void;
 }) {
   return (
     <TouchableOpacity
@@ -57,7 +54,20 @@ function RadioOption({
 
 export default function CreateServiceScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState<OptionId | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [businessOptions, setBusinessOptions] = useState<Option[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/affiliations`)
+      .then((res) => res.json())
+      .then((businesses: { id: number; name: string }[]) => {
+        setBusinessOptions(
+          businesses.map((b) => ({ id: String(b.id), label: b.name }))
+        );
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const canProceed = selected !== null;
 
@@ -115,14 +125,20 @@ export default function CreateServiceScreen() {
             pricing structure, or service guidelines
           </Text>
           <View style={styles.optionsGroup}>
-            {BUSINESS_OPTIONS.map((opt) => (
-              <RadioOption
-                key={opt.id}
-                option={opt}
-                selected={selected === opt.id}
-                onSelect={setSelected}
-              />
-            ))}
+            {loading ? (
+              <ActivityIndicator size="small" color={primary[400]} />
+            ) : businessOptions.length === 0 ? (
+              <Text style={styles.emptyText}>No affiliated businesses</Text>
+            ) : (
+              businessOptions.map((opt) => (
+                <RadioOption
+                  key={opt.id}
+                  option={opt}
+                  selected={selected === opt.id}
+                  onSelect={setSelected}
+                />
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
@@ -237,6 +253,11 @@ const styles = StyleSheet.create({
   },
   optionsGroup: {
     gap: 10,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: neutral[400],
+    fontStyle: "italic",
   },
   // Radio option
   radioOption: {

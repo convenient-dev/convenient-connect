@@ -33,6 +33,10 @@ export default function RootLayout() {
           name="create-service-subcategory"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="create-service-form"
+          options={{ headerShown: false }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

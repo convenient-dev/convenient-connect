@@ -30,7 +30,7 @@ const API_BASE_URL =
 const RADIUS_UNITS = ["mile", "km"] as const;
 type RadiusUnit = (typeof RADIUS_UNITS)[number];
 
-const PET_TYPES = ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile", "Other"];
+const PET_TYPES = ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"];
 
 type ServiceType = "in-person" | "remote";
 

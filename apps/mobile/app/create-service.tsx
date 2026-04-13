@@ -63,7 +63,7 @@ export default function CreateServiceScreen() {
       .then((res) => res.json())
       .then((businesses: { id: number; name: string }[]) => {
         setBusinessOptions(
-          businesses.map((b) => ({ id: String(b.id), label: b.name }))
+          businesses.map((b) => ({ id: String(b.id), label: b.name })),
         );
       })
       .finally(() => setLoading(false));

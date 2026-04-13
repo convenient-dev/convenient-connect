@@ -56,6 +56,15 @@ cd apps/web
 npm run dev
 ```
 
+RESET DATABASE:
+
+```
+rm -rf prisma/migrations
+  npx prisma migrate reset --force
+  npx prisma db push
+  npx prisma db seed
+```
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Development

@@ -1,8 +1,9 @@
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,97 +15,81 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background, status } = Colors;
 
-// Service photos (Figma assets — replace with permanent assets before shipping)
-const PHOTOS = {
-  dogSitting:
-    "https://www.figma.com/api/mcp/asset/39902bc8-7915-4547-b7a2-591f73a1c669",
-  dogWalking1:
-    "https://www.figma.com/api/mcp/asset/de9e2d56-251a-46c8-8a46-1bce3ffa191b",
-  dogWalking2:
-    "https://www.figma.com/api/mcp/asset/2383181f-9f1f-4aa2-a56b-f19a121a06d8",
-};
+// TODO: replace with real auth user id
+const USER_ID = 1;
 
-type ServiceStatus = "active" | "inactive";
+type ServiceStatus = "active" | "inactive" | "pendingReview";
 
 interface Service {
-  id: string;
+  id: number;
   title: string;
-  photo: string;
   status: ServiceStatus;
-  statusLabel: string;
-  statusDescription: string;
-  businessName?: string;
-  category: "Freelance" | "Business";
+  serviceMode: "freelance" | "business";
+  images: { url: string }[];
+  subcategory: { name: string; category: { name: string } } | null;
+  business: { business: { name: string } } | null;
 }
 
-const SERVICES: Service[] = [
+const STATUS_META: Record<
+  ServiceStatus,
   {
-    id: "1",
-    title: "In-Home Dog Sitting",
-    photo: PHOTOS.dogSitting,
-    status: "active",
-    statusLabel: "Active",
-    statusDescription: "Accepting new bookings",
-    category: "Freelance",
+    label: string;
+    description: string;
+    icon: "check-circle" | "remove-circle" | "schedule";
+  }
+> = {
+  active: {
+    label: "Active",
+    description: "Accepting new bookings",
+    icon: "check-circle",
   },
-  {
-    id: "2",
-    title: "Dog Walking",
-    photo: PHOTOS.dogWalking1,
-    status: "inactive",
-    statusLabel: "Inactive",
-    statusDescription: "Stop new bookings",
-    category: "Freelance",
+  inactive: {
+    label: "Inactive",
+    description: "Not accepting bookings",
+    icon: "remove-circle",
   },
-  {
-    id: "3",
-    title: "Dog Walking",
-    photo: PHOTOS.dogWalking2,
-    status: "active",
-    statusLabel: "Active",
-    statusDescription: "Accepting new bookings",
-    businessName: "Boston Pet Care Co.",
-    category: "Business",
+  pendingReview: {
+    label: "Pending Review",
+    description: "Under review",
+    icon: "schedule",
   },
-];
+};
 
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
 
-const STATUS_ICONS: Record<ServiceStatus, "check-circle" | "remove-circle"> = {
-  active: "check-circle",
-  inactive: "remove-circle",
-};
-
 function ServiceCard({ service }: { service: Service }) {
-  const statusColor = status[service.status];
+  const meta = STATUS_META[service.status];
+  const statusColor =
+    service.status === "active"
+      ? status.active
+      : service.status === "inactive"
+        ? status.inactive
+        : "#f0a500";
+  const photo = service.images[0]?.url;
 
   return (
     <View style={styles.card}>
       <Image
-        source={{ uri: service.photo }}
+        source={photo ? { uri: photo } : undefined}
         style={styles.cardAvatar}
         resizeMode="cover"
       />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle}>{service.title}</Text>
         <View style={styles.statusRow}>
-          <MaterialIcons
-            name={STATUS_ICONS[service.status]}
-            size={12}
-            color={statusColor}
-          />
+          <MaterialIcons name={meta.icon} size={12} color={statusColor} />
           <Text style={styles.statusText}>
-            <Text style={{ color: statusColor }}>{service.statusLabel} </Text>
-            <Text style={styles.statusDescription}>
-              · {service.statusDescription}
-            </Text>
+            <Text style={{ color: statusColor }}>{meta.label} </Text>
+            <Text style={styles.statusDescription}>· {meta.description}</Text>
           </Text>
         </View>
-        {service.businessName && (
+        {service.serviceMode === "business" && service.business && (
           <View style={styles.businessRow}>
             <MaterialIcons name="business" size={12} color="#7a7a7a" />
-            <Text style={styles.businessName}>{service.businessName}</Text>
+            <Text style={styles.businessName}>
+              {service.business.business.name}
+            </Text>
           </View>
         )}
       </View>
@@ -118,11 +103,20 @@ function ServiceCard({ service }: { service: Service }) {
 export default function ServicesScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("All");
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
+      .then((res) => res.json())
+      .then((data: Service[]) => setServices(data))
+      .finally(() => setLoading(false));
+  }, []);
 
   const visibleServices =
     activeTab === "All"
-      ? SERVICES
-      : SERVICES.filter((s) => s.category === activeTab);
+      ? services
+      : services.filter((s) => s.serviceMode === activeTab.toLowerCase());
 
   return (
     <SafeAreaView style={styles.container}>
@@ -166,15 +160,27 @@ export default function ServicesScreen() {
       </View>
 
       {/* Service list */}
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {visibleServices.map((service) => (
-          <ServiceCard key={service.id} service={service} />
-        ))}
-      </ScrollView>
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color={primary[400]}
+          style={styles.loader}
+        />
+      ) : (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {visibleServices.length === 0 ? (
+            <Text style={styles.emptyText}>No services found</Text>
+          ) : (
+            visibleServices.map((service) => (
+              <ServiceCard key={service.id} service={service} />
+            ))
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -249,6 +255,9 @@ const styles = StyleSheet.create({
     color: neutral[0],
   },
   // List
+  loader: {
+    flex: 1,
+  },
   list: {
     flex: 1,
   },
@@ -256,6 +265,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     gap: 20,
     paddingBottom: 20,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: neutral[400],
+    fontSize: 14,
+    marginTop: 40,
   },
   // Card
   card: {

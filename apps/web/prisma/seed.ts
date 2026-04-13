@@ -9,16 +9,38 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   // Seed Address
   const ADDRESS = [
-    { id: 1, userId: 1, address: "2833 Happy Hollow Road, Asheboro, NC 27203", latitude: "35.60771465128029", longitude: "-79.80952166023332", isDefault: true},
-    { id: 2, userId: 1, address: "2333 Thrash Trail, Longview, TX 75604", latitude: "32.51530005659963", longitude: "-94.7594809584593", isDefault: false},
-    { id: 3, userId: 2, address: "165 Emerald Ln, Reynoldsville, PA 15851", latitude: "40.99582362954543", longitude: "-78.86993881775736", isDefault: true},];
-
+    {
+      id: 1,
+      userId: 1,
+      address: "2833 Happy Hollow Road, Asheboro, NC 27203",
+      latitude: "35.60771465128029",
+      longitude: "-79.80952166023332",
+      isDefault: true,
+    },
+    {
+      id: 2,
+      userId: 1,
+      address: "2333 Thrash Trail, Longview, TX 75604",
+      latitude: "32.51530005659963",
+      longitude: "-94.7594809584593",
+      isDefault: false,
+    },
+    {
+      id: 3,
+      userId: 2,
+      address: "165 Emerald Ln, Reynoldsville, PA 15851",
+      latitude: "40.99582362954543",
+      longitude: "-78.86993881775736",
+      isDefault: true,
+    },
+  ];
 
   // Seed Users
   const alice = await prisma.user.upsert({
     where: { email: "alice@example.com" },
     update: {
-      avatarUrl: "https://api.dicebear.com/9.x/initials/png?seed=Alice+Smith",
+      avatarUrl:
+        "https://api.dicebear.com/9.x/initials/png?seed=Alice+Smith&radius=20&backgroundColor=58c6ce",
     },
     create: {
       email: "alice@example.com",
@@ -26,9 +48,10 @@ async function main() {
       lastName: "Smith",
       password: "hashed_password_1",
       phoneNumber: "555-0101",
-      accountType: "INDIVIDUAL",
+      accountType: "individual",
       isVerified: true,
-      avatarUrl: "https://api.dicebear.com/9.x/initials/png?seed=Alice+Smith",
+      avatarUrl:
+        "https://api.dicebear.com/9.x/initials/png?seed=Alice+Smith&radius=20&backgroundColor=58c6ce",
     },
   });
 
@@ -43,7 +66,7 @@ async function main() {
       lastName: "Jones",
       password: "hashed_password_2",
       phoneNumber: "555-0202",
-      accountType: "BUSINESS",
+      accountType: "business",
       isVerified: false,
       avatarUrl: "https://api.dicebear.com/9.x/initials/png?seed=Bob+Jones",
     },
@@ -51,26 +74,37 @@ async function main() {
 
   const hiddenGemPetLodge = await prisma.business.upsert({
     where: { ownerId: bob.id },
-    update: { name: "Hidden Gem Pet Lodge", address: "789 Commerce Blvd, Shelbyville" },
-    create: { name: "Hidden Gem Pet Lodge", address: "789 Commerce Blvd, Shelbyville", ownerId: bob.id },
+    update: {
+      name: "Hidden Gem Pet Lodge",
+      address: "789 Commerce Blvd, Shelbyville",
+    },
+    create: {
+      name: "Hidden Gem Pet Lodge",
+      address: "789 Commerce Blvd, Shelbyville",
+      ownerId: bob.id,
+    },
   });
 
   // Alice (INDIVIDUAL) affiliated with Bob's business
   await prisma.businessAffiliation.upsert({
-    where: { userId_businessId: { userId: alice.id, businessId: hiddenGemPetLodge.id } },
+    where: {
+      userId_businessId: { userId: alice.id, businessId: hiddenGemPetLodge.id },
+    },
     update: {},
     create: { userId: alice.id, businessId: hiddenGemPetLodge.id },
   });
 
-const addresses = await Promise.all(
-  ADDRESS.map(({ id, userId, address, latitude, longitude, isDefault }) =>
-    prisma.address.upsert({
-      where: { id },
-      update: { userId, address, latitude, longitude, isDefault },
-      create: { id, userId, address, latitude, longitude, isDefault },
-    }),
-  ),
-);
+  // Seed Addresses
+  const addresses = await Promise.all(
+    ADDRESS.map(({ id, userId, address, latitude, longitude, isDefault }) =>
+      prisma.address.upsert({
+        where: { id },
+        update: { userId, address, latitude, longitude, isDefault },
+        create: { id, userId, address, latitude, longitude, isDefault },
+      }),
+    ),
+  );
+
   console.log({ alice, bob });
 
   const CATEGORIES = [
@@ -239,6 +273,139 @@ const addresses = await Promise.all(
   );
 
   console.log(`Seeded ${subcategories.length} subcategories`);
+
+  // Seed Service — Alice's dog walking service at her default address
+  const aliceDefaultAddress = addresses.find(
+    (a) => a.userId === alice.id && a.isDefault,
+  )!;
+  const aliceService = await prisma.service.upsert({
+    where: { title: "Alice's Dog Walking" },
+    update: {},
+    create: {
+      userId: alice.id,
+      subcategoryId: 93, // Dog Walking
+      title: "Alice's Dog Walking",
+      status: "pendingReview",
+      serviceType: "inPerson",
+      serviceMode: "freelance",
+      addressId: aliceDefaultAddress.id,
+      areaRadius: 10,
+      description:
+        "Professional dog walking in your neighborhood. I treat every pup like my own.",
+      aboutYou: "Certified dog trainer with 5 years of experience.",
+      baseRate: 25.0,
+      baseRateUnit: "hour",
+    },
+  });
+
+  await prisma.serviceImage.upsert({
+    where: { id: 1 },
+    update: { url: "https://picsum.photos/200" },
+    create: { serviceId: aliceService.id, url: "https://picsum.photos/200" },
+  });
+
+  await prisma.serviceCertification.upsert({
+    where: { id: 1 },
+    update: {
+      url: "https://s2.q4cdn.com/175719177/files/doc_presentations/Placeholder-PDF.pdf",
+    },
+    create: {
+      serviceId: aliceService.id,
+      url: "https://s2.q4cdn.com/175719177/files/doc_presentations/Placeholder-PDF.pdf",
+      fileName: "Placeholder-PDF.pdf",
+    },
+  });
+
+  let petTypeField = await prisma.serviceCustomField.findFirst({
+    where: { categoryId: 15, subcategoryId: null, fieldName: "petType" },
+  });
+  if (petTypeField) {
+    await prisma.serviceCustomField.update({
+      where: { id: petTypeField.id },
+      data: { options: ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"] },
+    });
+  } else {
+    petTypeField = await prisma.serviceCustomField.create({
+      data: {
+        categoryId: 15, // Pet Care
+        fieldName: "petType",
+        fieldLabel: "Pet Type",
+        fieldType: "select",
+        isRequired: true,
+        displayOrder: 1,
+        options: ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"],
+      },
+    });
+  }
+
+  const existingCustomValue = await prisma.serviceCustomValue.findUnique({
+    where: {
+      serviceId_fieldId: {
+        serviceId: aliceService.id,
+        fieldId: petTypeField.id,
+      },
+    },
+  });
+  if (!existingCustomValue) {
+    await prisma.serviceCustomValue.create({
+      data: {
+        serviceId: aliceService.id,
+        fieldId: petTypeField.id,
+        valueText: "Dog",
+      },
+    });
+  }
+
+  // Seed business service for Alice under Hidden Gem Pet Lodge
+  const aliceAffiliation = await prisma.businessAffiliation.findUnique({
+    where: {
+      userId_businessId: { userId: alice.id, businessId: hiddenGemPetLodge.id },
+    },
+  });
+
+  const aliceBusinessService = await prisma.service.upsert({
+    where: { title: "Alice's Pet Sitting at Hidden Gem" },
+    update: {},
+    create: {
+      userId: alice.id,
+      subcategoryId: 95, // Pet Sitting
+      title: "Alice's Pet Sitting at Hidden Gem",
+      status: "active",
+      serviceType: "inPerson",
+      serviceMode: "business",
+      businessAffiliationId: aliceAffiliation!.id,
+      addressId: aliceDefaultAddress.id,
+      areaRadius: 5,
+      description:
+        "In-home pet sitting under the Hidden Gem Pet Lodge umbrella.",
+      aboutYou: "Experienced pet sitter with Hidden Gem Pet Lodge.",
+      baseRate: 40.0,
+      baseRateUnit: "hour",
+    },
+  });
+
+  await prisma.serviceImage.upsert({
+    where: { id: 2 },
+    update: { url: "https://picsum.photos/200" },
+    create: {
+      serviceId: aliceBusinessService.id,
+      url: "https://picsum.photos/200",
+    },
+  });
+
+  await prisma.serviceCertification.upsert({
+    where: { id: 2 },
+    update: {
+      url: "https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf",
+    },
+    create: {
+      serviceId: aliceBusinessService.id,
+      url: "https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf",
+      fileName: "sample-local-pdf.pdf",
+    },
+  });
+
+  console.log("Seeded service and service image");
 }
 
 main()

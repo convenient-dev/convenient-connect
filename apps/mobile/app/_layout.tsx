@@ -37,6 +37,10 @@ export default function RootLayout() {
           name="create-service-form"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="service-detail/[id]"
+          options={{ headerShown: false }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

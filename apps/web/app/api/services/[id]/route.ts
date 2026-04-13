@@ -16,6 +16,7 @@ export async function GET(
       customValues: { include: { field: true } },
       subcategory: { include: { category: true } },
       address: true,
+      business: { include: { business: true } },
     },
   });
 

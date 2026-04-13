@@ -1,10 +1,15 @@
+import Divider from "@/components/ui/divider";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -58,7 +63,101 @@ const STATUS_META: Record<
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
 
-function ServiceCard({ service }: { service: Service }) {
+const SHEET_HEIGHT = 220;
+
+interface ManageServiceSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  onDetail: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function ManageServiceSheet({
+  visible,
+  onClose,
+  onDetail,
+  onEdit,
+  onDelete,
+}: ManageServiceSheetProps) {
+  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(translateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 4,
+      }).start();
+    } else {
+      Animated.timing(translateY, {
+        toValue: SHEET_HEIGHT,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.sheetOverlay} onPress={onClose}>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+          <Pressable>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Manage Service</Text>
+            <Divider />
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={onDetail}
+              activeOpacity={0.7}
+            >
+              <ExpoImage
+                source={require("@/assets/global-icons/view-detail.svg")}
+                style={{ width: 20, height: 20 }}
+              />
+              <Text style={styles.sheetOptionText}>Service Detail</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={onEdit}
+              activeOpacity={0.7}
+            >
+              <ExpoImage
+                source={require("@/assets/global-icons/edit.svg")}
+                style={{ width: 20, height: 20 }}
+              />
+              <Text style={styles.sheetOptionText}>Edit Service</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={onDelete}
+              activeOpacity={0.7}
+            >
+              <ExpoImage
+                source={require("@/assets/global-icons/cancel.svg")}
+                style={{ width: 20, height: 20 }}
+              />
+              <Text style={styles.sheetOptionText}>Delete Service</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ServiceCard({
+  service,
+  onMore,
+}: {
+  service: Service;
+  onMore: () => void;
+}) {
   const meta = STATUS_META[service.status];
   const statusColor =
     service.status === "active"
@@ -93,7 +192,7 @@ function ServiceCard({ service }: { service: Service }) {
           </View>
         )}
       </View>
-      <TouchableOpacity style={styles.moreButton} hitSlop={8}>
+      <TouchableOpacity style={styles.moreButton} hitSlop={8} onPress={onMore}>
         <MaterialIcons name="more-horiz" size={22} color={neutral[700]} />
       </TouchableOpacity>
     </View>
@@ -105,6 +204,7 @@ export default function ServicesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("All");
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
@@ -176,11 +276,33 @@ export default function ServicesScreen() {
             <Text style={styles.emptyText}>No services found</Text>
           ) : (
             visibleServices.map((service) => (
-              <ServiceCard key={service.id} service={service} />
+              <ServiceCard
+                key={service.id}
+                service={service}
+                onMore={() => setSelectedService(service)}
+              />
             ))
           )}
         </ScrollView>
       )}
+
+      <ManageServiceSheet
+        visible={selectedService !== null}
+        onClose={() => setSelectedService(null)}
+        onDetail={() => {
+          const id = selectedService?.id;
+          setSelectedService(null);
+          if (id) router.push(`/service-detail/${id}`);
+        }}
+        onEdit={() => {
+          setSelectedService(null);
+          // TODO: navigate to edit service
+        }}
+        onDelete={() => {
+          setSelectedService(null);
+          // TODO: handle delete
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -327,5 +449,45 @@ const styles = StyleSheet.create({
   moreButton: {
     alignSelf: "flex-start",
     padding: 2,
+  },
+  // Bottom sheet
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: background.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: neutral[300],
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222b45",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  sheetOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+  },
+  sheetOptionText: {
+    fontSize: 15,
+    fontWeight: "400",
+    color: "#222b45",
   },
 });

@@ -162,6 +162,22 @@ export default function CreateServiceCategoryScreen() {
         <TouchableOpacity
           style={[styles.nextButton, canProceed && styles.nextButtonActive]}
           disabled={!canProceed}
+          onPress={() => {
+            if (!canProceed) return;
+            const category = categories.find((c) => c.id === selected)!;
+            const categorySlug = category.name
+              .toLowerCase()
+              .replace(/\.$/, "")
+              .replace(/\s+/g, "-");
+            router.push({
+              pathname: "/create-service-subcategory",
+              params: {
+                categoryId: String(category.id),
+                categorySlug,
+                categoryName: category.name,
+              },
+            });
+          }}
           activeOpacity={0.8}
         >
           <Text
@@ -224,11 +240,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: {
+    textAlign: "center",
     fontSize: 22,
     fontWeight: "700",
     color: neutral[800],
   },
   subtitle: {
+    textAlign: "center",
     fontSize: 14,
     color: neutral[400],
     lineHeight: 20,

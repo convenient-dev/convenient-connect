@@ -23,7 +23,9 @@ interface Option {
   label: string;
 }
 
-const INDIVIDUAL_OPTIONS: Option[] = [{ id: "freelance", label: "Freelance work" }];
+const INDIVIDUAL_OPTIONS: Option[] = [
+  { id: "freelance", label: "Freelance work" },
+];
 
 const BUSINESS_OPTIONS: Option[] = [
   { id: "boston-pet-care", label: "Boston Pet Care Co." },
@@ -67,9 +69,7 @@ export default function CreateServiceScreen() {
           <Text style={styles.stepLabel}>
             Step {CURRENT_STEP} of {TOTAL_STEPS}
           </Text>
-          <Text style={styles.stepPercent}>
-            {Math.round(PROGRESS * 100)}%
-          </Text>
+          <Text style={styles.stepPercent}>{Math.round(PROGRESS * 100)}%</Text>
         </View>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { flex: PROGRESS }]} />
@@ -208,12 +208,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: neutral[800],
+    textAlign: "center",
     lineHeight: 30,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
     color: neutral[400],
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 32,
   },

@@ -500,6 +500,46 @@ export default function CreateServiceFormScreen() {
         return;
       }
 
+      const service = await res.json();
+
+      // Upload selected images to the service_images bucket
+      if (selectedImages.length > 0) {
+        const uploadResults = await Promise.allSettled(
+          selectedImages.map(async (uri) => {
+            const ext = uri.split(".").pop() ?? "jpg";
+            const mimeType =
+              ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+
+            const formData = new FormData();
+            formData.append("serviceId", String(service.id));
+            formData.append("file", {
+              uri,
+              name: `image.${ext}`,
+              type: mimeType,
+            } as unknown as Blob);
+
+            const uploadRes = await fetch(`${API_BASE_URL}/uploads/images`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadRes.ok) {
+              const data = await uploadRes.json();
+              throw new Error(data?.error ?? "Image upload failed");
+            }
+          }),
+        );
+
+        const failed = uploadResults.filter((r) => r.status === "rejected");
+        if (failed.length > 0) {
+          const reason = (failed[0] as PromiseRejectedResult).reason?.message;
+          setSubmitError(
+            `${failed.length} image${failed.length > 1 ? "s" : ""} failed to upload: ${reason}`,
+          );
+          return;
+        }
+      }
+
       setSubmitted(true);
     } catch {
       setSubmitError("Network error. Please check your connection.");

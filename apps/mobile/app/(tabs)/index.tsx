@@ -46,7 +46,14 @@ export default function HomeScreen() {
   const [user, setUser] = useState<{
     firstName: string;
     lastName: string;
-    address: string | null;
+    addresses: {
+      id: number;
+      userId: number;
+      address: string;
+      latitude: string;
+      longitude: string;
+      isDefault: boolean;
+    }[];
     avatarUrl: string | null;
   } | null>(null);
 
@@ -57,7 +64,7 @@ export default function HomeScreen() {
         setUser({
           firstName: data.firstName,
           lastName: data.lastName,
-          address: data.address,
+          addresses: data.address ?? [],
           avatarUrl: data.avatarUrl,
         }),
       )
@@ -98,7 +105,11 @@ export default function HomeScreen() {
                 size={22}
                 color={primary[400]}
               />
-              <Text style={styles.locationText}>{user?.address ?? "—"}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>
+                {user?.addresses?.find((a) => a.isDefault)?.address ??
+                  user?.addresses?.[0]?.address ??
+                  "—"}
+              </Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
                 size={18}
@@ -219,13 +230,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
     paddingHorizontal: 27,
     paddingTop: 8,
     paddingBottom: 4,
   },
   headerRight: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end",
     gap: 12,
   },
   avatar: {
@@ -233,6 +247,7 @@ const styles = StyleSheet.create({
     height: 50,
   },
   locationRow: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -242,6 +257,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: text.primary,
     letterSpacing: -0.408,
+    flex: 1,
   },
   menuButton: {
     width: 36,

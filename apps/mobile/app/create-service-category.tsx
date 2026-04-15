@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -88,6 +88,10 @@ function CategoryItem({
 
 export default function CreateServiceCategoryScreen() {
   const router = useRouter();
+  const { serviceMode, businessAffiliationId } = useLocalSearchParams<{
+    serviceMode: string;
+    businessAffiliationId: string;
+  }>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
@@ -175,6 +179,8 @@ export default function CreateServiceCategoryScreen() {
                 categoryId: String(category.id),
                 categorySlug,
                 categoryName: category.name,
+                serviceMode,
+                businessAffiliationId,
               },
             });
           }}

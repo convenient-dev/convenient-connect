@@ -30,14 +30,46 @@ const API_BASE_URL =
 const RADIUS_UNITS = ["mile", "km"] as const;
 type RadiusUnit = (typeof RADIUS_UNITS)[number];
 
-const PET_TYPES = ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"];
-
-const RATE_UNITS = ["per booking", "per hour", "per night", "per day"] as const;
+const RATE_UNITS = ["booking", "hour"] as const;
 type RateUnit = (typeof RATE_UNITS)[number];
 
-type RateField = "base" | "additionalPet" | "petWeight";
+function formatRateUnit(unit: RateUnit): string {
+  return unit === "booking" ? "per booking" : "per hour";
+}
 
 type ServiceType = "in-person" | "remote";
+
+type CustomField = {
+  id: number;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: string;
+  isRequired: boolean;
+  displayOrder: number;
+  options: string[] | null;
+};
+
+type AddonTemplate = {
+  id: number;
+  name: string;
+  description: string | null;
+  defaultPrice: string | null;
+  rateUnit: RateUnit;
+  isRequired: boolean;
+  displayOrder: number;
+};
+
+type SubcategoryData = {
+  id: number;
+  name: string;
+  customFields: CustomField[];
+  addonTemplates: AddonTemplate[];
+  category: {
+    id: number;
+    name: string;
+    customFields: CustomField[];
+  };
+};
 
 type Address = {
   id: number;
@@ -114,27 +146,52 @@ function ReviewPricingRow({ label, value }: { label: string; value: string }) {
 
 export default function CreateServiceFormScreen() {
   const router = useRouter();
-  const { subcategoryName } = useLocalSearchParams<{
-    subcategoryId: string;
-    subcategoryName: string;
-  }>();
+  const { subcategoryId, subcategoryName, serviceMode, businessAffiliationId } =
+    useLocalSearchParams<{
+      subcategoryId: string;
+      subcategoryName: string;
+      serviceMode: string;
+      businessAffiliationId: string;
+    }>();
 
   // Step navigation
   const [formStep, setFormStep] = useState(3);
   const progress = formStep / TOTAL_STEPS;
 
+  // ── Subcategory data from API ─────────────────────────────────
+  const [subcategoryData, setSubcategoryData] =
+    useState<SubcategoryData | null>(null);
+
+  useEffect(() => {
+    if (!subcategoryId) return;
+    fetch(`${API_BASE_URL}/subcategories/${subcategoryId}`)
+      .then((r) => r.json())
+      .then((data: SubcategoryData) => setSubcategoryData(data))
+      .catch(() => {});
+  }, [subcategoryId]);
+
+  // Merge subcategory-level and category-level custom fields
+  const allCustomFields: CustomField[] = [
+    ...(subcategoryData?.customFields ?? []),
+    ...(subcategoryData?.category.customFields ?? []),
+  ];
+
   // ── Step 3 state ──────────────────────────────────────────────
   const [title, setTitle] = useState("");
   const [serviceType, setServiceType] = useState<ServiceType | null>(null);
 
-  // Pet type picker
-  const [petType, setPetType] = useState<string | null>(null);
-  const [petTypeModalVisible, setPetTypeModalVisible] = useState(false);
+  // Custom field values: fieldId → selected/entered value
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<number, string>
+  >({});
+
+  // Generic select-field picker bottom sheet
+  const [pickerField, setPickerField] = useState<CustomField | null>(null);
   const slideAnim = useRef(new Animated.Value(300)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  function openPetTypePicker() {
-    setPetTypeModalVisible(true);
+  function openFieldPicker(field: CustomField) {
+    setPickerField(field);
     Animated.parallel([
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -149,7 +206,7 @@ export default function CreateServiceFormScreen() {
     ]).start();
   }
 
-  function closePetTypePicker(callback?: () => void) {
+  function closeFieldPicker(callback?: () => void) {
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 300,
@@ -162,7 +219,7 @@ export default function CreateServiceFormScreen() {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setPetTypeModalVisible(false);
+      setPickerField(null);
       callback?.();
     });
   }
@@ -170,6 +227,7 @@ export default function CreateServiceFormScreen() {
   // Address picker
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [address, setAddress] = useState("");
+  const [addressId, setAddressId] = useState<number | null>(null);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const slideAddressAnim = useRef(new Animated.Value(300)).current;
   const backdropAddressAnim = useRef(new Animated.Value(0)).current;
@@ -252,7 +310,10 @@ export default function CreateServiceFormScreen() {
         const addresses: Address[] = user?.address ?? [];
         setSavedAddresses(addresses);
         const defaultAddr = addresses.find((a) => a.isDefault) ?? addresses[0];
-        if (defaultAddr) setAddress(defaultAddr.address);
+        if (defaultAddr) {
+          setAddress(defaultAddr.address);
+          setAddressId(defaultAddr.id);
+        }
       })
       .catch(() => {});
   }, []);
@@ -261,31 +322,51 @@ export default function CreateServiceFormScreen() {
   const [slogan, setSlogan] = useState("");
   const [certifications, setCertifications] = useState("");
 
+  const requiredFieldsFilled = allCustomFields
+    .filter((f) => f.isRequired)
+    .every((f) => (customFieldValues[f.id] ?? "").trim().length > 0);
+
   const canProceedStep3 =
     title.trim().length > 0 &&
     serviceType !== null &&
     (serviceType !== "in-person" ||
       (radiusValue.trim().length > 0 && address.trim().length > 0)) &&
-    petType !== null &&
+    requiredFieldsFilled &&
     description.trim().length > 0 &&
     aboutYou.trim().length > 0 &&
     slogan.trim().length > 0;
 
   // ── Step 4 state ──────────────────────────────────────────────
   const [baseRate, setBaseRate] = useState("");
-  const [baseRateUnit, setBaseRateUnit] = useState<RateUnit>("per booking");
-  const [additionalPetRate, setAdditionalPetRate] = useState("");
-  const [additionalPetUnit, setAdditionalPetUnit] =
-    useState<RateUnit>("per booking");
-  const [petWeightRate, setPetWeightRate] = useState("");
-  const [petWeightUnit, setPetWeightUnit] = useState<RateUnit>("per booking");
+  const [baseRateUnit, setBaseRateUnit] = useState<RateUnit>("booking");
+
+  // Addon state keyed by template ID
+  const [addonRates, setAddonRates] = useState<Record<number, string>>({});
+  const [addonUnits, setAddonUnits] = useState<Record<number, RateUnit>>({});
+
+  // Pre-fill addon state when subcategory data loads
+  useEffect(() => {
+    if (!subcategoryData) return;
+    const rates: Record<number, string> = {};
+    const units: Record<number, RateUnit> = {};
+    subcategoryData.addonTemplates.forEach((t) => {
+      rates[t.id] = t.defaultPrice
+        ? parseFloat(t.defaultPrice).toFixed(2)
+        : "";
+      units[t.id] = t.rateUnit;
+    });
+    setAddonRates(rates);
+    setAddonUnits(units);
+  }, [subcategoryData]);
 
   const [rateUnitModalVisible, setRateUnitModalVisible] = useState(false);
-  const [activeRateField, setActiveRateField] = useState<RateField>("base");
+  const [activeRateField, setActiveRateField] = useState<"base" | number>(
+    "base",
+  );
   const slideRateUnitAnim = useRef(new Animated.Value(300)).current;
   const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
 
-  function openRateUnitPicker(field: RateField) {
+  function openRateUnitPicker(field: "base" | number) {
     setActiveRateField(field);
     setRateUnitModalVisible(true);
     Animated.parallel([
@@ -322,28 +403,86 @@ export default function CreateServiceFormScreen() {
 
   function getActiveRateUnit(): RateUnit {
     if (activeRateField === "base") return baseRateUnit;
-    if (activeRateField === "additionalPet") return additionalPetUnit;
-    return petWeightUnit;
+    return addonUnits[activeRateField] ?? "booking";
   }
 
   function setActiveRateUnit(unit: RateUnit) {
-    if (activeRateField === "base") setBaseRateUnit(unit);
-    else if (activeRateField === "additionalPet") setAdditionalPetUnit(unit);
-    else setPetWeightUnit(unit);
+    if (activeRateField === "base") {
+      setBaseRateUnit(unit);
+    } else {
+      setAddonUnits((prev) => ({ ...prev, [activeRateField]: unit }));
+    }
   }
 
   const canProceedStep4 = baseRate.trim().length > 0;
 
-  // ── Navigation ────────────────────────────────────────────────
+  // ── Navigation & submission ───────────────────────────────────
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const canProceed =
-    formStep === 3 ? canProceedStep3 : formStep === 4 ? canProceedStep4 : true;
+    formStep === 3
+      ? canProceedStep3
+      : formStep === 4
+        ? canProceedStep4
+        : !submitting;
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const body = {
+        userId: 1, // TODO: replace with authenticated user id
+        subcategoryId: subcategoryId ? Number(subcategoryId) : undefined,
+        serviceMode: serviceMode ?? "freelance",
+        businessAffiliationId: businessAffiliationId
+          ? Number(businessAffiliationId)
+          : undefined,
+        title,
+        serviceType,
+        addressId,
+        areaRadius: radiusValue ? Number(radiusValue) : undefined,
+        description,
+        aboutYou,
+        slogan,
+        baseRate: Number(baseRate),
+        baseRateUnit,
+        customValues: Object.entries(customFieldValues).map(
+          ([fieldId, value]) => ({ fieldId: Number(fieldId), value }),
+        ),
+        addons: (subcategoryData?.addonTemplates ?? [])
+          .filter((t) => addonRates[t.id]?.trim())
+          .map((t) => ({
+            templateId: t.id,
+            price: Number(addonRates[t.id]),
+          })),
+      };
+
+      const res = await fetch(`${API_BASE_URL}/services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setSubmitError(data?.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Network error. Please check your connection.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function handleNext() {
     if (formStep === 3 && canProceedStep3) setFormStep(4);
     else if (formStep === 4 && canProceedStep4) setFormStep(5);
-    else if (formStep === 5) setSubmitted(true);
+    else if (formStep === 5) handleSubmit();
   }
 
   function handleBack() {
@@ -351,8 +490,8 @@ export default function CreateServiceFormScreen() {
     else router.back();
   }
 
-  const formatRate = (rate: string, unit: string) =>
-    `$${parseFloat(rate || "0").toFixed(2)} ${unit}`;
+  const formatRate = (rate: string, unit: RateUnit) =>
+    `$${parseFloat(rate || "0").toFixed(2)} ${formatRateUnit(unit)}`;
 
   if (submitted) {
     return (
@@ -553,27 +692,67 @@ export default function CreateServiceFormScreen() {
                 </>
               )}
 
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Pet Type <Text style={styles.required}>*</Text>
-                </Text>
-                <TouchableOpacity
-                  style={styles.dropdown}
-                  onPress={openPetTypePicker}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={
-                      petType
-                        ? styles.dropdownValue
-                        : styles.dropdownPlaceholder
-                    }
-                  >
-                    {petType ?? "Type"}
-                  </Text>
-                  <Feather name="chevron-down" size={18} color={neutral[400]} />
-                </TouchableOpacity>
-              </View>
+              {/* Dynamic custom fields from subcategory */}
+              {allCustomFields.map((field) => {
+                if (
+                  field.fieldType === "select" ||
+                  field.fieldType === "multi_select"
+                ) {
+                  const value = customFieldValues[field.id] ?? null;
+                  return (
+                    <View key={field.id} style={styles.field}>
+                      <Text style={styles.label}>
+                        {field.fieldLabel}
+                        {field.isRequired ? (
+                          <Text style={styles.required}> *</Text>
+                        ) : null}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.dropdown}
+                        onPress={() => openFieldPicker(field)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={
+                            value
+                              ? styles.dropdownValue
+                              : styles.dropdownPlaceholder
+                          }
+                        >
+                          {value ?? field.fieldLabel}
+                        </Text>
+                        <Feather
+                          name="chevron-down"
+                          size={18}
+                          color={neutral[400]}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+                return (
+                  <View key={field.id} style={styles.field}>
+                    <Text style={styles.label}>
+                      {field.fieldLabel}
+                      {field.isRequired ? (
+                        <Text style={styles.required}> *</Text>
+                      ) : null}
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={field.fieldLabel}
+                      placeholderTextColor={neutral[300]}
+                      value={customFieldValues[field.id] ?? ""}
+                      onChangeText={(v) =>
+                        setCustomFieldValues((prev) => ({
+                          ...prev,
+                          [field.id]: v,
+                        }))
+                      }
+                    />
+                  </View>
+                );
+              })}
 
               <View style={styles.field}>
                 <Text style={styles.label}>
@@ -685,7 +864,9 @@ export default function CreateServiceFormScreen() {
                       onPress={() => openRateUnitPicker("base")}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.rateUnitText}>{baseRateUnit}</Text>
+                      <Text style={styles.rateUnitText}>
+                        {formatRateUnit(baseRateUnit)}
+                      </Text>
                       <Feather
                         name="chevron-down"
                         size={14}
@@ -695,65 +876,49 @@ export default function CreateServiceFormScreen() {
                   </View>
                 </View>
 
-                <View style={styles.field}>
-                  <Text style={styles.label}>Add-Ons</Text>
-                  <View style={styles.addOnRow}>
-                    <Text style={styles.addOnLabel}>Additional Pet</Text>
-                    <View style={styles.rateInputBox}>
-                      <Text style={styles.rateCurrency}>$</Text>
-                      <TextInput
-                        style={styles.rateTextInput}
-                        value={additionalPetRate}
-                        onChangeText={setAdditionalPetRate}
-                        keyboardType="decimal-pad"
-                        placeholder="0.00"
-                        placeholderTextColor={neutral[300]}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={styles.rateUnitDropdown}
-                      onPress={() => openRateUnitPicker("additionalPet")}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.rateUnitText}>
-                        {additionalPetUnit}
-                      </Text>
-                      <Feather
-                        name="chevron-down"
-                        size={14}
-                        color={neutral[400]}
-                      />
-                    </TouchableOpacity>
+                {/* Dynamic addon rows from subcategory templates */}
+                {(subcategoryData?.addonTemplates ?? []).length > 0 && (
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Add-Ons</Text>
+                    {subcategoryData!.addonTemplates.map((template) => (
+                      <View key={template.id} style={styles.addOnRow}>
+                        <Text style={styles.addOnLabel}>{template.name}</Text>
+                        <View style={styles.rateInputBox}>
+                          <Text style={styles.rateCurrency}>$</Text>
+                          <TextInput
+                            style={styles.rateTextInput}
+                            value={addonRates[template.id] ?? ""}
+                            onChangeText={(v) =>
+                              setAddonRates((prev) => ({
+                                ...prev,
+                                [template.id]: v,
+                              }))
+                            }
+                            keyboardType="decimal-pad"
+                            placeholder="0.00"
+                            placeholderTextColor={neutral[300]}
+                          />
+                        </View>
+                        <TouchableOpacity
+                          style={styles.rateUnitDropdown}
+                          onPress={() => openRateUnitPicker(template.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.rateUnitText}>
+                            {formatRateUnit(
+                              addonUnits[template.id] ?? "booking",
+                            )}
+                          </Text>
+                          <Feather
+                            name="chevron-down"
+                            size={14}
+                            color={neutral[400]}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
                   </View>
-                  <View style={styles.addOnRow}>
-                    <Text style={styles.addOnLabel}>
-                      {"Pet Weight >\n50 lbs"}
-                    </Text>
-                    <View style={styles.rateInputBox}>
-                      <Text style={styles.rateCurrency}>$</Text>
-                      <TextInput
-                        style={styles.rateTextInput}
-                        value={petWeightRate}
-                        onChangeText={setPetWeightRate}
-                        keyboardType="decimal-pad"
-                        placeholder="0.00"
-                        placeholderTextColor={neutral[300]}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={styles.rateUnitDropdown}
-                      onPress={() => openRateUnitPicker("petWeight")}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.rateUnitText}>{petWeightUnit}</Text>
-                      <Feather
-                        name="chevron-down"
-                        size={14}
-                        color={neutral[400]}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                )}
               </View>
             </>
           )}
@@ -798,9 +963,19 @@ export default function CreateServiceFormScreen() {
                     value={`${radiusValue} ${radiusUnit}`}
                   />
                 ) : null}
-                {petType ? (
-                  <ReviewInlineRow label="Pet Type" value={petType} />
-                ) : null}
+
+                {/* Dynamic custom field values */}
+                {allCustomFields.map((field) => {
+                  const value = customFieldValues[field.id];
+                  if (!value) return null;
+                  return (
+                    <ReviewInlineRow
+                      key={field.id}
+                      label={field.fieldLabel}
+                      value={value}
+                    />
+                  );
+                })}
 
                 {aboutYou ? (
                   <View style={styles.subBlock}>
@@ -852,21 +1027,25 @@ export default function CreateServiceFormScreen() {
                   value={formatRate(baseRate, baseRateUnit)}
                 />
 
-                {additionalPetRate || petWeightRate ? (
+                {(subcategoryData?.addonTemplates ?? []).some(
+                  (t) => addonRates[t.id]?.trim(),
+                ) ? (
                   <>
                     <View style={styles.pricingDivider} />
-                    {additionalPetRate ? (
-                      <ReviewPricingRow
-                        label="Additional Pet"
-                        value={formatRate(additionalPetRate, additionalPetUnit)}
-                      />
-                    ) : null}
-                    {petWeightRate ? (
-                      <ReviewPricingRow
-                        label="Pet Weight > 50 lbs"
-                        value={formatRate(petWeightRate, petWeightUnit)}
-                      />
-                    ) : null}
+                    {subcategoryData!.addonTemplates.map((template) => {
+                      const rate = addonRates[template.id];
+                      if (!rate?.trim()) return null;
+                      return (
+                        <ReviewPricingRow
+                          key={template.id}
+                          label={template.name}
+                          value={formatRate(
+                            rate,
+                            addonUnits[template.id] ?? "booking",
+                          )}
+                        />
+                      );
+                    })}
                   </>
                 ) : null}
               </View>
@@ -874,6 +1053,11 @@ export default function CreateServiceFormScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Submit error */}
+      {submitError ? (
+        <Text style={styles.submitError}>{submitError}</Text>
+      ) : null}
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -896,7 +1080,7 @@ export default function CreateServiceFormScreen() {
               canProceed && styles.nextButtonTextActive,
             ]}
           >
-            {formStep === 5 ? "Submit" : "Next"}
+            {formStep === 5 && submitting ? "Submitting..." : formStep === 5 ? "Submit" : "Next"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -991,7 +1175,10 @@ export default function CreateServiceFormScreen() {
                     styles.bottomSheetOptionBorder,
                   ]}
                   onPress={() =>
-                    closeAddressPicker(() => setAddress("My Current Location"))
+                    closeAddressPicker(() => {
+                      setAddress("My Current Location");
+                      setAddressId(null);
+                    })
                   }
                   activeOpacity={0.7}
                 >
@@ -1025,7 +1212,10 @@ export default function CreateServiceFormScreen() {
                       address === a.address && styles.bottomSheetOptionSelected,
                     ]}
                     onPress={() =>
-                      closeAddressPicker(() => setAddress(a.address))
+                      closeAddressPicker(() => {
+                        setAddress(a.address);
+                        setAddressId(a.id);
+                      })
                     }
                     activeOpacity={0.7}
                   >
@@ -1059,17 +1249,17 @@ export default function CreateServiceFormScreen() {
         </Animated.View>
       </Modal>
 
-      {/* Pet Type bottom sheet */}
+      {/* Generic select-field options bottom sheet */}
       <Modal
-        visible={petTypeModalVisible}
+        visible={pickerField !== null}
         transparent
         animationType="none"
-        onRequestClose={() => closePetTypePicker()}
+        onRequestClose={() => closeFieldPicker()}
       >
         <Animated.View
           style={[styles.bottomSheetBackdrop, { opacity: backdropAnim }]}
         >
-          <Pressable style={{ flex: 1 }} onPress={() => closePetTypePicker()} />
+          <Pressable style={{ flex: 1 }} onPress={() => closeFieldPicker()} />
         </Animated.View>
         <Animated.View
           style={[
@@ -1078,33 +1268,47 @@ export default function CreateServiceFormScreen() {
           ]}
         >
           <View style={styles.bottomSheetHandle} />
-          <Text style={styles.bottomSheetTitle}>Pet Type</Text>
+          <Text style={styles.bottomSheetTitle}>
+            {pickerField?.fieldLabel}
+          </Text>
           <ScrollView showsVerticalScrollIndicator={false}>
-            {PET_TYPES.map((type, index) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.bottomSheetOption,
-                  index < PET_TYPES.length - 1 &&
-                    styles.bottomSheetOptionBorder,
-                  petType === type && styles.bottomSheetOptionSelected,
-                ]}
-                onPress={() => closePetTypePicker(() => setPetType(type))}
-                activeOpacity={0.7}
-              >
-                <Text
+            {(pickerField?.options ?? []).map((option, index) => {
+              const options = pickerField?.options ?? [];
+              const isSelected =
+                customFieldValues[pickerField!.id] === option;
+              return (
+                <TouchableOpacity
+                  key={option}
                   style={[
-                    styles.bottomSheetOptionText,
-                    petType === type && styles.bottomSheetOptionTextSelected,
+                    styles.bottomSheetOption,
+                    index < options.length - 1 &&
+                      styles.bottomSheetOptionBorder,
+                    isSelected && styles.bottomSheetOptionSelected,
                   ]}
+                  onPress={() =>
+                    closeFieldPicker(() =>
+                      setCustomFieldValues((prev) => ({
+                        ...prev,
+                        [pickerField!.id]: option,
+                      })),
+                    )
+                  }
+                  activeOpacity={0.7}
                 >
-                  {type}
-                </Text>
-                {petType === type && (
-                  <Feather name="check" size={16} color={primary[400]} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.bottomSheetOptionText,
+                      isSelected && styles.bottomSheetOptionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                  {isSelected && (
+                    <Feather name="check" size={16} color={primary[400]} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </Animated.View>
       </Modal>
@@ -1158,7 +1362,7 @@ export default function CreateServiceFormScreen() {
                       isSelected && styles.bottomSheetOptionTextSelected,
                     ]}
                   >
-                    {unit}
+                    {formatRateUnit(unit)}
                   </Text>
                   {isSelected && (
                     <Feather name="check" size={16} color={primary[400]} />
@@ -1541,7 +1745,7 @@ const styles = StyleSheet.create({
     color: neutral[600],
     lineHeight: 18,
   },
-  // ── Step 5: Review (mirrors service-detail layout) ────────────
+  // ── Step 5: Review ────────────────────────────────────────────
   reviewSection: {
     backgroundColor: background.card,
     borderRadius: 12,
@@ -1811,5 +2015,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: neutral[0],
+  },
+  submitError: {
+    fontSize: 13,
+    color: "#d32f2f",
+    textAlign: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 6,
   },
 });

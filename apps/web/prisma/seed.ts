@@ -274,6 +274,42 @@ async function main() {
 
   console.log(`Seeded ${subcategories.length} subcategories`);
 
+  // Seed SubcategoryAddonTemplate for Pet Sitting (id: 95)
+  const PET_SITTING_ADDON_TEMPLATES = [
+    {
+      id: 1,
+      subcategoryId: 95,
+      name: "Additional Pet",
+      description: "Each additional pet beyond the first",
+      defaultPrice: 15.0,
+      rateUnit: "booking" as const,
+      isRequired: false,
+      displayOrder: 1,
+    },
+    {
+      id: 2,
+      subcategoryId: 95,
+      name: "Pet Weight >50lbs",
+      description: "Surcharge for pets weighing over 50 lbs",
+      defaultPrice: 10.0,
+      rateUnit: "booking" as const,
+      isRequired: false,
+      displayOrder: 2,
+    },
+  ];
+
+  const addonTemplates = await Promise.all(
+    PET_SITTING_ADDON_TEMPLATES.map(({ id, subcategoryId, name, description, defaultPrice, rateUnit, isRequired, displayOrder }) =>
+      prisma.subcategoryAddonTemplate.upsert({
+        where: { id },
+        update: { name, description, defaultPrice, rateUnit, isRequired, displayOrder },
+        create: { id, subcategoryId, name, description, defaultPrice, rateUnit, isRequired, displayOrder },
+      }),
+    ),
+  );
+
+  console.log(`Seeded ${addonTemplates.length} addon templates for Pet Sitting`);
+
   // Seed Service — Alice's dog walking service at her default address
   const aliceDefaultAddress = addresses.find(
     (a) => a.userId === alice.id && a.isDefault,
@@ -316,8 +352,9 @@ async function main() {
     },
   });
 
+  // Seed ServiceCustomField — pet type scoped to Pet Sitting subcategory (id: 95)
   let petTypeField = await prisma.serviceCustomField.findFirst({
-    where: { categoryId: 15, subcategoryId: null, fieldName: "petType" },
+    where: { categoryId: null, subcategoryId: 95, fieldName: "petType" },
   });
   if (petTypeField) {
     await prisma.serviceCustomField.update({
@@ -327,31 +364,13 @@ async function main() {
   } else {
     petTypeField = await prisma.serviceCustomField.create({
       data: {
-        categoryId: 15, // Pet Care
+        subcategoryId: 95, // Pet Sitting
         fieldName: "petType",
         fieldLabel: "Pet Type",
         fieldType: "select",
         isRequired: true,
         displayOrder: 1,
         options: ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"],
-      },
-    });
-  }
-
-  const existingCustomValue = await prisma.serviceCustomValue.findUnique({
-    where: {
-      serviceId_fieldId: {
-        serviceId: aliceService.id,
-        fieldId: petTypeField.id,
-      },
-    },
-  });
-  if (!existingCustomValue) {
-    await prisma.serviceCustomValue.create({
-      data: {
-        serviceId: aliceService.id,
-        fieldId: petTypeField.id,
-        valueText: "Dog",
       },
     });
   }
@@ -404,6 +423,55 @@ async function main() {
       fileName: "sample-local-pdf.pdf",
     },
   });
+
+  // Seed ServiceCustomValue — pet type for alice's pet sitting service
+  await prisma.serviceCustomValue.upsert({
+    where: {
+      serviceId_fieldId: {
+        serviceId: aliceBusinessService.id,
+        fieldId: petTypeField.id,
+      },
+    },
+    update: { valueText: "Dog" },
+    create: {
+      serviceId: aliceBusinessService.id,
+      fieldId: petTypeField.id,
+      valueText: "Dog",
+    },
+  });
+
+  // Seed ServiceAddon — alice's pet sitting service uses both addon templates
+  const [additionalPetTemplate, heavyPetTemplate] = addonTemplates;
+  await Promise.all([
+    prisma.serviceAddon.upsert({
+      where: {
+        serviceId_templateId: {
+          serviceId: aliceBusinessService.id,
+          templateId: additionalPetTemplate.id,
+        },
+      },
+      update: { price: 15.0 },
+      create: {
+        serviceId: aliceBusinessService.id,
+        templateId: additionalPetTemplate.id,
+        price: 15.0,
+      },
+    }),
+    prisma.serviceAddon.upsert({
+      where: {
+        serviceId_templateId: {
+          serviceId: aliceBusinessService.id,
+          templateId: heavyPetTemplate.id,
+        },
+      },
+      update: { price: 10.0 },
+      create: {
+        serviceId: aliceBusinessService.id,
+        templateId: heavyPetTemplate.id,
+        price: 10.0,
+      },
+    }),
+  ]);
 
   console.log("Seeded service and service image");
 }

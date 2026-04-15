@@ -12,9 +12,17 @@ export async function GET(
     include: {
       images: true,
       certifications: true,
-      addons: true,
+      addons: { include: { template: true } },
       customValues: { include: { field: true } },
-      subcategory: { include: { category: true } },
+      subcategory: {
+        include: {
+          category: {
+            include: { customFields: { orderBy: { displayOrder: "asc" } } },
+          },
+          customFields: { orderBy: { displayOrder: "asc" } },
+          addonTemplates: { orderBy: { displayOrder: "asc" } },
+        },
+      },
       address: true,
       business: { include: { business: true } },
     },

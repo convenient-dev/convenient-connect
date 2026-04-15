@@ -201,11 +201,14 @@ function SubcategoryItem({
 
 export default function CreateServiceSubcategoryScreen() {
   const router = useRouter();
-  const { categoryId, categorySlug, categoryName } = useLocalSearchParams<{
-    categoryId: string;
-    categorySlug: string;
-    categoryName: string;
-  }>();
+  const { categoryId, categorySlug, categoryName, serviceMode, businessAffiliationId } =
+    useLocalSearchParams<{
+      categoryId: string;
+      categorySlug: string;
+      categoryName: string;
+      serviceMode: string;
+      businessAffiliationId: string;
+    }>();
 
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -288,7 +291,11 @@ export default function CreateServiceSubcategoryScreen() {
             if (!canProceed) return;
             router.push({
               pathname: "/create-service-form",
-              params: { subcategoryId: String(selected) },
+              params: {
+                subcategoryId: String(selected),
+                serviceMode,
+                businessAffiliationId,
+              },
             });
           }}
           activeOpacity={0.8}

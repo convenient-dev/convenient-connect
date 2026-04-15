@@ -155,7 +155,17 @@ export default function CreateServiceScreen() {
         <TouchableOpacity
           style={[styles.nextButton, canProceed && styles.nextButtonActive]}
           disabled={!canProceed}
-          onPress={() => canProceed && router.push("/create-service-category")}
+          onPress={() => {
+            if (!canProceed || !selected) return;
+            const isFreelance = selected === "freelance";
+            router.push({
+              pathname: "/create-service-category",
+              params: {
+                serviceMode: isFreelance ? "freelance" : "business",
+                businessAffiliationId: isFreelance ? undefined : selected,
+              },
+            });
+          }}
           activeOpacity={0.8}
         >
           <Text

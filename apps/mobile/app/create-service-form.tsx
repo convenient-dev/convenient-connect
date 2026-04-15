@@ -83,7 +83,7 @@ type Address = {
 
 const SECTION_ICONS: Record<string, number> = {
   "SERVICE CATEGORY": require("@/assets/global-icons/category.svg"),
-  "SERVICE MODE": require("@/assets/global-icons/provider-type.svg"),
+  "WORK TYPE": require("@/assets/global-icons/provider-type.svg"),
   "SERVICE INFORMATION": require("@/assets/global-icons/info.svg"),
   PRICING: require("@/assets/global-icons/pricing.svg"),
 };
@@ -1011,11 +1011,11 @@ export default function CreateServiceFormScreen() {
                 ) : null}
               </View>
 
-              {/* SERVICE MODE */}
+              {/* WORK TYPE */}
               <View style={styles.reviewSection}>
-                <ReviewSectionHeader label="SERVICE MODE" />
+                <ReviewSectionHeader label="WORK TYPE" />
                 <ReviewInlineRow
-                  label="Service Mode"
+                  label="Work Type"
                   value={serviceMode === "business" ? "Business" : "Freelance"}
                 />
                 {serviceMode === "business" && businessName ? (

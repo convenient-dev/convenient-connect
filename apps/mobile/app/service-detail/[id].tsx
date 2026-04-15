@@ -53,7 +53,7 @@ interface ServiceDetail {
 
 const SECTION_ICONS: Record<string, number> = {
   "SERVICE CATEGORY": require("@/assets/global-icons/category.svg"),
-  "SERVICE MODE": require("@/assets/global-icons/provider-type.svg"),
+  "WORK TYPE": require("@/assets/global-icons/provider-type.svg"),
   "SERVICE INFORMATION": require("@/assets/global-icons/info.svg"),
   PRICING: require("@/assets/global-icons/pricing.svg"),
 };
@@ -98,7 +98,9 @@ function formatRate(rate: string, unit: "booking" | "hour") {
   return `$${parseFloat(rate).toFixed(2)} ${unit === "booking" ? "per booking" : "per hour"}`;
 }
 
-function formatCustomValue(cv: ServiceDetail["customValues"][number]): string | null {
+function formatCustomValue(
+  cv: ServiceDetail["customValues"][number],
+): string | null {
   if (cv.field.fieldType === "boolean") {
     return cv.valueBoolean != null ? (cv.valueBoolean ? "Yes" : "No") : null;
   }
@@ -127,7 +129,11 @@ export default function ServiceDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
+        <ActivityIndicator
+          size="large"
+          color={primary[400]}
+          style={styles.loader}
+        />
       </SafeAreaView>
     );
   }
@@ -174,12 +180,14 @@ export default function ServiceDetailScreen() {
           )}
         </View>
 
-        {/* SERVICE MODE */}
+        {/* WORK TYPE */}
         <View style={styles.section}>
-          <SectionHeader label="SERVICE MODE" />
+          <SectionHeader label="WORK TYPE" />
           <InlineRow
-            label="Service Mode"
-            value={service.serviceMode === "business" ? "Business" : "Freelance"}
+            label="Work Type"
+            value={
+              service.serviceMode === "business" ? "Business" : "Freelance"
+            }
           />
           {service.serviceMode === "business" && service.business && (
             <InlineRow
@@ -200,7 +208,10 @@ export default function ServiceDetailScreen() {
             value={service.serviceType === "inPerson" ? "In-person" : "Remote"}
           />
           {service.address && (
-            <FieldBlock label="Service Address" value={service.address.address} />
+            <FieldBlock
+              label="Service Address"
+              value={service.address.address}
+            />
           )}
           {service.areaRadius && (
             <InlineRow
@@ -214,7 +225,11 @@ export default function ServiceDetailScreen() {
             const value = formatCustomValue(cv);
             if (!value) return null;
             return (
-              <InlineRow key={cv.id} label={cv.field.fieldLabel} value={value} />
+              <InlineRow
+                key={cv.id}
+                label={cv.field.fieldLabel}
+                value={value}
+              />
             );
           })}
 
@@ -261,7 +276,9 @@ export default function ServiceDetailScreen() {
 
           {service.certifications.length > 0 && (
             <View style={styles.subBlock}>
-              <Text style={styles.subBlockLabel}>Certifications / Licenses</Text>
+              <Text style={styles.subBlockLabel}>
+                Certifications / Licenses
+              </Text>
               {service.certifications.map((cert) => (
                 <View key={cert.id} style={styles.certRow}>
                   <MaterialIcons

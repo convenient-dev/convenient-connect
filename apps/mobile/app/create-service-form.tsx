@@ -3,6 +3,7 @@ import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -82,6 +83,7 @@ type Address = {
 
 const SECTION_ICONS: Record<string, number> = {
   "SERVICE CATEGORY": require("@/assets/global-icons/category.svg"),
+  "SERVICE MODE": require("@/assets/global-icons/provider-type.svg"),
   "SERVICE INFORMATION": require("@/assets/global-icons/info.svg"),
   PRICING: require("@/assets/global-icons/pricing.svg"),
 };
@@ -146,13 +148,19 @@ function ReviewPricingRow({ label, value }: { label: string; value: string }) {
 
 export default function CreateServiceFormScreen() {
   const router = useRouter();
-  const { subcategoryId, subcategoryName, serviceMode, businessAffiliationId } =
-    useLocalSearchParams<{
-      subcategoryId: string;
-      subcategoryName: string;
-      serviceMode: string;
-      businessAffiliationId: string;
-    }>();
+  const {
+    subcategoryId,
+    subcategoryName,
+    serviceMode,
+    businessAffiliationId,
+    businessName,
+  } = useLocalSearchParams<{
+    subcategoryId: string;
+    subcategoryName: string;
+    serviceMode: string;
+    businessAffiliationId: string;
+    businessName: string;
+  }>();
 
   // Step navigation
   const [formStep, setFormStep] = useState(3);
@@ -321,6 +329,26 @@ export default function CreateServiceFormScreen() {
   const [aboutYou, setAboutYou] = useState("");
   const [slogan, setSlogan] = useState("");
   const [certifications, setCertifications] = useState("");
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  async function handlePickImages() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+
+    console.log(result);
+
+    if (!result.canceled) {
+      setSelectedImages((prev) => [
+        ...prev,
+        ...result.assets.map((a) => a.uri),
+      ]);
+    }
+  }
 
   const requiredFieldsFilled = allCustomFields
     .filter((f) => f.isRequired)
@@ -350,9 +378,7 @@ export default function CreateServiceFormScreen() {
     const rates: Record<number, string> = {};
     const units: Record<number, RateUnit> = {};
     subcategoryData.addonTemplates.forEach((t) => {
-      rates[t.id] = t.defaultPrice
-        ? parseFloat(t.defaultPrice).toFixed(2)
-        : "";
+      rates[t.id] = t.defaultPrice ? parseFloat(t.defaultPrice).toFixed(2) : "";
       units[t.id] = t.rateUnit;
     });
     setAddonRates(rates);
@@ -420,13 +446,14 @@ export default function CreateServiceFormScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [consented, setConsented] = useState(false);
 
   const canProceed =
     formStep === 3
       ? canProceedStep3
       : formStep === 4
         ? canProceedStep4
-        : !submitting;
+        : consented && !submitting;
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -467,7 +494,9 @@ export default function CreateServiceFormScreen() {
 
       if (!res.ok) {
         const data = await res.json();
-        setSubmitError(data?.error ?? "Something went wrong. Please try again.");
+        setSubmitError(
+          data?.error ?? "Something went wrong. Please try again.",
+        );
         return;
       }
 
@@ -800,7 +829,39 @@ export default function CreateServiceFormScreen() {
 
               <View style={styles.field}>
                 <Text style={styles.label}>Images / Portfolio</Text>
-                <TouchableOpacity style={styles.uploadBox} activeOpacity={0.7}>
+                {selectedImages.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.imageThumbnailRow}
+                  >
+                    {selectedImages.map((uri, i) => (
+                      <View key={i} style={styles.imageThumbnailWrap}>
+                        <ExpoImage
+                          source={{ uri }}
+                          style={styles.imageThumbnail}
+                          contentFit="cover"
+                        />
+                        <TouchableOpacity
+                          style={styles.imageThumbnailRemove}
+                          onPress={() =>
+                            setSelectedImages((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="x" size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={handlePickImages}
+                  activeOpacity={0.7}
+                >
                   <Feather name="upload" size={22} color={neutral[400]} />
                   <Text style={styles.uploadText}>Upload Images</Text>
                 </TouchableOpacity>
@@ -934,12 +995,33 @@ export default function CreateServiceFormScreen() {
               </Text>
 
               {/* SERVICE CATEGORY */}
-              {subcategoryName ? (
-                <View style={styles.reviewSection}>
-                  <ReviewSectionHeader label="SERVICE CATEGORY" />
-                  <Text style={styles.categoryText}>{subcategoryName}</Text>
-                </View>
-              ) : null}
+              <View style={styles.reviewSection}>
+                <ReviewSectionHeader label="SERVICE CATEGORY" />
+                {subcategoryData?.category.name ? (
+                  <ReviewInlineRow
+                    label="Category"
+                    value={subcategoryData.category.name}
+                  />
+                ) : null}
+                {subcategoryName ? (
+                  <ReviewInlineRow
+                    label="Subcategory"
+                    value={subcategoryName}
+                  />
+                ) : null}
+              </View>
+
+              {/* SERVICE MODE */}
+              <View style={styles.reviewSection}>
+                <ReviewSectionHeader label="SERVICE MODE" />
+                <ReviewInlineRow
+                  label="Service Mode"
+                  value={serviceMode === "business" ? "Business" : "Freelance"}
+                />
+                {serviceMode === "business" && businessName ? (
+                  <ReviewInlineRow label="Business" value={businessName} />
+                ) : null}
+              </View>
 
               {/* SERVICE INFORMATION */}
               <View style={styles.reviewSection}>
@@ -998,6 +1080,27 @@ export default function CreateServiceFormScreen() {
                   </View>
                 ) : null}
 
+                {/* Images */}
+                {selectedImages.length > 0 ? (
+                  <View style={styles.subBlock}>
+                    <Text style={styles.subBlockLabel}>Images</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.imageThumbnailRow}
+                    >
+                      {selectedImages.map((uri, i) => (
+                        <ExpoImage
+                          key={i}
+                          source={{ uri }}
+                          style={styles.reviewImage}
+                          contentFit="cover"
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : null}
+
                 {certifications ? (
                   <View style={styles.subBlock}>
                     <Text style={styles.subBlockLabel}>
@@ -1027,8 +1130,8 @@ export default function CreateServiceFormScreen() {
                   value={formatRate(baseRate, baseRateUnit)}
                 />
 
-                {(subcategoryData?.addonTemplates ?? []).some(
-                  (t) => addonRates[t.id]?.trim(),
+                {(subcategoryData?.addonTemplates ?? []).some((t) =>
+                  addonRates[t.id]?.trim(),
                 ) ? (
                   <>
                     <View style={styles.pricingDivider} />
@@ -1049,6 +1152,24 @@ export default function CreateServiceFormScreen() {
                   </>
                 ) : null}
               </View>
+
+              {/* CONSENT */}
+              <TouchableOpacity
+                style={styles.consentRow}
+                onPress={() => setConsented((v) => !v)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[styles.checkbox, consented && styles.checkboxChecked]}
+                >
+                  {consented && <Feather name="check" size={13} color="#fff" />}
+                </View>
+                <Text style={styles.consentText}>
+                  I confirm that the information provided is accurate. I
+                  acknowledge that providing false or misleading information may
+                  result in removal from the platform.
+                </Text>
+              </TouchableOpacity>
             </>
           )}
         </ScrollView>
@@ -1080,7 +1201,11 @@ export default function CreateServiceFormScreen() {
               canProceed && styles.nextButtonTextActive,
             ]}
           >
-            {formStep === 5 && submitting ? "Submitting..." : formStep === 5 ? "Submit" : "Next"}
+            {formStep === 5 && submitting
+              ? "Submitting..."
+              : formStep === 5
+                ? "Submit"
+                : "Next"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -1268,14 +1393,11 @@ export default function CreateServiceFormScreen() {
           ]}
         >
           <View style={styles.bottomSheetHandle} />
-          <Text style={styles.bottomSheetTitle}>
-            {pickerField?.fieldLabel}
-          </Text>
+          <Text style={styles.bottomSheetTitle}>{pickerField?.fieldLabel}</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
             {(pickerField?.options ?? []).map((option, index) => {
               const options = pickerField?.options ?? [];
-              const isSelected =
-                customFieldValues[pickerField!.id] === option;
+              const isSelected = customFieldValues[pickerField!.id] === option;
               return (
                 <TouchableOpacity
                   key={option}
@@ -2022,5 +2144,68 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 24,
     paddingBottom: 6,
+  },
+  // Image thumbnails
+  imageThumbnailRow: {
+    marginBottom: 4,
+  },
+  imageThumbnailWrap: {
+    position: "relative",
+    marginRight: 8,
+  },
+  imageThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  imageThumbnailRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  // Consent
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: neutral[300],
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: primary[400],
+    borderColor: primary[400],
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    color: neutral[600],
+    lineHeight: 20,
+  },
+  consentLink: {
+    color: primary[500],
+    fontWeight: "600",
   },
 });

@@ -24,22 +24,26 @@ interface ServiceDetail {
   areaRadius: string | null;
   aboutYou: string;
   description: string;
+  slogan: string | null;
   baseRate: string;
   baseRateUnit: "booking" | "hour";
   images: { id: number; url: string; altText: string | null }[];
   certifications: { id: number; url: string; fileName: string | null }[];
   addons: {
     id: number;
-    name: string;
-    description: string | null;
     price: string;
-    rateUnit: "booking" | "hour";
+    template: {
+      name: string;
+      description: string | null;
+      rateUnit: "booking" | "hour";
+    };
   }[];
   customValues: {
     id: number;
     valueText: string | null;
     valueNumber: string | null;
     valueBoolean: boolean | null;
+    valueJson: unknown | null;
     field: { fieldLabel: string; fieldType: string };
   }[];
   subcategory: { name: string; category: { name: string } } | null;
@@ -49,7 +53,7 @@ interface ServiceDetail {
 
 const SECTION_ICONS: Record<string, number> = {
   "SERVICE CATEGORY": require("@/assets/global-icons/category.svg"),
-  "PROVIDER TYPE": require("@/assets/global-icons/provider-type.svg"),
+  "SERVICE MODE": require("@/assets/global-icons/provider-type.svg"),
   "SERVICE INFORMATION": require("@/assets/global-icons/info.svg"),
   PRICING: require("@/assets/global-icons/pricing.svg"),
 };
@@ -90,6 +94,23 @@ function PricingRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatRate(rate: string, unit: "booking" | "hour") {
+  return `$${parseFloat(rate).toFixed(2)} ${unit === "booking" ? "per booking" : "per hour"}`;
+}
+
+function formatCustomValue(cv: ServiceDetail["customValues"][number]): string | null {
+  if (cv.field.fieldType === "boolean") {
+    return cv.valueBoolean != null ? (cv.valueBoolean ? "Yes" : "No") : null;
+  }
+  if (cv.field.fieldType === "number") {
+    return cv.valueNumber != null ? String(parseFloat(cv.valueNumber)) : null;
+  }
+  if (cv.field.fieldType === "multiSelect" && cv.valueJson) {
+    return Array.isArray(cv.valueJson) ? cv.valueJson.join(", ") : null;
+  }
+  return cv.valueText ?? null;
+}
+
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -106,11 +127,7 @@ export default function ServiceDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator
-          size="large"
-          color={primary[400]}
-          style={styles.loader}
-        />
+        <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -122,20 +139,6 @@ export default function ServiceDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const formatRate = (rate: string, unit: string) =>
-    `$${parseFloat(rate).toFixed(2)} per ${unit}`;
-
-  const descriptionLines = service.description
-    ? service.description.split("\n").filter((l) => l.trim())
-    : [];
-
-  const discountValues = service.customValues.filter(
-    (cv) => cv.field.fieldType === "number" && cv.valueNumber != null,
-  );
-  const otherCustomValues = service.customValues.filter(
-    (cv) => cv.field.fieldType !== "number" || cv.valueNumber == null,
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -158,36 +161,33 @@ export default function ServiceDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* SERVICE CATEGORY */}
-        {service.subcategory && (
-          <View style={styles.section}>
-            <SectionHeader label="SERVICE CATEGORY" />
-            <Text style={styles.categoryText}>
-              {service.subcategory.category.name}
-              {" · "}
-              {service.subcategory.name}
-            </Text>
-          </View>
-        )}
+        <View style={styles.section}>
+          <SectionHeader label="SERVICE CATEGORY" />
+          {service.subcategory && (
+            <>
+              <InlineRow
+                label="Category"
+                value={service.subcategory.category.name}
+              />
+              <InlineRow label="Subcategory" value={service.subcategory.name} />
+            </>
+          )}
+        </View>
 
-        {/* PROVIDER TYPE */}
-        {((service.serviceMode === "business" && service.business) ||
-          service.address) && (
-          <View style={styles.section}>
-            <SectionHeader label="PROVIDER TYPE" />
-            {service.serviceMode === "business" && service.business && (
-              <FieldBlock
-                label="Business Name"
-                value={service.business.business.name}
-              />
-            )}
-            {service.address && (
-              <FieldBlock
-                label="Business Address"
-                value={service.address.address}
-              />
-            )}
-          </View>
-        )}
+        {/* SERVICE MODE */}
+        <View style={styles.section}>
+          <SectionHeader label="SERVICE MODE" />
+          <InlineRow
+            label="Service Mode"
+            value={service.serviceMode === "business" ? "Business" : "Freelance"}
+          />
+          {service.serviceMode === "business" && service.business && (
+            <InlineRow
+              label="Business"
+              value={service.business.business.name}
+            />
+          )}
+        </View>
 
         {/* SERVICE INFORMATION */}
         <View style={styles.section}>
@@ -199,12 +199,24 @@ export default function ServiceDetailScreen() {
             label="Service Type"
             value={service.serviceType === "inPerson" ? "In-person" : "Remote"}
           />
+          {service.address && (
+            <FieldBlock label="Service Address" value={service.address.address} />
+          )}
           {service.areaRadius && (
             <InlineRow
               label="Service Area Radius"
               value={`${parseFloat(service.areaRadius)} miles`}
             />
           )}
+
+          {/* Custom field values */}
+          {service.customValues.map((cv) => {
+            const value = formatCustomValue(cv);
+            if (!value) return null;
+            return (
+              <InlineRow key={cv.id} label={cv.field.fieldLabel} value={value} />
+            );
+          })}
 
           {service.aboutYou ? (
             <View style={styles.subBlock}>
@@ -213,22 +225,28 @@ export default function ServiceDetailScreen() {
             </View>
           ) : null}
 
-          {descriptionLines.length > 0 && (
+          {service.description ? (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Description</Text>
-              {descriptionLines.map((line, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <Text style={styles.bullet}>·</Text>
-                  <Text style={styles.bulletText}>{line}</Text>
-                </View>
-              ))}
+              <Text style={styles.bodyText}>{service.description}</Text>
             </View>
-          )}
+          ) : null}
+
+          {service.slogan ? (
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Slogan</Text>
+              <Text style={styles.bodyText}>{service.slogan}</Text>
+            </View>
+          ) : null}
 
           {service.images.length > 0 && (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Images / Portfolio</Text>
-              <View style={styles.imageRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.imageScrollRow}
+              >
                 {service.images.map((img) => (
                   <ExpoImage
                     key={img.id}
@@ -237,15 +255,13 @@ export default function ServiceDetailScreen() {
                     contentFit="cover"
                   />
                 ))}
-              </View>
+              </ScrollView>
             </View>
           )}
 
           {service.certifications.length > 0 && (
             <View style={styles.subBlock}>
-              <Text style={styles.subBlockLabel}>
-                Certifications / Licenses
-              </Text>
+              <Text style={styles.subBlockLabel}>Certifications / Licenses</Text>
               {service.certifications.map((cert) => (
                 <View key={cert.id} style={styles.certRow}>
                   <MaterialIcons
@@ -263,7 +279,7 @@ export default function ServiceDetailScreen() {
         </View>
 
         {/* PRICING */}
-        <View style={[styles.section, styles.lastSection]}>
+        <View style={styles.section}>
           <SectionHeader label="PRICING" />
 
           <PricingRow
@@ -277,35 +293,12 @@ export default function ServiceDetailScreen() {
               {service.addons.map((addon) => (
                 <PricingRow
                   key={addon.id}
-                  label={addon.name}
-                  value={formatRate(addon.price, addon.rateUnit)}
+                  label={addon.template.name}
+                  value={formatRate(addon.price, addon.template.rateUnit)}
                 />
               ))}
             </>
           )}
-
-          {discountValues.length > 0 && (
-            <>
-              <View style={styles.pricingDivider} />
-              {discountValues.map((cv) => (
-                <PricingRow
-                  key={cv.id}
-                  label={cv.field.fieldLabel}
-                  value={`${parseFloat(cv.valueNumber!)}%`}
-                />
-              ))}
-            </>
-          )}
-
-          {otherCustomValues
-            .filter((cv) => cv.valueText || cv.valueBoolean != null)
-            .map((cv) => (
-              <PricingRow
-                key={cv.id}
-                label={cv.field.fieldLabel}
-                value={cv.valueText ?? (cv.valueBoolean ? "Yes" : "No")}
-              />
-            ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -370,7 +363,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  lastSection: {},
   sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -388,13 +380,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
-  // SERVICE CATEGORY
-  categoryText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#303030",
-  },
-  // PROVIDER TYPE
+  // Fields
   fieldBlock: {
     gap: 2,
   },
@@ -406,12 +392,6 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 13,
     color: "#303030",
-  },
-  // SERVICE INFORMATION
-  serviceTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#222b45",
   },
   inlineRow: {
     flexDirection: "row",
@@ -425,6 +405,11 @@ const styles = StyleSheet.create({
   inlineValue: {
     fontSize: 12,
     color: "#303030",
+  },
+  serviceTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#222b45",
   },
   subBlock: {
     gap: 5,
@@ -440,31 +425,14 @@ const styles = StyleSheet.create({
     color: "#505050",
     lineHeight: 19,
   },
-  bulletRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  bullet: {
-    fontSize: 12,
-    color: "#505050",
-    lineHeight: 19,
-  },
-  bulletText: {
-    fontSize: 12,
-    color: "#505050",
-    lineHeight: 19,
-    flex: 1,
-  },
-  imageRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  imageScrollRow: {
     marginTop: 2,
   },
   thumbnail: {
-    width: 68,
-    height: 68,
-    borderRadius: 6,
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
     backgroundColor: "#eaeaea",
   },
   certRow: {
@@ -477,7 +445,7 @@ const styles = StyleSheet.create({
     color: "#303030",
     flex: 1,
   },
-  // PRICING
+  // Pricing
   pricingRow: {
     flexDirection: "row",
     justifyContent: "space-between",

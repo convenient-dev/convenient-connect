@@ -201,13 +201,14 @@ function SubcategoryItem({
 
 export default function CreateServiceSubcategoryScreen() {
   const router = useRouter();
-  const { categoryId, categorySlug, categoryName, serviceMode, businessAffiliationId } =
+  const { categoryId, categorySlug, categoryName, serviceMode, businessAffiliationId, businessName } =
     useLocalSearchParams<{
       categoryId: string;
       categorySlug: string;
       categoryName: string;
       serviceMode: string;
       businessAffiliationId: string;
+      businessName: string;
     }>();
 
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -289,12 +290,15 @@ export default function CreateServiceSubcategoryScreen() {
           disabled={!canProceed}
           onPress={() => {
             if (!canProceed) return;
+            const subcategory = subcategories.find((s) => s.id === selected)!;
             router.push({
               pathname: "/create-service-form",
               params: {
                 subcategoryId: String(selected),
+                subcategoryName: subcategory.name,
                 serviceMode,
                 businessAffiliationId,
+                businessName,
               },
             });
           }}

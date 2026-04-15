@@ -158,11 +158,13 @@ export default function CreateServiceScreen() {
           onPress={() => {
             if (!canProceed || !selected) return;
             const isFreelance = selected === "freelance";
+            const businessOption = businessOptions.find((o) => o.id === selected);
             router.push({
               pathname: "/create-service-category",
               params: {
                 serviceMode: isFreelance ? "freelance" : "business",
                 businessAffiliationId: isFreelance ? undefined : selected,
+                businessName: isFreelance ? undefined : businessOption?.label,
               },
             });
           }}

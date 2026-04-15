@@ -88,9 +88,10 @@ function CategoryItem({
 
 export default function CreateServiceCategoryScreen() {
   const router = useRouter();
-  const { serviceMode, businessAffiliationId } = useLocalSearchParams<{
+  const { serviceMode, businessAffiliationId, businessName } = useLocalSearchParams<{
     serviceMode: string;
     businessAffiliationId: string;
+    businessName: string;
   }>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +182,7 @@ export default function CreateServiceCategoryScreen() {
                 categoryName: category.name,
                 serviceMode,
                 businessAffiliationId,
+                businessName,
               },
             });
           }}

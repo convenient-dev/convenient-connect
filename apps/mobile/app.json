@@ -40,8 +40,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow ConvenientConnect to access your photos to upload service images.",
-        "cameraPermission": "Allow ConvenientConnect to access your camera.",
-        "microphonePermission": "Allow ConvenientConnect to access your microphone.",
+          "cameraPermission": "Allow ConvenientConnect to access your camera.",
+          "microphonePermission": "Allow ConvenientConnect to access your microphone.",
           "colors": {
             "cropToolbarColor": "#000000"
           },
@@ -50,6 +50,12 @@
               "cropToolbarColor": "#000000"
             }
           }
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
         }
       ],
       [

@@ -299,16 +299,44 @@ async function main() {
   ];
 
   const addonTemplates = await Promise.all(
-    PET_SITTING_ADDON_TEMPLATES.map(({ id, subcategoryId, name, description, defaultPrice, rateUnit, isRequired, displayOrder }) =>
-      prisma.subcategoryAddonTemplate.upsert({
-        where: { id },
-        update: { name, description, defaultPrice, rateUnit, isRequired, displayOrder },
-        create: { id, subcategoryId, name, description, defaultPrice, rateUnit, isRequired, displayOrder },
-      }),
+    PET_SITTING_ADDON_TEMPLATES.map(
+      ({
+        id,
+        subcategoryId,
+        name,
+        description,
+        defaultPrice,
+        rateUnit,
+        isRequired,
+        displayOrder,
+      }) =>
+        prisma.subcategoryAddonTemplate.upsert({
+          where: { id },
+          update: {
+            name,
+            description,
+            defaultPrice,
+            rateUnit,
+            isRequired,
+            displayOrder,
+          },
+          create: {
+            id,
+            subcategoryId,
+            name,
+            description,
+            defaultPrice,
+            rateUnit,
+            isRequired,
+            displayOrder,
+          },
+        }),
     ),
   );
 
-  console.log(`Seeded ${addonTemplates.length} addon templates for Pet Sitting`);
+  console.log(
+    `Seeded ${addonTemplates.length} addon templates for Pet Sitting`,
+  );
 
   // Seed Service — Alice's dog walking service at her default address
   const aliceDefaultAddress = addresses.find(
@@ -347,6 +375,7 @@ async function main() {
     },
     create: {
       serviceId: aliceService.id,
+      name: "Certified Dog Walker",
       url: "https://s2.q4cdn.com/175719177/files/doc_presentations/Placeholder-PDF.pdf",
       fileName: "Placeholder-PDF.pdf",
     },
@@ -419,6 +448,7 @@ async function main() {
     },
     create: {
       serviceId: aliceBusinessService.id,
+      name: "Example Pet Sitting License",
       url: "https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf",
       fileName: "sample-local-pdf.pdf",
     },

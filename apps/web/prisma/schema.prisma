@@ -179,6 +179,7 @@ model ServiceImage {
 model ServiceCertification {
   id        Int      @id @default(autoincrement())
   serviceId Int
+  name      String
   url       String
   fileName  String?  @db.VarChar(255)
   createdAt DateTime @default(now()) @db.Timestamp(6)

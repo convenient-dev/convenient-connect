@@ -3,6 +3,7 @@ import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -328,16 +329,33 @@ export default function CreateServiceFormScreen() {
 
   const [aboutYou, setAboutYou] = useState("");
   const [slogan, setSlogan] = useState("");
-  const [certifications, setCertifications] = useState("");
+  type Certification = { name: string; pdf: { uri: string; name: string } | null };
+  const [certifications, setCertifications] = useState<Certification[]>([{ name: "", pdf: null }]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  async function handlePickPdf(index: number) {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      multiple: false,
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setCertifications((prev) =>
+        prev.map((c, i) => i === index ? { ...c, pdf: { uri: asset.uri, name: asset.name } } : c),
+      );
+    }
+  }
 
   async function handlePickImages() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      quality: 0.8,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8, //the quality of compression
+      orderedSelection: true,
     });
 
     console.log(result);
@@ -498,6 +516,108 @@ export default function CreateServiceFormScreen() {
           data?.error ?? "Something went wrong. Please try again.",
         );
         return;
+      }
+
+      const service = await res.json();
+
+      // Upload selected images to the service_images bucket
+      if (selectedImages.length > 0) {
+        const uploadResults = await Promise.allSettled(
+          selectedImages.map(async (uri) => {
+            const ext = uri.split(".").pop() ?? "jpg";
+            const mimeType =
+              ext === "png"
+                ? "image/png"
+                : ext === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
+
+            const formData = new FormData();
+            formData.append("serviceId", String(service.id));
+
+            if (Platform.OS === "web") {
+              const blobRes = await fetch(uri);
+              const blob = await blobRes.blob();
+              formData.append(
+                "file",
+                new File([blob], `image.${ext}`, { type: mimeType }),
+              );
+            } else {
+              formData.append("file", {
+                uri,
+                name: `image.${ext}`,
+                type: mimeType,
+              } as unknown as Blob);
+            }
+
+            const uploadRes = await fetch(`${API_BASE_URL}/uploads/images`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadRes.ok) {
+              const data = await uploadRes.json();
+              throw new Error(data?.error ?? "Image upload failed");
+            }
+          }),
+        );
+
+        const failed = uploadResults.filter((r) => r.status === "rejected");
+        if (failed.length > 0) {
+          const reason = (failed[0] as PromiseRejectedResult).reason?.message;
+          setSubmitError(
+            `${failed.length} image${failed.length > 1 ? "s" : ""} failed to upload: ${reason}`,
+          );
+          return;
+        }
+      }
+
+      // Upload certifications (name required, PDF optional)
+      const certsWithPdf = certifications.filter(
+        (c) => c.name.trim() && c.pdf,
+      );
+      if (certsWithPdf.length > 0) {
+        const certResults = await Promise.allSettled(
+          certsWithPdf.map(async (cert) => {
+            const formData = new FormData();
+            formData.append("serviceId", String(service.id));
+            formData.append("name", cert.name.trim());
+
+            if (Platform.OS === "web") {
+              const blobRes = await fetch(cert.pdf!.uri);
+              const blob = await blobRes.blob();
+              formData.append(
+                "file",
+                new File([blob], cert.pdf!.name, { type: "application/pdf" }),
+              );
+            } else {
+              formData.append("file", {
+                uri: cert.pdf!.uri,
+                name: cert.pdf!.name,
+                type: "application/pdf",
+              } as unknown as Blob);
+            }
+
+            const uploadRes = await fetch(`${API_BASE_URL}/uploads/pdfs`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!uploadRes.ok) {
+              const data = await uploadRes.json();
+              throw new Error(data?.error ?? "PDF upload failed");
+            }
+          }),
+        );
+
+        const failed = certResults.filter((r) => r.status === "rejected");
+        if (failed.length > 0) {
+          const reason = (failed[0] as PromiseRejectedResult).reason?.message;
+          setSubmitError(
+            `${failed.length} certification PDF${failed.length > 1 ? "s" : ""} failed to upload: ${reason}`,
+          );
+          return;
+        }
       }
 
       setSubmitted(true);
@@ -829,42 +949,40 @@ export default function CreateServiceFormScreen() {
 
               <View style={styles.field}>
                 <Text style={styles.label}>Images / Portfolio</Text>
-                {selectedImages.length > 0 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.imageThumbnailRow}
-                  >
-                    {selectedImages.map((uri, i) => (
-                      <View key={i} style={styles.imageThumbnailWrap}>
-                        <ExpoImage
-                          source={{ uri }}
-                          style={styles.imageThumbnail}
-                          contentFit="cover"
-                        />
-                        <TouchableOpacity
-                          style={styles.imageThumbnailRemove}
-                          onPress={() =>
-                            setSelectedImages((prev) =>
-                              prev.filter((_, j) => j !== i),
-                            )
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="x" size={12} color="#fff" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </ScrollView>
-                )}
-                <TouchableOpacity
-                  style={styles.uploadBox}
-                  onPress={handlePickImages}
-                  activeOpacity={0.7}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.imageThumbnailRow}
                 >
-                  <Feather name="upload" size={22} color={neutral[400]} />
-                  <Text style={styles.uploadText}>Upload Images</Text>
-                </TouchableOpacity>
+                  {selectedImages.map((uri, i) => (
+                    <View key={i} style={styles.imageThumbnailWrap}>
+                      <ExpoImage
+                        source={{ uri }}
+                        style={styles.imageThumbnail}
+                        contentFit="cover"
+                      />
+                      <TouchableOpacity
+                        style={styles.imageThumbnailRemove}
+                        onPress={() =>
+                          setSelectedImages((prev) =>
+                            prev.filter((_, j) => j !== i),
+                          )
+                        }
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="x" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity
+                    style={styles.uploadBox}
+                    onPress={handlePickImages}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="upload" size={22} color={neutral[400]} />
+                    <Text style={styles.uploadText}>Upload Image</Text>
+                  </TouchableOpacity>
+                </ScrollView>
               </View>
 
               <View style={styles.field}>
@@ -872,21 +990,70 @@ export default function CreateServiceFormScreen() {
                   <Text style={styles.label}>Certifications / Licenses</Text>
                   <Feather name="info" size={15} color={neutral[400]} />
                 </View>
-                <TextInput
-                  style={styles.textarea}
-                  placeholder="List your certifications or licenses."
-                  placeholderTextColor={neutral[300]}
-                  value={certifications}
-                  onChangeText={setCertifications}
-                  multiline
-                  textAlignVertical="top"
-                />
+                {certifications.map((cert, i) => (
+                  <View key={i} style={styles.certRecord}>
+                    <View style={styles.certRecordHeader}>
+                      <TextInput
+                        style={[styles.input, styles.certNameInput]}
+                        placeholder="Certification name"
+                        placeholderTextColor={neutral[300]}
+                        value={cert.name}
+                        onChangeText={(v) =>
+                          setCertifications((prev) =>
+                            prev.map((c, j) => j === i ? { ...c, name: v } : c),
+                          )
+                        }
+                      />
+                      {certifications.length > 1 && (
+                        <TouchableOpacity
+                          style={styles.certRemoveBtn}
+                          onPress={() =>
+                            setCertifications((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="x" size={16} color={neutral[400]} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {cert.pdf ? (
+                      <View style={styles.certPdfRow}>
+                        <Feather name="file-text" size={14} color={neutral[400]} />
+                        <Text style={styles.certPdfName} numberOfLines={1}>
+                          {cert.pdf.name}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setCertifications((prev) =>
+                              prev.map((c, j) => j === i ? { ...c, pdf: null } : c),
+                            )
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="x" size={14} color={neutral[400]} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.certUploadBtn}
+                        onPress={() => handlePickPdf(i)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="upload" size={13} color={neutral[400]} />
+                        <Text style={styles.certUploadText}>Upload PDF (optional)</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
                 <TouchableOpacity
-                  style={styles.uploadPdfRow}
+                  style={styles.certAddBtn}
+                  onPress={() =>
+                    setCertifications((prev) => [...prev, { name: "", pdf: null }])
+                  }
                   activeOpacity={0.7}
                 >
-                  <Feather name="upload" size={15} color={neutral[400]} />
-                  <Text style={styles.uploadPdfText}>Upload PDF</Text>
+                  <Feather name="plus" size={15} color={primary[500]} />
+                  <Text style={styles.certAddText}>Add Certification</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -1101,18 +1268,32 @@ export default function CreateServiceFormScreen() {
                   </View>
                 ) : null}
 
-                {certifications ? (
+                {certifications.some((c) => c.name.trim()) ? (
                   <View style={styles.subBlock}>
                     <Text style={styles.subBlockLabel}>
                       Certifications / Licenses
                     </Text>
-                    <View style={styles.certRow}>
-                      <MaterialIcons
-                        name="workspace-premium"
-                        size={15}
-                        color={primary[400]}
-                      />
-                      <Text style={styles.certText}>{certifications}</Text>
+                    <View style={styles.pdfReviewList}>
+                      {certifications.filter((c) => c.name.trim()).map((cert, i) => (
+                        <View key={i} style={styles.certReviewRow}>
+                          <View style={styles.certReviewLeft}>
+                            <MaterialIcons
+                              name="workspace-premium"
+                              size={14}
+                              color={primary[400]}
+                            />
+                            <Text style={styles.certText}>{cert.name}</Text>
+                          </View>
+                          {cert.pdf ? (
+                            <View style={styles.pdfReviewRow}>
+                              <Feather name="file-text" size={12} color={neutral[400]} />
+                              <Text style={styles.pdfReviewName} numberOfLines={1}>
+                                {cert.pdf.name}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ))}
                     </View>
                   </View>
                 ) : null}
@@ -1772,31 +1953,53 @@ const styles = StyleSheet.create({
     minHeight: 130,
   },
   uploadBox: {
+    width: 80,
+    height: 80,
     borderWidth: 1,
     borderColor: border.default,
     borderStyle: "dashed",
-    borderRadius: 10,
-    paddingVertical: 28,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 4,
     backgroundColor: background.subtle,
   },
   uploadText: {
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: "500",
     color: neutral[400],
+    textAlign: "center",
   },
-  uploadPdfRow: {
+  pdfThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: border.default,
+    backgroundColor: background.subtle,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  pdfThumbnailName: {
+    fontSize: 9,
+    color: neutral[500],
+    textAlign: "center",
+  },
+  pdfReviewList: {
+    gap: 6,
+    marginTop: 4,
+  },
+  pdfReviewRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingTop: 4,
+    gap: 8,
   },
-  uploadPdfText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: neutral[400],
+  pdfReviewName: {
+    fontSize: 12,
+    color: "#303030",
+    flex: 1,
   },
   // ── Step 4: Pricing ───────────────────────────────────────────
   pricingSection: {
@@ -1971,6 +2174,63 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#505050",
     lineHeight: 19,
+  },
+  certRecord: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  certRecordHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  certNameInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  certRemoveBtn: {
+    padding: 4,
+  },
+  certPdfRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  certPdfName: {
+    flex: 1,
+    fontSize: 12,
+    color: neutral[600],
+  },
+  certUploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  certUploadText: {
+    fontSize: 12,
+    color: neutral[400],
+  },
+  certAddBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 4,
+  },
+  certAddText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: primary[500],
+  },
+  certReviewRow: {
+    gap: 2,
+  },
+  certReviewLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   certRow: {
     flexDirection: "row",

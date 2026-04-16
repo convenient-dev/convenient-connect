@@ -336,8 +336,9 @@ export default function CreateServiceFormScreen() {
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      quality: 0.8,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
     });
 
     console.log(result);
@@ -508,15 +509,29 @@ export default function CreateServiceFormScreen() {
           selectedImages.map(async (uri) => {
             const ext = uri.split(".").pop() ?? "jpg";
             const mimeType =
-              ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+              ext === "png"
+                ? "image/png"
+                : ext === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
 
             const formData = new FormData();
             formData.append("serviceId", String(service.id));
-            formData.append("file", {
-              uri,
-              name: `image.${ext}`,
-              type: mimeType,
-            } as unknown as Blob);
+
+            if (Platform.OS === "web") {
+              const blobRes = await fetch(uri);
+              const blob = await blobRes.blob();
+              formData.append(
+                "file",
+                new File([blob], `image.${ext}`, { type: mimeType }),
+              );
+            } else {
+              formData.append("file", {
+                uri,
+                name: `image.${ext}`,
+                type: mimeType,
+              } as unknown as Blob);
+            }
 
             const uploadRes = await fetch(`${API_BASE_URL}/uploads/images`, {
               method: "POST",

@@ -237,7 +237,6 @@ export default function ServicesScreen() {
           <MaterialIcons name="add" size={22} color={primary[400]} />
         </TouchableOpacity>
       </View>
-
       {/* Filter tabs */}
       <View style={styles.tabBar}>
         {TABS.map((tab) => (
@@ -258,7 +257,6 @@ export default function ServicesScreen() {
           </TouchableOpacity>
         ))}
       </View>
-
       {/* Service list */}
       {loading ? (
         <ActivityIndicator
@@ -285,7 +283,6 @@ export default function ServicesScreen() {
           )}
         </ScrollView>
       )}
-
       <ManageServiceSheet
         visible={selectedService !== null}
         onClose={() => setSelectedService(null)}

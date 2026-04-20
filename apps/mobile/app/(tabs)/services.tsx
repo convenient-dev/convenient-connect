@@ -1,9 +1,13 @@
 import Divider from "@/components/ui/divider";
+import {
+  SERVICE_STATUS_CONFIG,
+  ServiceStatus,
+} from "@/components/ServiceStatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -18,12 +22,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background, status } = Colors;
+const { primary, neutral, background } = Colors;
 
 // TODO: replace with real auth user id
 const USER_ID = 1;
-
-type ServiceStatus = "active" | "inactive" | "pendingReview";
 
 interface Service {
   id: number;
@@ -35,30 +37,6 @@ interface Service {
   business: { business: { name: string } } | null;
 }
 
-const STATUS_META: Record<
-  ServiceStatus,
-  {
-    label: string;
-    description: string;
-    icon: "check-circle" | "remove-circle" | "schedule";
-  }
-> = {
-  active: {
-    label: "Active",
-    description: "Accepting new bookings",
-    icon: "check-circle",
-  },
-  inactive: {
-    label: "Inactive",
-    description: "Not accepting bookings",
-    icon: "remove-circle",
-  },
-  pendingReview: {
-    label: "Pending Review",
-    description: "Under review",
-    icon: "schedule",
-  },
-};
 
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
@@ -158,13 +136,8 @@ function ServiceCard({
   service: Service;
   onMore: () => void;
 }) {
-  const meta = STATUS_META[service.status];
-  const statusColor =
-    service.status === "active"
-      ? status.active
-      : service.status === "inactive"
-        ? status.inactive
-        : "#f0a500";
+  const meta = SERVICE_STATUS_CONFIG[service.status];
+  const statusColor = meta.color;
   const photo = service.images[0]?.url;
 
   return (
@@ -206,12 +179,15 @@ export default function ServicesScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
-      .then((res) => res.json())
-      .then((data: Service[]) => setServices(data))
-      .finally(() => setLoading(false));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
+        .then((res) => res.json())
+        .then((data: Service[]) => setServices(data))
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   const visibleServices =
     activeTab === "All"
@@ -292,8 +268,9 @@ export default function ServicesScreen() {
           if (id) router.push(`/service-detail/${id}`);
         }}
         onEdit={() => {
+          const id = selectedService?.id;
           setSelectedService(null);
-          // TODO: navigate to edit service
+          if (id) router.push(`/edit-service/${id}`);
         }}
         onDelete={() => {
           setSelectedService(null);

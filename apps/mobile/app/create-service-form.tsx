@@ -2,8 +2,8 @@ import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image as ExpoImage } from "expo-image";
 import * as DocumentPicker from "expo-document-picker";
+import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -329,8 +329,13 @@ export default function CreateServiceFormScreen() {
 
   const [aboutYou, setAboutYou] = useState("");
   const [slogan, setSlogan] = useState("");
-  type Certification = { name: string; pdf: { uri: string; name: string } | null };
-  const [certifications, setCertifications] = useState<Certification[]>([{ name: "", pdf: null }]);
+  type Certification = {
+    name: string;
+    pdf: { uri: string; name: string } | null;
+  };
+  const [certifications, setCertifications] = useState<Certification[]>([
+    { name: "", pdf: null },
+  ]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   async function handlePickPdf(index: number) {
@@ -342,7 +347,9 @@ export default function CreateServiceFormScreen() {
     if (!result.canceled) {
       const asset = result.assets[0];
       setCertifications((prev) =>
-        prev.map((c, i) => i === index ? { ...c, pdf: { uri: asset.uri, name: asset.name } } : c),
+        prev.map((c, i) =>
+          i === index ? { ...c, pdf: { uri: asset.uri, name: asset.name } } : c,
+        ),
       );
     }
   }
@@ -573,9 +580,7 @@ export default function CreateServiceFormScreen() {
       }
 
       // Upload certifications (name required, PDF optional)
-      const certsWithPdf = certifications.filter(
-        (c) => c.name.trim() && c.pdf,
-      );
+      const certsWithPdf = certifications.filter((c) => c.name.trim() && c.pdf);
       if (certsWithPdf.length > 0) {
         const certResults = await Promise.allSettled(
           certsWithPdf.map(async (cert) => {
@@ -1000,7 +1005,9 @@ export default function CreateServiceFormScreen() {
                         value={cert.name}
                         onChangeText={(v) =>
                           setCertifications((prev) =>
-                            prev.map((c, j) => j === i ? { ...c, name: v } : c),
+                            prev.map((c, j) =>
+                              j === i ? { ...c, name: v } : c,
+                            ),
                           )
                         }
                       />
@@ -1008,7 +1015,9 @@ export default function CreateServiceFormScreen() {
                         <TouchableOpacity
                           style={styles.certRemoveBtn}
                           onPress={() =>
-                            setCertifications((prev) => prev.filter((_, j) => j !== i))
+                            setCertifications((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
                           }
                           activeOpacity={0.7}
                         >
@@ -1018,14 +1027,20 @@ export default function CreateServiceFormScreen() {
                     </View>
                     {cert.pdf ? (
                       <View style={styles.certPdfRow}>
-                        <Feather name="file-text" size={14} color={neutral[400]} />
+                        <Feather
+                          name="file-text"
+                          size={14}
+                          color={neutral[400]}
+                        />
                         <Text style={styles.certPdfName} numberOfLines={1}>
                           {cert.pdf.name}
                         </Text>
                         <TouchableOpacity
                           onPress={() =>
                             setCertifications((prev) =>
-                              prev.map((c, j) => j === i ? { ...c, pdf: null } : c),
+                              prev.map((c, j) =>
+                                j === i ? { ...c, pdf: null } : c,
+                              ),
                             )
                           }
                           activeOpacity={0.7}
@@ -1040,7 +1055,9 @@ export default function CreateServiceFormScreen() {
                         activeOpacity={0.7}
                       >
                         <Feather name="upload" size={13} color={neutral[400]} />
-                        <Text style={styles.certUploadText}>Upload PDF (optional)</Text>
+                        <Text style={styles.certUploadText}>
+                          Upload PDF (optional)
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1048,7 +1065,10 @@ export default function CreateServiceFormScreen() {
                 <TouchableOpacity
                   style={styles.certAddBtn}
                   onPress={() =>
-                    setCertifications((prev) => [...prev, { name: "", pdf: null }])
+                    setCertifications((prev) => [
+                      ...prev,
+                      { name: "", pdf: null },
+                    ])
                   }
                   activeOpacity={0.7}
                 >
@@ -1274,26 +1294,35 @@ export default function CreateServiceFormScreen() {
                       Certifications / Licenses
                     </Text>
                     <View style={styles.pdfReviewList}>
-                      {certifications.filter((c) => c.name.trim()).map((cert, i) => (
-                        <View key={i} style={styles.certReviewRow}>
-                          <View style={styles.certReviewLeft}>
-                            <MaterialIcons
-                              name="workspace-premium"
-                              size={14}
-                              color={primary[400]}
-                            />
-                            <Text style={styles.certText}>{cert.name}</Text>
-                          </View>
-                          {cert.pdf ? (
-                            <View style={styles.pdfReviewRow}>
-                              <Feather name="file-text" size={12} color={neutral[400]} />
-                              <Text style={styles.pdfReviewName} numberOfLines={1}>
-                                {cert.pdf.name}
-                              </Text>
+                      {certifications
+                        .filter((c) => c.name.trim())
+                        .map((cert, i) => (
+                          <View key={i} style={styles.certReviewRow}>
+                            <View style={styles.certReviewLeft}>
+                              <MaterialIcons
+                                name="insert-drive-file"
+                                size={14}
+                                color={neutral[300]}
+                              />
+                              <Text style={styles.certText}>{cert.name}</Text>
                             </View>
-                          ) : null}
-                        </View>
-                      ))}
+                            {cert.pdf ? (
+                              <View style={styles.pdfReviewRow}>
+                                <Feather
+                                  name="file-text"
+                                  size={12}
+                                  color={neutral[400]}
+                                />
+                                <Text
+                                  style={styles.pdfReviewName}
+                                  numberOfLines={1}
+                                >
+                                  {cert.pdf.name}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        ))}
                     </View>
                   </View>
                 ) : null}
@@ -2229,7 +2258,6 @@ const styles = StyleSheet.create({
   },
   certReviewLeft: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 6,
   },
   certRow: {

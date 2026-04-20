@@ -2,10 +2,14 @@ import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  Modal,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -113,11 +117,42 @@ function formatCustomValue(
   return cv.valueText ?? null;
 }
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+function ImageViewerModal({
+  uri,
+  onClose,
+}: {
+  uri: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible animationType="fade" transparent statusBarTranslucent>
+      <View style={styles.modalOverlay}>
+        <StatusBar hidden />
+        <ExpoImage
+          source={{ uri }}
+          style={styles.fullscreenImage}
+          contentFit="contain"
+        />
+        <TouchableOpacity
+          style={styles.modalCloseButton}
+          onPress={onClose}
+          hitSlop={12}
+        >
+          <MaterialIcons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${process.env.EXPO_PUBLIC_API_URL}/services/${id}`)
@@ -148,6 +183,12 @@ export default function ServiceDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {selectedImageUri && (
+        <ImageViewerModal
+          uri={selectedImageUri}
+          onClose={() => setSelectedImageUri(null)}
+        />
+      )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -263,12 +304,17 @@ export default function ServiceDetailScreen() {
                 style={styles.imageScrollRow}
               >
                 {service.images.map((img) => (
-                  <ExpoImage
+                  <TouchableOpacity
                     key={img.id}
-                    source={{ uri: img.url }}
-                    style={styles.thumbnail}
-                    contentFit="cover"
-                  />
+                    onPress={() => setSelectedImageUri(img.url)}
+                    activeOpacity={0.85}
+                  >
+                    <ExpoImage
+                      source={{ uri: img.url }}
+                      style={styles.thumbnail}
+                      contentFit="cover"
+                    />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -280,16 +326,23 @@ export default function ServiceDetailScreen() {
                 Certifications / Licenses
               </Text>
               {service.certifications.map((cert) => (
-                <View key={cert.id} style={styles.certRow}>
+                <TouchableOpacity
+                  key={cert.id}
+                  style={styles.certRow}
+                  onPress={() => WebBrowser.openBrowserAsync(cert.url)}
+                  activeOpacity={0.7}
+                >
                   <MaterialIcons
-                    name="workspace-premium"
+                    name="insert-drive-file"
                     size={15}
-                    color={primary[400]}
+                    color={neutral[300]}
                   />
-                  <Text style={styles.certText}>
-                    {cert.fileName ?? "Certificate"}
+                  <Text style={[styles.certText, styles.certTextTappable]}>
+                    {cert.fileName
+                      ? decodeURIComponent(cert.fileName)
+                      : "Certificate"}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -461,6 +514,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#303030",
     flex: 1,
+  },
+  certTextTappable: {
+    color: primary[500],
+    textDecorationLine: "underline",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    padding: 6,
   },
   // Pricing
   pricingRow: {

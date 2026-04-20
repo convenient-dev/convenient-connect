@@ -2,6 +2,7 @@ import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage, ImageSource } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -25,11 +26,11 @@ const bannerAssets: Record<string, ImageSource> = {
   "2": require("@/assets/banners/home-banner-2.png"),
 };
 
-
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [user, setUser] = useState<{
@@ -127,7 +128,10 @@ export default function HomeScreen() {
           {/* My Services header */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Services</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push("/services")}
+            >
               <MaterialIcons
                 name="chevron-right"
                 size={24}
@@ -141,6 +145,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.createServiceCard}
             activeOpacity={0.8}
+            onPress={() => router.push("/create-service")}
           >
             <ExpoImage
               source={require("@/assets/home/create-service.png")}

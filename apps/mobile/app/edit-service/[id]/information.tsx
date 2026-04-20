@@ -1,7 +1,7 @@
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as DocumentPicker from "expo-document-picker";
 import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -354,9 +354,7 @@ export default function EditServiceInformationScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} hitSlop={8} onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Service Information</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -793,11 +791,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 10,
-  },
-  backButton: {
-    width: 38, height: 38, borderRadius: 19,
-    borderWidth: 1, borderColor: neutral[200],
-    alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "600", color: "#222b45" },
   headerSpacer: { width: 38 },

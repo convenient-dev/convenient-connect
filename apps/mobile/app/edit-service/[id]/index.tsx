@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/BackButton";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -180,13 +181,7 @@ export default function EditServiceScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          hitSlop={8}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Edit Service</Text>
           <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -365,15 +360,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 10,
-  },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: neutral[200],
-    alignItems: "center",
-    justifyContent: "center",
   },
   headerCenter: {
     flex: 1,

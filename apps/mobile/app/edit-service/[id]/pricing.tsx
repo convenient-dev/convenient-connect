@@ -1,6 +1,6 @@
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -203,13 +203,7 @@ export default function EditServicePricingScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          hitSlop={8}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Pricing</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -376,11 +370,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 10,
-  },
-  backButton: {
-    width: 38, height: 38, borderRadius: 19,
-    borderWidth: 1, borderColor: neutral[200],
-    alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "600", color: "#222b45" },
   headerSpacer: { width: 38 },

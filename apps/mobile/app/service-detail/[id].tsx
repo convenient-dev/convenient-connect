@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -191,13 +192,7 @@ export default function ServiceDetailScreen() {
       )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          hitSlop={8}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Service Details</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -397,9 +392,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 10,
-  },
-  backButton: {
-    padding: 4,
   },
   headerTitle: {
     fontSize: 18,

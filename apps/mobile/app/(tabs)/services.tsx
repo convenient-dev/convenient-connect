@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/BackButton";
 import Divider from "@/components/ui/divider";
 import {
   SERVICE_STATUS_CONFIG,
@@ -198,12 +199,7 @@ export default function ServicesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.push("/(tabs)")}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.push("/(tabs)")} />
         <Text style={styles.headerTitle}>My Services</Text>
         <TouchableOpacity
           style={styles.addButton}
@@ -294,19 +290,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 23,
-    backgroundColor: neutral[0],
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
   },
   headerTitle: {
     fontSize: 20,

@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -7,7 +8,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -106,7 +106,7 @@ export default function EditServiceScreen() {
       onConfirm: async () => {
         const newStatus = newValue ? "active" : "inactive";
         setSearchActive(newValue);
-        setService((prev) => prev ? { ...prev, status: newStatus } : prev);
+        setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
         await fetch(`${API_BASE_URL}/services/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -208,7 +208,9 @@ export default function EditServiceScreen() {
             </View>
             <Switch
               value={searchToggleValue}
-              onValueChange={searchToggleDisabled ? undefined : handleToggleSearch}
+              onValueChange={
+                searchToggleDisabled ? undefined : handleToggleSearch
+              }
               disabled={searchToggleDisabled}
               trackColor={{ false: neutral[200], true: primary[400] }}
               thumbColor={neutral[0]}
@@ -296,46 +298,17 @@ export default function EditServiceScreen() {
         </View>
       </ScrollView>
 
-      {/* Confirmation modal */}
-      <Modal
+      <ConfirmModal
         visible={confirmModal !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmModal(null)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setConfirmModal(null)}
-        >
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <View style={styles.modalIconWrap}>
-              <MaterialIcons name="info-outline" size={28} color="#b45309" />
-            </View>
-            <Text style={styles.modalTitle}>{confirmModal?.title}</Text>
-            <Text style={styles.modalMessage}>{confirmModal?.message}</Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setConfirmModal(null)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={() => {
-                  const fn = confirmModal?.onConfirm;
-                  setConfirmModal(null);
-                  fn?.();
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalConfirmText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        title={confirmModal?.title ?? ""}
+        message={confirmModal?.message ?? ""}
+        onCancel={() => setConfirmModal(null)}
+        onConfirm={() => {
+          const fn = confirmModal?.onConfirm;
+          setConfirmModal(null);
+          fn?.();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -495,80 +468,4 @@ const styles = StyleSheet.create({
   },
 
   // Confirmation modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  modalCard: {
-    width: "100%",
-    backgroundColor: background.card,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  modalIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#fff8e1",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222b45",
-    textAlign: "center",
-  },
-  modalMessage: {
-    fontSize: 13,
-    color: neutral[500],
-    textAlign: "center",
-    lineHeight: 20,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 10,
-    width: "100%",
-    marginTop: 4,
-  },
-  modalCancelBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: neutral[200],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalCancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[600],
-  },
-  modalConfirmBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalConfirmText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
-  },
 });

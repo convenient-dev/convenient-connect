@@ -40,6 +40,11 @@ enum RateUnit {
   hour
 }
 
+enum RadiusUnit {
+  mile
+  km
+}
+
 enum FieldType {
   text
   number
@@ -155,6 +160,7 @@ model Service {
   status       ServiceStatus @default(pendingReview)
   serviceType  ServiceType
   areaRadius   Decimal?      @db.Decimal(10, 2)
+  unit         RadiusUnit    @default(mile)
   description  String
   aboutYou     String
   slogan       String?      @db.VarChar(255)
@@ -190,10 +196,11 @@ model ServiceCertification {
 }
 
 model ServiceAddon {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   serviceId  Int
   templateId Int
-  price      Decimal @db.Decimal(12, 2)
+  price      Decimal  @db.Decimal(12, 2)
+  rateUnit   RateUnit
 
   service  Service                  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   template SubcategoryAddonTemplate @relation(fields: [templateId], references: [id])
@@ -248,8 +255,8 @@ model SubcategoryAddonTemplate {
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
   name          String
   description   String?
-  defaultPrice  Decimal?    @db.Decimal(12, 2)
-  rateUnit      RateUnit
+  defaultPrice    Decimal?    @db.Decimal(12, 2)
+  defaultRateUnit RateUnit
   isRequired    Boolean     @default(false)
   displayOrder  Int         @default(0)
 

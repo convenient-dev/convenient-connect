@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     serviceType: rawServiceType,
     addressId,
     areaRadius,
+    unit,
     description,
     aboutYou,
     slogan,
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
         serviceType,
         addressId: Number(addressId),
         areaRadius: areaRadius != null ? Number(areaRadius) : undefined,
+        unit: unit ?? "mile",
         description,
         aboutYou,
         slogan: slogan || undefined,
@@ -184,10 +186,11 @@ export async function POST(req: NextRequest) {
     // Create addons
     if (addons.length > 0) {
       await tx.serviceAddon.createMany({
-        data: addons.map((a: { templateId: number; price: number }) => ({
+        data: addons.map((a: { templateId: number; price: number; rateUnit: string }) => ({
           serviceId: created.id,
           templateId: Number(a.templateId),
           price: Number(a.price),
+          rateUnit: a.rateUnit,
         })),
       });
     }

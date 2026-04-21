@@ -36,7 +36,7 @@ interface AddonTemplate {
   name: string;
   description: string | null;
   defaultPrice: string | null;
-  rateUnit: RateUnit;
+  defaultRateUnit: RateUnit;
 }
 
 interface ServicePricing {
@@ -46,7 +46,8 @@ interface ServicePricing {
   addons: {
     id: number;
     price: string;
-    template: { id: number; name: string; rateUnit: RateUnit };
+    rateUnit: RateUnit;
+    template: { id: number; name: string };
   }[];
   subcategory: { id: number } | null;
 }
@@ -96,7 +97,7 @@ export default function EditServicePricingScreen() {
               : t.defaultPrice
                 ? parseFloat(t.defaultPrice).toFixed(2)
                 : "";
-            units[t.id] = existing ? existing.template.rateUnit : t.rateUnit;
+            units[t.id] = existing ? existing.rateUnit : t.defaultRateUnit;
           });
 
           setAddonRates(rates);
@@ -166,6 +167,7 @@ export default function EditServicePricingScreen() {
           .map((t) => ({
             templateId: t.id,
             price: Number(addonRates[t.id]),
+            rateUnit: addonUnits[t.id] ?? "booking",
           })),
       };
 

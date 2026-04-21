@@ -56,7 +56,7 @@ type AddonTemplate = {
   name: string;
   description: string | null;
   defaultPrice: string | null;
-  rateUnit: RateUnit;
+  defaultRateUnit: RateUnit;
   isRequired: boolean;
   displayOrder: number;
 };
@@ -404,7 +404,7 @@ export default function CreateServiceFormScreen() {
     const units: Record<number, RateUnit> = {};
     subcategoryData.addonTemplates.forEach((t) => {
       rates[t.id] = t.defaultPrice ? parseFloat(t.defaultPrice).toFixed(2) : "";
-      units[t.id] = t.rateUnit;
+      units[t.id] = t.defaultRateUnit;
     });
     setAddonRates(rates);
     setAddonUnits(units);
@@ -508,6 +508,7 @@ export default function CreateServiceFormScreen() {
           .map((t) => ({
             templateId: t.id,
             price: Number(addonRates[t.id]),
+            rateUnit: addonUnits[t.id] ?? "booking",
           })),
       };
 

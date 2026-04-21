@@ -27,9 +27,10 @@ const SERVICE_TYPE_MAP: Record<string, "inPerson" | "remote"> = {
 const VALID_STATUSES = ["active", "inactive", "pendingReview"] as const;
 type ServiceStatus = (typeof VALID_STATUSES)[number];
 
+// Get service details
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -42,19 +43,30 @@ export async function GET(
     return Response.json({ error: "Service not found" }, { status: 404 });
   }
 
-  return Response.json({ ...service, searchActive: service.status === "active" });
+  return Response.json({
+    ...service,
+    searchActive: service.status === "active",
+  });
 }
 
+// Update service details
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const serviceId = Number(id);
 
   const existing = await prisma.service.findUnique({
     where: { id: serviceId },
-    select: { id: true, userId: true, subcategoryId: true, status: true },
+    select: {
+      id: true,
+      userId: true,
+      subcategoryId: true,
+      status: true,
+      serviceMode: true,
+      business: { select: { business: { select: { ownerId: true } } } },
+    },
   });
   if (!existing) {
     return Response.json({ error: "Service not found" }, { status: 404 });
@@ -68,6 +80,7 @@ export async function PATCH(
     serviceType: rawServiceType,
     addressId,
     areaRadius,
+    unit,
     description,
     aboutYou,
     slogan,
@@ -88,7 +101,10 @@ export async function PATCH(
 
   // ── Enum validation ────────────────────────────────────────────
   if (status !== undefined && !VALID_STATUSES.includes(status)) {
-    return Response.json({ error: `Invalid status: ${status}` }, { status: 400 });
+    return Response.json(
+      { error: `Invalid status: ${status}` },
+      { status: 400 },
+    );
   }
 
   let serviceType: "inPerson" | "remote" | undefined;
@@ -102,17 +118,24 @@ export async function PATCH(
     }
   }
 
-  if (baseRateUnit !== undefined && !["booking", "hour"].includes(baseRateUnit)) {
+  if (
+    baseRateUnit !== undefined &&
+    !["booking", "hour"].includes(baseRateUnit)
+  ) {
     return Response.json(
       { error: `Invalid baseRateUnit: ${baseRateUnit}` },
       { status: 400 },
     );
   }
 
-  // ── Validate address belongs to service owner ──────────────────
-  if (addressId !== undefined) {
+  // ── Validate address belongs to service owner or business owner ─
+  if (addressId != null) {
+    const addressOwnerId =
+      existing.serviceMode === "business"
+        ? (existing.business?.business?.ownerId ?? existing.userId)
+        : existing.userId;
     const address = await prisma.address.findFirst({
-      where: { id: Number(addressId), userId: existing.userId },
+      where: { id: Number(addressId), userId: addressOwnerId },
     });
     if (!address) {
       return Response.json(
@@ -135,7 +158,10 @@ export async function PATCH(
     });
     if (valid.length !== templateIds.length) {
       return Response.json(
-        { error: "One or more addon templates do not belong to this subcategory" },
+        {
+          error:
+            "One or more addon templates do not belong to this subcategory",
+        },
         { status: 400 },
       );
     }
@@ -158,7 +184,9 @@ export async function PATCH(
     });
     if (valid.length !== fieldIds.length) {
       return Response.json(
-        { error: "One or more custom fields do not belong to this subcategory" },
+        {
+          error: "One or more custom fields do not belong to this subcategory",
+        },
         { status: 400 },
       );
     }
@@ -166,17 +194,18 @@ export async function PATCH(
 
   // ── Build scalar update payload ────────────────────────────────
   const scalarData: Record<string, unknown> = {};
-  if (status !== undefined)      scalarData.status      = status as ServiceStatus;
-  if (title !== undefined)       scalarData.title       = title;
+  if (status !== undefined) scalarData.status = status as ServiceStatus;
+  if (title !== undefined) scalarData.title = title;
   if (serviceType !== undefined) scalarData.serviceType = serviceType;
-  if (addressId !== undefined)   scalarData.addressId   = Number(addressId);
+  if (addressId != null) scalarData.addressId = Number(addressId);
   if (description !== undefined) scalarData.description = description;
-  if (aboutYou !== undefined)    scalarData.aboutYou    = aboutYou;
-  if (slogan !== undefined)      scalarData.slogan      = slogan || null;
-  if (baseRate !== undefined)    scalarData.baseRate    = Number(baseRate);
+  if (aboutYou !== undefined) scalarData.aboutYou = aboutYou;
+  if (slogan !== undefined) scalarData.slogan = slogan || null;
+  if (baseRate !== undefined) scalarData.baseRate = Number(baseRate);
   if (baseRateUnit !== undefined) scalarData.baseRateUnit = baseRateUnit;
   if (areaRadius !== undefined)
     scalarData.areaRadius = areaRadius != null ? Number(areaRadius) : null;
+  if (unit !== undefined) scalarData.unit = unit;
 
   // ── Transaction: update scalars + replace relations ────────────
   const updated = await prisma.$transaction(async (tx) => {
@@ -188,7 +217,9 @@ export async function PATCH(
       await tx.serviceCustomValue.deleteMany({ where: { serviceId } });
       if (customValues.length > 0) {
         const fields = await tx.serviceCustomField.findMany({
-          where: { id: { in: customValues.map((v: { fieldId: number }) => v.fieldId) } },
+          where: {
+            id: { in: customValues.map((v: { fieldId: number }) => v.fieldId) },
+          },
           select: { id: true, fieldType: true },
         });
         const fieldTypeMap = Object.fromEntries(
@@ -198,11 +229,23 @@ export async function PATCH(
           data: customValues.map((v: { fieldId: number; value: string }) => {
             const fieldType = fieldTypeMap[v.fieldId];
             if (fieldType === "number")
-              return { serviceId, fieldId: v.fieldId, valueNumber: parseFloat(v.value) };
+              return {
+                serviceId,
+                fieldId: v.fieldId,
+                valueNumber: parseFloat(v.value),
+              };
             if (fieldType === "boolean")
-              return { serviceId, fieldId: v.fieldId, valueBoolean: v.value === "true" };
+              return {
+                serviceId,
+                fieldId: v.fieldId,
+                valueBoolean: v.value === "true",
+              };
             if (fieldType === "multiSelect")
-              return { serviceId, fieldId: v.fieldId, valueJson: JSON.parse(v.value) };
+              return {
+                serviceId,
+                fieldId: v.fieldId,
+                valueJson: JSON.parse(v.value),
+              };
             return { serviceId, fieldId: v.fieldId, valueText: v.value };
           }),
         });
@@ -213,10 +256,11 @@ export async function PATCH(
       await tx.serviceAddon.deleteMany({ where: { serviceId } });
       if (addons.length > 0) {
         await tx.serviceAddon.createMany({
-          data: addons.map((a: { templateId: number; price: number }) => ({
+          data: addons.map((a: { templateId: number; price: number; rateUnit: string }) => ({
             serviceId,
             templateId: Number(a.templateId),
             price: Number(a.price),
+            rateUnit: a.rateUnit,
           })),
         });
       }
@@ -228,5 +272,8 @@ export async function PATCH(
     });
   });
 
-  return Response.json({ ...updated, searchActive: updated?.status === "active" });
+  return Response.json({
+    ...updated,
+    searchActive: updated?.status === "active",
+  });
 }

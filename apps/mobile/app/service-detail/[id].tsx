@@ -37,10 +37,10 @@ interface ServiceDetail {
   addons: {
     id: number;
     price: string;
+    rateUnit: "booking" | "hour";
     template: {
       name: string;
       description: string | null;
-      rateUnit: "booking" | "hour";
     };
   }[];
   customValues: {
@@ -359,7 +359,7 @@ export default function ServiceDetailScreen() {
                 <PricingRow
                   key={addon.id}
                   label={addon.template.name}
-                  value={formatRate(addon.price, addon.template.rateUnit)}
+                  value={formatRate(addon.price, addon.rateUnit)}
                 />
               ))}
             </>

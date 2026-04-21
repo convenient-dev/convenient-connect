@@ -6,6 +6,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -59,7 +60,12 @@ interface ServiceDetail {
   description: string;
   slogan: string | null;
   images: { id: number; url: string; altText: string | null }[];
-  certifications: { id: number; url: string; fileName: string | null }[];
+  certifications: {
+    id: number;
+    name: string;
+    url: string;
+    fileName: string | null;
+  }[];
   customValues: {
     id: number;
     valueText: string | null;
@@ -107,9 +113,10 @@ export default function EditServiceInformationScreen() {
     name: string;
     pdf: { uri: string; name: string } | null;
   };
-  const [certifications, setCertifications] = useState<Certification[]>([
-    { name: "", pdf: null },
-  ]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [existingCertifications, setExistingCertifications] = useState<
+    { id: number; name: string; fileName: string | null; url: string }[]
+  >([]);
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
 
   // Address picker
@@ -147,6 +154,14 @@ export default function EditServiceInformationScreen() {
         setAboutYou(service.aboutYou ?? "");
         setSlogan(service.slogan ?? "");
         setExistingImages(service.images);
+        setExistingCertifications(
+          service.certifications.map((c) => ({
+            id: c.id,
+            name: c.name,
+            fileName: c.fileName,
+            url: c.url,
+          })),
+        );
 
         if (service.address) {
           setAddress(service.address.address);
@@ -366,6 +381,19 @@ export default function EditServiceInformationScreen() {
 
       const service = await res.json();
 
+      // Persist existing certification name changes
+      if (existingCertifications.length > 0) {
+        await Promise.allSettled(
+          existingCertifications.map((cert) =>
+            fetch(`${API_BASE_URL}/uploads/pdfs/${cert.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: cert.name }),
+            }),
+          ),
+        );
+      }
+
       // Upload new images
       if (selectedImages.length > 0) {
         await Promise.allSettled(
@@ -401,7 +429,16 @@ export default function EditServiceInformationScreen() {
         );
       }
 
-      // Upload new certifications
+      // Upload new certifications (name + PDF both required when providing a cert)
+      const incompleteCert = certifications.find(
+        (c) => c.name.trim() && !c.pdf,
+      );
+      if (incompleteCert) {
+        setSaveError(
+          `Please upload a PDF for "${incompleteCert.name.trim()}".`,
+        );
+        return;
+      }
       const certsWithPdf = certifications.filter((c) => c.name.trim() && c.pdf);
       if (certsWithPdf.length > 0) {
         await Promise.allSettled(
@@ -733,7 +770,10 @@ export default function EditServiceInformationScreen() {
               style={styles.imageThumbnailRow}
             >
               {existingImages.map((img) => (
-                <View key={`existing-${img.id}`} style={styles.imageThumbnailWrap}>
+                <View
+                  key={`existing-${img.id}`}
+                  style={styles.imageThumbnailWrap}
+                >
                   <ExpoImage
                     source={{ uri: img.url }}
                     style={styles.imageThumbnail}
@@ -795,6 +835,59 @@ export default function EditServiceInformationScreen() {
               <Text style={styles.label}>Certifications / Licenses</Text>
               <Feather name="info" size={15} color={neutral[400]} />
             </View>
+            {existingCertifications.map((cert) => (
+              <View key={`existing-${cert.id}`} style={styles.certRecord}>
+                <View style={styles.certRecordHeader}>
+                  <TextInput
+                    style={[styles.input, styles.certNameInput]}
+                    value={cert.name}
+                    placeholder="Certification name"
+                    placeholderTextColor={neutral[300]}
+                    onChangeText={(v) =>
+                      setExistingCertifications((prev) =>
+                        prev.map((c) =>
+                          c.id === cert.id ? { ...c, name: v } : c,
+                        ),
+                      )
+                    }
+                  />
+                  <TouchableOpacity
+                    style={styles.certRemoveBtn}
+                    onPress={() => {
+                      fetch(`${API_BASE_URL}/uploads/pdfs/${cert.id}`, {
+                        method: "DELETE",
+                      }).then((res) => {
+                        if (res.ok) {
+                          setExistingCertifications((prev) =>
+                            prev.filter((c) => c.id !== cert.id),
+                          );
+                        }
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="x" size={16} color={neutral[400]} />
+                  </TouchableOpacity>
+                </View>
+                {cert.url ? (
+                  <TouchableOpacity
+                    style={styles.certPdfRow}
+                    onPress={() => WebBrowser.openBrowserAsync(cert.url)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="file-text" size={14} color={neutral[400]} />
+                    <Text
+                      style={[styles.certPdfName, styles.certPdfLink]}
+                      numberOfLines={1}
+                    >
+                      {cert.fileName
+                        ? decodeURIComponent(cert.fileName)
+                        : "Certificate"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ))}
             {certifications.map((cert, i) => (
               <View key={i} style={styles.certRecord}>
                 <View style={styles.certRecordHeader}>
@@ -849,9 +942,7 @@ export default function EditServiceInformationScreen() {
                     activeOpacity={0.7}
                   >
                     <Feather name="upload" size={13} color={neutral[400]} />
-                    <Text style={styles.certUploadText}>
-                      Upload PDF (optional)
-                    </Text>
+                    <Text style={styles.certUploadText}>Upload PDF</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -1285,6 +1376,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   certPdfName: { flex: 1, fontSize: 12, color: neutral[600] },
+  certPdfLink: { color: primary[500], textDecorationLine: "underline" },
   certUploadBtn: {
     flexDirection: "row",
     alignItems: "center",

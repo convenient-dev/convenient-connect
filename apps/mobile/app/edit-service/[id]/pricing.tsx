@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -59,6 +60,7 @@ export default function EditServicePricingScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedModalVisible, setSavedModalVisible] = useState(false);
 
   const [baseRate, setBaseRate] = useState("");
   const [baseRateUnit, setBaseRateUnit] = useState<RateUnit>("booking");
@@ -183,7 +185,7 @@ export default function EditServicePricingScreen() {
         return;
       }
 
-      router.back();
+      setSavedModalVisible(true);
     } catch {
       setSaveError("Network error. Please check your connection.");
     } finally {
@@ -310,6 +312,18 @@ export default function EditServicePricingScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <ConfirmModal
+        visible={savedModalVisible}
+        icon="success"
+        title="Pricing Updated"
+        message="Your service pricing has been saved successfully."
+        confirmLabel="View Service"
+        onConfirm={() => {
+          setSavedModalVisible(false);
+          router.replace(`/service-detail/${id}`);
+        }}
+      />
 
       {/* Rate Unit bottom sheet */}
       <Modal

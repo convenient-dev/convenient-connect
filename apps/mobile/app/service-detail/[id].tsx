@@ -202,20 +202,6 @@ export default function ServiceDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* SERVICE CATEGORY */}
-        <View style={styles.section}>
-          <SectionHeader label="SERVICE CATEGORY" />
-          {service.subcategory && (
-            <>
-              <InlineRow
-                label="Category"
-                value={service.subcategory.category.name}
-              />
-              <InlineRow label="Subcategory" value={service.subcategory.name} />
-            </>
-          )}
-        </View>
-
         {/* WORK TYPE */}
         <View style={styles.section}>
           <SectionHeader label="WORK TYPE" />
@@ -233,6 +219,20 @@ export default function ServiceDetailScreen() {
           )}
         </View>
 
+        {/* SERVICE CATEGORY */}
+        <View style={styles.section}>
+          <SectionHeader label="SERVICE CATEGORY" />
+          {service.subcategory && (
+            <>
+              <InlineRow
+                label="Category"
+                value={service.subcategory.category.name}
+              />
+              <InlineRow label="Subcategory" value={service.subcategory.name} />
+            </>
+          )}
+        </View>
+
         {/* SERVICE INFORMATION */}
         <View style={styles.section}>
           <SectionHeader label="SERVICE INFORMATION" />
@@ -243,7 +243,7 @@ export default function ServiceDetailScreen() {
             label="Service Type"
             value={service.serviceType === "inPerson" ? "In-person" : "Remote"}
           />
-          {service.address && (
+          {service.serviceType === "inPerson" && service.address && (
             <FieldBlock
               label="Service Address"
               value={service.address.address}

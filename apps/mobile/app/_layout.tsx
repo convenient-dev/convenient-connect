@@ -57,7 +57,17 @@ export default function RootLayout() {
           name="edit-service/[id]/pricing"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="edit-service/[id]/delete"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="edit-service/[id]/delete-reason"
+          options={{ headerShown: false }}
+        />
+        `
       </Stack>
+
       <StatusBar style="auto" />
     </ThemeProvider>
   );

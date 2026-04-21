@@ -269,8 +269,9 @@ export default function ServicesScreen() {
           if (id) router.push(`/edit-service/${id}`);
         }}
         onDelete={() => {
+          const id = selectedService?.id;
           setSelectedService(null);
-          // TODO: handle delete
+          if (id) router.push(`/edit-service/${id}/delete`);
         }}
       />
     </SafeAreaView>

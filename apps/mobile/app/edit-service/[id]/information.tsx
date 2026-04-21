@@ -1,4 +1,6 @@
 import { BackButton } from "@/components/BackButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -33,15 +35,6 @@ const RADIUS_UNITS = ["mile", "km"] as const;
 type RadiusUnit = (typeof RADIUS_UNITS)[number];
 type ServiceType = "inPerson" | "remote";
 type ServiceMode = "freelance" | "business";
-
-interface CustomField {
-  id: number;
-  fieldName: string;
-  fieldLabel: string;
-  fieldType: string;
-  isRequired: boolean;
-  options: string[] | null;
-}
 
 interface Address {
   id: number;
@@ -89,6 +82,7 @@ export default function EditServiceInformationScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedModalVisible, setSavedModalVisible] = useState(false);
 
   // Form fields
   const [title, setTitle] = useState("");
@@ -207,7 +201,7 @@ export default function EditServiceInformationScreen() {
                   else if (cv.valueBoolean != null)
                     mapped[field.id] = cv.valueBoolean ? "Yes" : "No";
                   else if (cv.valueJson && Array.isArray(cv.valueJson))
-                    mapped[field.id] = cv.valueJson.join(", ");
+                    mapped[field.id] = JSON.stringify(cv.valueJson);
                 }
               });
               setCustomFieldValues(mapped);
@@ -468,7 +462,7 @@ export default function EditServiceInformationScreen() {
         );
       }
 
-      router.back();
+      setSavedModalVisible(true);
     } catch {
       setSaveError("Network error. Please check your connection.");
     } finally {
@@ -658,63 +652,19 @@ export default function EditServiceInformationScreen() {
           )}
 
           {/* Dynamic custom fields */}
-          {customFields.map((field) => {
-            if (
-              field.fieldType === "select" ||
-              field.fieldType === "multi_select"
-            ) {
-              const value = customFieldValues[field.id] ?? null;
-              return (
-                <View key={field.id} style={styles.field}>
-                  <Text style={styles.label}>
-                    {field.fieldLabel}
-                    {field.isRequired ? (
-                      <Text style={styles.required}> *</Text>
-                    ) : null}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.dropdown}
-                    onPress={() => openFieldPicker(field)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={
-                        value
-                          ? styles.dropdownValue
-                          : styles.dropdownPlaceholder
-                      }
-                    >
-                      {value ?? field.fieldLabel}
-                    </Text>
-                    <Feather
-                      name="chevron-down"
-                      size={18}
-                      color={neutral[400]}
-                    />
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-            return (
-              <View key={field.id} style={styles.field}>
-                <Text style={styles.label}>
-                  {field.fieldLabel}
-                  {field.isRequired ? (
-                    <Text style={styles.required}> *</Text>
-                  ) : null}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={field.fieldLabel}
-                  placeholderTextColor={neutral[300]}
-                  value={customFieldValues[field.id] ?? ""}
-                  onChangeText={(v) =>
-                    setCustomFieldValues((prev) => ({ ...prev, [field.id]: v }))
-                  }
-                />
-              </View>
-            );
-          })}
+          {customFields.map((field) => (
+            <CustomFieldInput
+              key={field.id}
+              field={field}
+              value={customFieldValues[field.id] ?? ""}
+              onChange={(v) =>
+                setCustomFieldValues((prev) => ({ ...prev, [field.id]: v }))
+              }
+              onBlur={() => {}}
+              touched={false}
+              onOpenPicker={openFieldPicker}
+            />
+          ))}
 
           {/* Description */}
           <View style={styles.field}>
@@ -1145,6 +1095,18 @@ export default function EditServiceInformationScreen() {
         </Animated.View>
       </Modal>
 
+      <ConfirmModal
+        visible={savedModalVisible}
+        icon="success"
+        title="Service Updated"
+        message="Your service information has been saved successfully."
+        confirmLabel="View Service"
+        onConfirm={() => {
+          setSavedModalVisible(false);
+          router.replace(`/service-detail/${id}`);
+        }}
+      />
+
       {/* Custom field picker bottom sheet */}
       <Modal
         visible={pickerField !== null}
@@ -1168,7 +1130,20 @@ export default function EditServiceInformationScreen() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {(pickerField?.options ?? []).map((option, index) => {
               const options = pickerField?.options ?? [];
-              const isSelected = customFieldValues[pickerField!.id] === option;
+              const isMulti = pickerField?.fieldType === "multiSelect";
+              let isSelected: boolean;
+              if (isMulti) {
+                try {
+                  const arr = JSON.parse(
+                    customFieldValues[pickerField!.id] ?? "[]",
+                  ) as string[];
+                  isSelected = arr.includes(option);
+                } catch {
+                  isSelected = false;
+                }
+              } else {
+                isSelected = customFieldValues[pickerField!.id] === option;
+              }
               return (
                 <TouchableOpacity
                   key={option}
@@ -1178,14 +1153,34 @@ export default function EditServiceInformationScreen() {
                       styles.bottomSheetOptionBorder,
                     isSelected && styles.bottomSheetOptionSelected,
                   ]}
-                  onPress={() =>
-                    closeFieldPicker(() =>
-                      setCustomFieldValues((prev) => ({
-                        ...prev,
-                        [pickerField!.id]: option,
-                      })),
-                    )
-                  }
+                  onPress={() => {
+                    if (isMulti) {
+                      setCustomFieldValues((prev) => {
+                        let arr: string[];
+                        try {
+                          arr = JSON.parse(
+                            prev[pickerField!.id] ?? "[]",
+                          ) as string[];
+                        } catch {
+                          arr = [];
+                        }
+                        const next = arr.includes(option)
+                          ? arr.filter((o) => o !== option)
+                          : [...arr, option];
+                        return {
+                          ...prev,
+                          [pickerField!.id]: JSON.stringify(next),
+                        };
+                      });
+                    } else {
+                      closeFieldPicker(() =>
+                        setCustomFieldValues((prev) => ({
+                          ...prev,
+                          [pickerField!.id]: option,
+                        })),
+                      );
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -1203,6 +1198,15 @@ export default function EditServiceInformationScreen() {
               );
             })}
           </ScrollView>
+          {pickerField?.fieldType === "multiSelect" && (
+            <TouchableOpacity
+              style={styles.multiSelectDoneBtn}
+              onPress={() => closeFieldPicker()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.multiSelectDoneText}>Done</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </Modal>
     </SafeAreaView>
@@ -1472,6 +1476,15 @@ const styles = StyleSheet.create({
   },
   bottomSheetOptionSelected: { backgroundColor: primary[50] },
   bottomSheetOptionText: { fontSize: 15, color: neutral[700] },
+  multiSelectDoneBtn: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: primary[400],
+    alignItems: "center",
+  },
+  multiSelectDoneText: { fontSize: 15, fontWeight: "600", color: "#fff" },
   addressSearchRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -397,7 +397,7 @@ async function main() {
         subcategoryId: 95, // Pet Sitting
         fieldName: "petType",
         fieldLabel: "Pet Type",
-        fieldType: "select",
+        fieldType: "multiSelect",
         isRequired: true,
         displayOrder: 1,
         options: ["Dog", "Cat", "Bird", "Fish", "Rabbit", "Reptile"],

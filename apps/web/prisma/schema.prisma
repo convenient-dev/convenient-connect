@@ -50,7 +50,7 @@ enum FieldType {
   number
   boolean
   select
-  multiSelect @map("multi_select")
+  multiSelect
   url
   date
   textarea

@@ -296,6 +296,7 @@ export default function EditServiceScreen() {
             />
           </TouchableOpacity>
         </View>
+
       </ScrollView>
 
       <ConfirmModal
@@ -466,6 +467,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: neutral[400],
   },
-
   // Confirmation modal
 });

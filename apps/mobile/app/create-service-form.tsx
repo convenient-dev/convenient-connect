@@ -1,3 +1,4 @@
+import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -40,16 +41,6 @@ function formatRateUnit(unit: RateUnit): string {
 }
 
 type ServiceType = "in-person" | "remote";
-
-type CustomField = {
-  id: number;
-  fieldName: string;
-  fieldLabel: string;
-  fieldType: string;
-  isRequired: boolean;
-  displayOrder: number;
-  options: string[] | null;
-};
 
 type AddonTemplate = {
   id: number;
@@ -313,6 +304,7 @@ export default function CreateServiceFormScreen() {
   const [description, setDescription] = useState("");
 
   useEffect(() => {
+    if (serviceMode === "business") return;
     fetch(`${API_BASE_URL}/users/1`)
       .then((r) => r.json())
       .then((user) => {
@@ -323,6 +315,19 @@ export default function CreateServiceFormScreen() {
           setAddress(defaultAddr.address);
           setAddressId(defaultAddr.id);
         }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (serviceMode !== "business" || !businessAffiliationId) return;
+    fetch(`${API_BASE_URL}/users/1/affiliations`)
+      .then((r) => r.json())
+      .then((businesses: { id: number; name: string; address: string | null }[]) => {
+        const business = businesses.find(
+          (b) => b.id === Number(businessAffiliationId),
+        );
+        if (business?.address) setAddress(business.address);
       })
       .catch(() => {});
   }, []);
@@ -826,12 +831,20 @@ export default function CreateServiceFormScreen() {
                       Service Address <Text style={styles.required}>*</Text>
                     </Text>
                     <TouchableOpacity
-                      style={styles.addressInputRow}
-                      onPress={() => {
-                        touch("address");
-                        openAddressPicker();
-                      }}
-                      activeOpacity={0.7}
+                      style={[
+                        styles.addressInputRow,
+                        serviceMode === "business" &&
+                          styles.addressInputRowDisabled,
+                      ]}
+                      onPress={
+                        serviceMode === "business"
+                          ? undefined
+                          : () => {
+                              touch("address");
+                              openAddressPicker();
+                            }
+                      }
+                      activeOpacity={serviceMode === "business" ? 1 : 0.7}
                     >
                       <Feather
                         name="map-pin"
@@ -850,12 +863,21 @@ export default function CreateServiceFormScreen() {
                       >
                         {address || "Select service address"}
                       </Text>
-                      <Feather
-                        name="chevron-down"
-                        size={18}
-                        color={neutral[400]}
-                      />
+                      {serviceMode === "business" ? (
+                        <Feather name="lock" size={16} color={neutral[300]} />
+                      ) : (
+                        <Feather
+                          name="chevron-down"
+                          size={18}
+                          color={neutral[400]}
+                        />
+                      )}
                     </TouchableOpacity>
+                    {serviceMode === "business" && (
+                      <Text style={styles.addressLockedHint}>
+                        Managed by affiliated business
+                      </Text>
+                    )}
                     {touched.address && !address && (
                       <Text style={styles.inlineError}>
                         Service address is required.
@@ -913,84 +935,22 @@ export default function CreateServiceFormScreen() {
               )}
 
               {/* Dynamic custom fields from subcategory */}
-              {allCustomFields.map((field) => {
-                if (
-                  field.fieldType === "select" ||
-                  field.fieldType === "multi_select"
-                ) {
-                  const value = customFieldValues[field.id] ?? null;
-                  return (
-                    <View key={field.id} style={styles.field}>
-                      <Text style={styles.label}>
-                        {field.fieldLabel}
-                        {field.isRequired ? (
-                          <Text style={styles.required}> *</Text>
-                        ) : null}
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.dropdown}
-                        onPress={() => {
-                          touch(`cf_${field.id}`);
-                          openFieldPicker(field);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={
-                            value
-                              ? styles.dropdownValue
-                              : styles.dropdownPlaceholder
-                          }
-                        >
-                          {value ?? field.fieldLabel}
-                        </Text>
-                        <Feather
-                          name="chevron-down"
-                          size={18}
-                          color={neutral[400]}
-                        />
-                      </TouchableOpacity>
-                      {touched[`cf_${field.id}`] &&
-                        field.isRequired &&
-                        !value && (
-                          <Text style={styles.inlineError}>
-                            {field.fieldLabel} is required.
-                          </Text>
-                        )}
-                    </View>
-                  );
-                }
-                return (
-                  <View key={field.id} style={styles.field}>
-                    <Text style={styles.label}>
-                      {field.fieldLabel}
-                      {field.isRequired ? (
-                        <Text style={styles.required}> *</Text>
-                      ) : null}
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={field.fieldLabel}
-                      placeholderTextColor={neutral[300]}
-                      value={customFieldValues[field.id] ?? ""}
-                      onChangeText={(v) =>
-                        setCustomFieldValues((prev) => ({
-                          ...prev,
-                          [field.id]: v,
-                        }))
-                      }
-                      onBlur={() => touch(`cf_${field.id}`)}
-                    />
-                    {touched[`cf_${field.id}`] &&
-                      field.isRequired &&
-                      !(customFieldValues[field.id] ?? "").trim() && (
-                        <Text style={styles.inlineError}>
-                          {field.fieldLabel} is required.
-                        </Text>
-                      )}
-                  </View>
-                );
-              })}
+              {allCustomFields.map((field) => (
+                <CustomFieldInput
+                  key={field.id}
+                  field={field}
+                  value={customFieldValues[field.id] ?? ""}
+                  onChange={(v) =>
+                    setCustomFieldValues((prev) => ({ ...prev, [field.id]: v }))
+                  }
+                  onBlur={() => touch(`cf_${field.id}`)}
+                  touched={!!touched[`cf_${field.id}`]}
+                  onOpenPicker={(f) => {
+                    touch(`cf_${f.id}`);
+                    openFieldPicker(f);
+                  }}
+                />
+              ))}
 
               <View style={styles.field}>
                 <Text style={styles.label}>
@@ -1358,13 +1318,23 @@ export default function CreateServiceFormScreen() {
 
                 {/* Dynamic custom field values */}
                 {allCustomFields.map((field) => {
-                  const value = customFieldValues[field.id];
-                  if (!value) return null;
+                  const raw = customFieldValues[field.id];
+                  if (!raw) return null;
+                  let display = raw;
+                  if (field.fieldType === "multiSelect") {
+                    try {
+                      const arr = JSON.parse(raw) as string[];
+                      if (arr.length === 0) return null;
+                      display = arr.join(", ");
+                    } catch {
+                      display = raw;
+                    }
+                  }
                   return (
                     <ReviewInlineRow
                       key={field.id}
                       label={field.fieldLabel}
-                      value={value}
+                      value={display}
                     />
                   );
                 })}
@@ -1723,7 +1693,20 @@ export default function CreateServiceFormScreen() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {(pickerField?.options ?? []).map((option, index) => {
               const options = pickerField?.options ?? [];
-              const isSelected = customFieldValues[pickerField!.id] === option;
+              const isMulti = pickerField?.fieldType === "multiSelect";
+              let isSelected: boolean;
+              if (isMulti) {
+                try {
+                  const arr = JSON.parse(
+                    customFieldValues[pickerField!.id] ?? "[]",
+                  ) as string[];
+                  isSelected = arr.includes(option);
+                } catch {
+                  isSelected = false;
+                }
+              } else {
+                isSelected = customFieldValues[pickerField!.id] === option;
+              }
               return (
                 <TouchableOpacity
                   key={option}
@@ -1733,14 +1716,34 @@ export default function CreateServiceFormScreen() {
                       styles.bottomSheetOptionBorder,
                     isSelected && styles.bottomSheetOptionSelected,
                   ]}
-                  onPress={() =>
-                    closeFieldPicker(() =>
-                      setCustomFieldValues((prev) => ({
-                        ...prev,
-                        [pickerField!.id]: option,
-                      })),
-                    )
-                  }
+                  onPress={() => {
+                    if (isMulti) {
+                      setCustomFieldValues((prev) => {
+                        let arr: string[];
+                        try {
+                          arr = JSON.parse(
+                            prev[pickerField!.id] ?? "[]",
+                          ) as string[];
+                        } catch {
+                          arr = [];
+                        }
+                        const next = arr.includes(option)
+                          ? arr.filter((o) => o !== option)
+                          : [...arr, option];
+                        return {
+                          ...prev,
+                          [pickerField!.id]: JSON.stringify(next),
+                        };
+                      });
+                    } else {
+                      closeFieldPicker(() =>
+                        setCustomFieldValues((prev) => ({
+                          ...prev,
+                          [pickerField!.id]: option,
+                        })),
+                      );
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -1758,6 +1761,15 @@ export default function CreateServiceFormScreen() {
               );
             })}
           </ScrollView>
+          {pickerField?.fieldType === "multiSelect" && (
+            <TouchableOpacity
+              style={styles.multiSelectDoneBtn}
+              onPress={() => closeFieldPicker()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.multiSelectDoneText}>Done</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </Modal>
 
@@ -2005,6 +2017,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     gap: 10,
+  },
+  addressInputRowDisabled: {
+    backgroundColor: background.subtle,
+    borderColor: border.default,
+  },
+  addressLockedHint: {
+    fontSize: 12,
+    color: neutral[400],
   },
   addressIcon: {
     flexShrink: 0,
@@ -2513,6 +2533,19 @@ const styles = StyleSheet.create({
   bottomSheetOptionTextSelected: {
     color: primary[500],
     fontWeight: "600",
+  },
+  multiSelectDoneBtn: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: primary[400],
+    alignItems: "center",
+  },
+  multiSelectDoneText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
   },
   // ── Success screen ────────────────────────────────────────────
   successContainer: {

@@ -49,6 +49,30 @@ export async function GET(
   });
 }
 
+// Delete a service
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const serviceId = Number(id);
+
+  const existing = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return Response.json({ error: "Service not found" }, { status: 404 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.serviceCertification.deleteMany({ where: { serviceId } });
+    await tx.service.delete({ where: { id: serviceId } });
+  });
+
+  return new Response(null, { status: 204 });
+}
+
 // Update service details
 export async function PATCH(
   req: NextRequest,

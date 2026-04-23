@@ -7,31 +7,31 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Seed Address
+  // Seed Address (standalone — no userId/isDefault; those live in UserAddress)
   const ADDRESS = [
     {
       id: 1,
-      userId: 1,
       address: "2833 Happy Hollow Road, Asheboro, NC 27203",
       latitude: "35.60771465128029",
       longitude: "-79.80952166023332",
-      isDefault: true,
     },
     {
       id: 2,
-      userId: 1,
       address: "2333 Thrash Trail, Longview, TX 75604",
       latitude: "32.51530005659963",
       longitude: "-94.7594809584593",
-      isDefault: false,
     },
     {
       id: 3,
-      userId: 2,
       address: "165 Emerald Ln, Reynoldsville, PA 15851",
       latitude: "40.99582362954543",
       longitude: "-78.86993881775736",
-      isDefault: true,
+    },
+    {
+      id: 4,
+      address: "789 Commerce Blvd, Shelbyville",
+      latitude: "0",
+      longitude: "0",
     },
   ];
 
@@ -74,15 +74,8 @@ async function main() {
 
   const hiddenGemPetLodge = await prisma.business.upsert({
     where: { ownerId: bob.id },
-    update: {
-      name: "Hidden Gem Pet Lodge",
-      address: "789 Commerce Blvd, Shelbyville",
-    },
-    create: {
-      name: "Hidden Gem Pet Lodge",
-      address: "789 Commerce Blvd, Shelbyville",
-      ownerId: bob.id,
-    },
+    update: { name: "Hidden Gem Pet Lodge" },
+    create: { name: "Hidden Gem Pet Lodge", ownerId: bob.id },
   });
 
   // Alice (INDIVIDUAL) affiliated with Bob's business
@@ -96,14 +89,42 @@ async function main() {
 
   // Seed Addresses
   const addresses = await Promise.all(
-    ADDRESS.map(({ id, userId, address, latitude, longitude, isDefault }) =>
+    ADDRESS.map(({ id, address, latitude, longitude }) =>
       prisma.address.upsert({
         where: { id },
-        update: { userId, address, latitude, longitude, isDefault },
-        create: { id, userId, address, latitude, longitude, isDefault },
+        update: { address, latitude, longitude },
+        create: { id, address, latitude, longitude },
       }),
     ),
   );
+
+  const [addr1, addr2, addr3, businessAddr] = addresses;
+
+  // Seed UserAddress join records
+  await Promise.all([
+    prisma.userAddress.upsert({
+      where: { userId_addressId: { userId: alice.id, addressId: addr1.id } },
+      update: { isDefault: true },
+      create: { userId: alice.id, addressId: addr1.id, isDefault: true },
+    }),
+    prisma.userAddress.upsert({
+      where: { userId_addressId: { userId: alice.id, addressId: addr2.id } },
+      update: { isDefault: false },
+      create: { userId: alice.id, addressId: addr2.id, isDefault: false },
+    }),
+    prisma.userAddress.upsert({
+      where: { userId_addressId: { userId: bob.id, addressId: addr3.id } },
+      update: { isDefault: true },
+      create: { userId: bob.id, addressId: addr3.id, isDefault: true },
+    }),
+  ]);
+
+  // Seed BusinessAddress join record
+  await prisma.businessAddress.upsert({
+    where: { businessId_addressId: { businessId: hiddenGemPetLodge.id, addressId: businessAddr.id } },
+    update: {},
+    create: { businessId: hiddenGemPetLodge.id, addressId: businessAddr.id },
+  });
 
   console.log({ alice, bob });
 
@@ -338,10 +359,8 @@ async function main() {
     `Seeded ${addonTemplates.length} addon templates for Pet Sitting`,
   );
 
-  // Seed Service — Alice's dog walking service at her default address
-  const aliceDefaultAddress = addresses.find(
-    (a) => a.userId === alice.id && a.isDefault,
-  )!;
+  // Seed Service — Alice's dog walking service at her default address (addr1)
+  const aliceDefaultAddress = addr1;;
   const aliceService = await prisma.service.upsert({
     where: { title: "Alice's Dog Walking" },
     update: {},

@@ -323,11 +323,12 @@ export default function CreateServiceFormScreen() {
     if (serviceMode !== "business" || !businessAffiliationId) return;
     fetch(`${API_BASE_URL}/users/1/affiliations`)
       .then((r) => r.json())
-      .then((businesses: { id: number; name: string; address: string | null }[]) => {
+      .then((businesses: { id: number; name: string; address: string | null; addressId: number | null }[]) => {
         const business = businesses.find(
           (b) => b.id === Number(businessAffiliationId),
         );
         if (business?.address) setAddress(business.address);
+        if (business?.addressId) setAddressId(business.addressId);
       })
       .catch(() => {});
   }, []);

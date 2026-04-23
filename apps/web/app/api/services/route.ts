@@ -75,11 +75,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Validate address belongs to user ──────────────────────────
-  const address = await prisma.address.findFirst({
-    where: { id: Number(addressId), userId: Number(userId) },
-  });
-  if (!address) {
+  // ── Validate address belongs to user or business ─────────────
+  let addressValid = false;
+  if (serviceMode === "business" && businessAffiliationId) {
+    const affiliation = await prisma.businessAffiliation.findUnique({
+      where: { id: Number(businessAffiliationId) },
+      select: { businessId: true },
+    });
+    if (affiliation) {
+      const ba = await prisma.businessAddress.findFirst({
+        where: { businessId: affiliation.businessId, addressId: Number(addressId) },
+      });
+      addressValid = !!ba;
+    }
+  } else {
+    const ua = await prisma.userAddress.findFirst({
+      where: { userId: Number(userId), addressId: Number(addressId) },
+    });
+    addressValid = !!ua;
+  }
+  if (!addressValid) {
     return Response.json(
       { error: "Address not found for this user" },
       { status: 400 },

@@ -89,7 +89,7 @@ export async function PATCH(
       subcategoryId: true,
       status: true,
       serviceMode: true,
-      business: { select: { business: { select: { ownerId: true } } } },
+      business: { select: { businessId: true, business: { select: { ownerId: true } } } },
     },
   });
   if (!existing) {
@@ -152,16 +152,21 @@ export async function PATCH(
     );
   }
 
-  // ── Validate address belongs to service owner or business owner ─
+  // ── Validate address belongs to service owner or business ────────
   if (addressId != null) {
-    const addressOwnerId =
-      existing.serviceMode === "business"
-        ? (existing.business?.business?.ownerId ?? existing.userId)
-        : existing.userId;
-    const address = await prisma.address.findFirst({
-      where: { id: Number(addressId), userId: addressOwnerId },
-    });
-    if (!address) {
+    let addressValid = false;
+    if (existing.serviceMode === "business" && existing.business?.businessId) {
+      const ba = await prisma.businessAddress.findFirst({
+        where: { businessId: existing.business.businessId, addressId: Number(addressId) },
+      });
+      addressValid = !!ba;
+    } else {
+      const ua = await prisma.userAddress.findFirst({
+        where: { userId: existing.userId, addressId: Number(addressId) },
+      });
+      addressValid = !!ua;
+    }
+    if (!addressValid) {
       return Response.json(
         { error: "Address not found for this user" },
         { status: 400 },

@@ -31,7 +31,7 @@ export default function EditServiceCategoryScreen() {
   const [categoryName, setCategoryName] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/services/${id}`)
+    fetch(`${API_BASE_URL}/users/1/services/${id}`)
       .then((r) => r.json())
       .then((data: ServiceCategory) => {
         setSubcategoryName(data.subcategory?.name ?? null);

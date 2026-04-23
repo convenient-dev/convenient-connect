@@ -30,16 +30,16 @@ type ServiceStatus = (typeof VALID_STATUSES)[number];
 // Get service details
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string; serviceId: string }> },
 ) {
-  const { id } = await params;
+  const { serviceId } = await params;
 
   const service = await prisma.service.findUnique({
-    where: { id: Number(id) },
+    where: { id: Number(serviceId) },
     include: SERVICE_INCLUDE,
   });
 
-  if (!service) {
+  if (!service || service.deletedAt) {
     return Response.json({ error: "Service not found" }, { status: 404 });
   }
 
@@ -49,25 +49,33 @@ export async function GET(
   });
 }
 
-// Delete a service
+// Soft-delete a service
 export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; serviceId: string }> },
 ) {
-  const { id } = await params;
-  const serviceId = Number(id);
+  const { serviceId } = await params;
+  const serviceIdNum = Number(serviceId);
 
   const existing = await prisma.service.findUnique({
-    where: { id: serviceId },
-    select: { id: true },
+    where: { id: serviceIdNum },
+    select: { id: true, deletedAt: true },
   });
-  if (!existing) {
+  if (!existing || existing.deletedAt) {
     return Response.json({ error: "Service not found" }, { status: 404 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.serviceCertification.deleteMany({ where: { serviceId } });
-    await tx.service.delete({ where: { id: serviceId } });
+  let reason: string | undefined;
+  try {
+    const body = await req.json();
+    reason = body?.reason;
+  } catch {
+    // body is optional
+  }
+
+  await prisma.service.update({
+    where: { id: serviceIdNum },
+    data: { deletedAt: new Date(), deletionReason: reason ?? null },
   });
 
   return new Response(null, { status: 204 });
@@ -76,23 +84,24 @@ export async function DELETE(
 // Update service details
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string; serviceId: string }> },
 ) {
-  const { id } = await params;
-  const serviceId = Number(id);
+  const { serviceId } = await params;
+  const serviceIdNum = Number(serviceId);
 
   const existing = await prisma.service.findUnique({
-    where: { id: serviceId },
+    where: { id: serviceIdNum },
     select: {
       id: true,
       userId: true,
       subcategoryId: true,
       status: true,
       serviceMode: true,
+      deletedAt: true,
       business: { select: { businessId: true, business: { select: { ownerId: true } } } },
     },
   });
-  if (!existing) {
+  if (!existing || existing.deletedAt) {
     return Response.json({ error: "Service not found" }, { status: 404 });
   }
 
@@ -117,7 +126,6 @@ export async function PATCH(
   // ── Resolve status: explicit status takes precedence over searchActive ──
   let status = rawStatus;
   if (status === undefined && searchActive !== undefined) {
-    // searchActive toggle only applies when not pendingReview
     if (existing.status !== "pendingReview") {
       status = searchActive ? "active" : "inactive";
     }
@@ -187,10 +195,7 @@ export async function PATCH(
     });
     if (valid.length !== templateIds.length) {
       return Response.json(
-        {
-          error:
-            "One or more addon templates do not belong to this subcategory",
-        },
+        { error: "One or more addon templates do not belong to this subcategory" },
         { status: 400 },
       );
     }
@@ -213,16 +218,14 @@ export async function PATCH(
     });
     if (valid.length !== fieldIds.length) {
       return Response.json(
-        {
-          error: "One or more custom fields do not belong to this subcategory",
-        },
+        { error: "One or more custom fields do not belong to this subcategory" },
         { status: 400 },
       );
     }
   }
 
   // ── Build scalar update payload ────────────────────────────────
-  const scalarData: Record<string, unknown> = {};
+  const scalarData: Record<string, unknown> = { updatedAt: new Date() };
   if (status !== undefined) scalarData.status = status as ServiceStatus;
   if (title !== undefined) scalarData.title = title;
   if (serviceType !== undefined) scalarData.serviceType = serviceType;
@@ -238,12 +241,10 @@ export async function PATCH(
 
   // ── Transaction: update scalars + replace relations ────────────
   const updated = await prisma.$transaction(async (tx) => {
-    if (Object.keys(scalarData).length > 0) {
-      await tx.service.update({ where: { id: serviceId }, data: scalarData });
-    }
+    await tx.service.update({ where: { id: serviceIdNum }, data: scalarData });
 
     if (customValues !== undefined) {
-      await tx.serviceCustomValue.deleteMany({ where: { serviceId } });
+      await tx.serviceCustomValue.deleteMany({ where: { serviceId: serviceIdNum } });
       if (customValues.length > 0) {
         const fields = await tx.serviceCustomField.findMany({
           where: {
@@ -258,35 +259,23 @@ export async function PATCH(
           data: customValues.map((v: { fieldId: number; value: string }) => {
             const fieldType = fieldTypeMap[v.fieldId];
             if (fieldType === "number")
-              return {
-                serviceId,
-                fieldId: v.fieldId,
-                valueNumber: parseFloat(v.value),
-              };
+              return { serviceId: serviceIdNum, fieldId: v.fieldId, valueNumber: parseFloat(v.value) };
             if (fieldType === "boolean")
-              return {
-                serviceId,
-                fieldId: v.fieldId,
-                valueBoolean: v.value === "true",
-              };
+              return { serviceId: serviceIdNum, fieldId: v.fieldId, valueBoolean: v.value === "true" };
             if (fieldType === "multiSelect")
-              return {
-                serviceId,
-                fieldId: v.fieldId,
-                valueJson: JSON.parse(v.value),
-              };
-            return { serviceId, fieldId: v.fieldId, valueText: v.value };
+              return { serviceId: serviceIdNum, fieldId: v.fieldId, valueJson: JSON.parse(v.value) };
+            return { serviceId: serviceIdNum, fieldId: v.fieldId, valueText: v.value };
           }),
         });
       }
     }
 
     if (addons !== undefined) {
-      await tx.serviceAddon.deleteMany({ where: { serviceId } });
+      await tx.serviceAddon.deleteMany({ where: { serviceId: serviceIdNum } });
       if (addons.length > 0) {
         await tx.serviceAddon.createMany({
           data: addons.map((a: { templateId: number; price: number; rateUnit: string }) => ({
-            serviceId,
+            serviceId: serviceIdNum,
             templateId: Number(a.templateId),
             price: Number(a.price),
             rateUnit: a.rateUnit,
@@ -296,7 +285,7 @@ export async function PATCH(
     }
 
     return tx.service.findUnique({
-      where: { id: serviceId },
+      where: { id: serviceIdNum },
       include: SERVICE_INCLUDE,
     });
   });

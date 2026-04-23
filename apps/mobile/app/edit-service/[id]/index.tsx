@@ -107,7 +107,7 @@ export default function EditServiceScreen() {
         const newStatus = newValue ? "active" : "inactive";
         setSearchActive(newValue);
         setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
-        await fetch(`${API_BASE_URL}/services/${id}`, {
+        await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ searchActive: newValue }),
@@ -132,7 +132,7 @@ export default function EditServiceScreen() {
   }
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/services/${id}`)
+    fetch(`${API_BASE_URL}/users/1/services/${id}`)
       .then((res) => res.json())
       .then((data: ServiceSummary) => {
         setService(data);

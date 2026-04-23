@@ -75,7 +75,7 @@ export default function EditServicePricingScreen() {
   const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/services/${id}`)
+    fetch(`${API_BASE_URL}/users/1/services/${id}`)
       .then((r) => r.json())
       .then(async (service: ServicePricing) => {
         setBaseRate(parseFloat(service.baseRate).toFixed(2));
@@ -173,7 +173,7 @@ export default function EditServicePricingScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/services/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

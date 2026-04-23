@@ -187,6 +187,8 @@ model Service {
   baseRateUnit RateUnit
   createdAt    DateTime      @default(now()) @db.Timestamp(6)
   updatedAt    DateTime      @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime?
+  deletionReason String?
 }
 
 model ServiceImage {

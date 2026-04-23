@@ -44,8 +44,11 @@ export default function DeleteServiceReasonScreen() {
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/services/${id}`, {
+      const reason = selected === "Other" ? otherText.trim() : selected;
+      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

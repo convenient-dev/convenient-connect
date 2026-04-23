@@ -18,13 +18,13 @@ interface StatusVariant {
 export const SERVICE_STATUS_CONFIG: Record<ServiceStatus, StatusVariant> = {
   active: {
     label: "Active",
-    description: "Accepting new bookings",
+    description: "Accepting bookings",
     icon: "check-circle",
     color: status.active,
   },
   inactive: {
     label: "Inactive",
-    description: "Not accepting bookings",
+    description: "Stop New bookings",
     icon: "remove-circle",
     color: status.inactive,
   },

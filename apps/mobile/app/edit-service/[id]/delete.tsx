@@ -30,7 +30,7 @@ export default function DeleteServiceScreen() {
   async function handlePause() {
     setPausing(true);
     try {
-      await fetch(`${API_BASE_URL}/services/${id}`, {
+      await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "inactive" }),

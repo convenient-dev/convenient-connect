@@ -23,7 +23,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border, status, overlay } = Colors;
+const { primary, secondary, neutral, background, border, status, overlay } =
+  Colors;
 
 const TOTAL_STEPS = 5;
 
@@ -323,13 +324,22 @@ export default function CreateServiceFormScreen() {
     if (serviceMode !== "business" || !businessAffiliationId) return;
     fetch(`${API_BASE_URL}/users/1/affiliations`)
       .then((r) => r.json())
-      .then((businesses: { id: number; name: string; address: string | null; addressId: number | null }[]) => {
-        const business = businesses.find(
-          (b) => b.id === Number(businessAffiliationId),
-        );
-        if (business?.address) setAddress(business.address);
-        if (business?.addressId) setAddressId(business.addressId);
-      })
+      .then(
+        (
+          businesses: {
+            id: number;
+            name: string;
+            address: string | null;
+            addressId: number | null;
+          }[],
+        ) => {
+          const business = businesses.find(
+            (b) => b.id === Number(businessAffiliationId),
+          );
+          if (business?.address) setAddress(business.address);
+          if (business?.addressId) setAddressId(business.addressId);
+        },
+      )
       .catch(() => {});
   }, []);
 
@@ -340,9 +350,6 @@ export default function CreateServiceFormScreen() {
     pdf: { uri: string; name: string } | null;
   };
   const [certifications, setCertifications] = useState<Certification[]>([]);
-  const [certNameTouched, setCertNameTouched] = useState<
-    Record<number, boolean>
-  >({});
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   async function handlePickPdf(index: number) {
@@ -395,7 +402,8 @@ export default function CreateServiceFormScreen() {
     description.trim().length > 0 &&
     aboutYou.trim().length > 0 &&
     slogan.trim().length > 0 &&
-    selectedImages.length > 0;
+    selectedImages.length > 0 &&
+    !certifications.some((c) => c.name.trim() && !c.pdf);
 
   // ── Step 4 state ──────────────────────────────────────────────
   const [baseRate, setBaseRate] = useState("");
@@ -516,7 +524,6 @@ export default function CreateServiceFormScreen() {
     setSubmitError(null);
     try {
       const body = {
-        userId: 1, // TODO: replace with authenticated user id
         subcategoryId: subcategoryId ? Number(subcategoryId) : undefined,
         serviceMode: serviceMode ?? "freelance",
         businessAffiliationId: businessAffiliationId
@@ -543,7 +550,7 @@ export default function CreateServiceFormScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/services`, {
+      const res = await fetch(`${API_BASE_URL}/users/1/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -1076,9 +1083,6 @@ export default function CreateServiceFormScreen() {
                             ),
                           )
                         }
-                        onBlur={() =>
-                          setCertNameTouched((prev) => ({ ...prev, [i]: true }))
-                        }
                       />
                       {certifications.length >= 1 && (
                         <TouchableOpacity
@@ -1131,7 +1135,7 @@ export default function CreateServiceFormScreen() {
                           />
                           <Text style={styles.certUploadText}>Upload PDF</Text>
                         </TouchableOpacity>
-                        {certNameTouched[i] && cert.name.trim() ? (
+                        {cert.name.trim() ? (
                           <Text style={styles.certPdfError}>
                             Please upload a PDF for this certification.
                           </Text>
@@ -1459,7 +1463,9 @@ export default function CreateServiceFormScreen() {
                 <View
                   style={[styles.checkbox, consented && styles.checkboxChecked]}
                 >
-                  {consented && <Feather name="check" size={13} color={neutral[0]} />}
+                  {consented && (
+                    <Feather name="check" size={13} color={neutral[0]} />
+                  )}
                 </View>
                 <Text style={styles.consentText}>
                   I confirm that the information provided is accurate. I

@@ -131,7 +131,7 @@ export default function EditServiceInformationScreen() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_BASE_URL}/services/${id}`).then((r) =>
+      fetch(`${API_BASE_URL}/users/1/services/${id}`).then((r) =>
         r.json(),
       ) as Promise<ServiceDetail>,
       fetch(`${API_BASE_URL}/users/1`).then((r) => r.json()),
@@ -361,7 +361,7 @@ export default function EditServiceInformationScreen() {
         ),
       };
 
-      const res = await fetch(`${API_BASE_URL}/services/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

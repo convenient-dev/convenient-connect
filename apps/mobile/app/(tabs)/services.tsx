@@ -163,7 +163,9 @@ function ServiceCard({
         resizeMode="cover"
       />
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{service.title}</Text>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {service.title}
+        </Text>
         <View style={styles.statusRow}>
           <MaterialIcons name={meta.icon} size={12} color={statusColor} />
           <Text style={styles.statusText}>
@@ -173,8 +175,11 @@ function ServiceCard({
         </View>
         {service.serviceMode === "business" && service.business && (
           <View style={styles.businessRow}>
-            <MaterialIcons name="business" size={15} color={brand.primary} />
-            <Text style={styles.businessName}>
+            <ExpoImage
+              source={require("@/assets/global-icons/business.svg")}
+              style={{ width: 12, height: 12 }}
+            />
+            <Text style={styles.businessName} numberOfLines={1}>
               {service.business.business.name}
             </Text>
           </View>
@@ -197,7 +202,7 @@ export default function ServicesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
+      fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services?deleted=false`)
         .then((res) => res.json())
         .then((data: Service[]) => setServices(data))
         .finally(() => setLoading(false));

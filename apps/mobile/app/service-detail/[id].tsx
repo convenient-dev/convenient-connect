@@ -156,7 +156,7 @@ export default function ServiceDetailScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/services/${id}`)
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/1/services/${id}`)
       .then((res) => res.json())
       .then((data: ServiceDetail) => setService(data))
       .finally(() => setLoading(false));
@@ -239,21 +239,26 @@ export default function ServiceDetailScreen() {
 
           <Text style={styles.serviceTitle}>{service.title}</Text>
 
-          <InlineRow
-            label="Service Type"
-            value={service.serviceType === "inPerson" ? "In-person" : "Remote"}
-          />
+          <View style={styles.subBlock}>
+            <Text style={styles.subBlockLabel}>Service Type</Text>
+            <Text style={styles.bodyText}>
+              {service.serviceType === "inPerson" ? "In-person" : "Remote"}
+            </Text>
+          </View>
+
           {service.serviceType === "inPerson" && service.address && (
-            <FieldBlock
-              label="Service Address"
-              value={service.address.address}
-            />
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Service Address</Text>
+              <Text style={styles.bodyText}>{service.address.address}</Text>
+            </View>
           )}
           {service.areaRadius && (
-            <InlineRow
-              label="Service Area Radius"
-              value={`${parseFloat(service.areaRadius)} miles`}
-            />
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Service Area Radius</Text>
+              <Text
+                style={styles.bodyText}
+              >{`${parseFloat(service.areaRadius)} miles`}</Text>
+            </View>
           )}
 
           {/* Custom field values */}
@@ -261,11 +266,10 @@ export default function ServiceDetailScreen() {
             const value = formatCustomValue(cv);
             if (!value) return null;
             return (
-              <InlineRow
-                key={cv.id}
-                label={cv.field.fieldLabel}
-                value={value}
-              />
+              <View style={styles.subBlock} key={cv.id}>
+                <Text style={styles.subBlockLabel}>{cv.field.fieldLabel}</Text>
+                <Text style={styles.bodyText}>{value}</Text>
+              </View>
             );
           })}
 
@@ -355,6 +359,7 @@ export default function ServiceDetailScreen() {
           {service.addons.length > 0 && (
             <>
               <View style={styles.pricingDivider} />
+              <Text style={styles.subBlockLabel}>Add-ons</Text>
               {service.addons.map((addon) => (
                 <PricingRow
                   key={addon.id}
@@ -436,7 +441,7 @@ const styles = StyleSheet.create({
     height: 30,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: neutral[400],
     letterSpacing: 0.5,

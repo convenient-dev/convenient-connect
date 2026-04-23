@@ -215,7 +215,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: background.screen,
   },
   scrollView: {
     flex: 1,
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     backgroundColor: neutral[0],
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,

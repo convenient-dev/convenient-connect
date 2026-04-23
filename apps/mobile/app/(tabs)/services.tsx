@@ -1,9 +1,9 @@
 import { BackButton } from "@/components/BackButton";
-import Divider from "@/components/ui/divider";
 import {
   SERVICE_STATUS_CONFIG,
   ServiceStatus,
 } from "@/components/ServiceStatusBadge";
+import Divider from "@/components/ui/divider";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background } = Colors;
+const { primary, neutral, background, brand } = Colors;
 
 // TODO: replace with real auth user id
 const USER_ID = 1;
@@ -36,8 +36,18 @@ interface Service {
   images: { url: string }[];
   subcategory: { name: string; category: { name: string } } | null;
   business: { business: { name: string } } | null;
+  updatedAt: string;
 }
 
+function getRelativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
@@ -139,6 +149,10 @@ function ServiceCard({
 }) {
   const meta = SERVICE_STATUS_CONFIG[service.status];
   const statusColor = meta.color;
+  const statusDescription =
+    service.status === "pendingReview"
+      ? getRelativeTime(service.updatedAt)
+      : meta.description;
   const photo = service.images[0]?.url;
 
   return (
@@ -154,12 +168,12 @@ function ServiceCard({
           <MaterialIcons name={meta.icon} size={12} color={statusColor} />
           <Text style={styles.statusText}>
             <Text style={{ color: statusColor }}>{meta.label} </Text>
-            <Text style={styles.statusDescription}>· {meta.description}</Text>
+            <Text style={styles.statusDescription}>· {statusDescription}</Text>
           </Text>
         </View>
         {service.serviceMode === "business" && service.business && (
           <View style={styles.businessRow}>
-            <MaterialIcons name="business" size={12} color="#7a7a7a" />
+            <MaterialIcons name="business" size={15} color={brand.primary} />
             <Text style={styles.businessName}>
               {service.business.business.name}
             </Text>
@@ -187,7 +201,7 @@ export default function ServicesScreen() {
         .then((res) => res.json())
         .then((data: Service[]) => setServices(data))
         .finally(() => setLoading(false));
-    }, [])
+    }, []),
   );
 
   const visibleServices =
@@ -295,7 +309,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   addButton: {
     width: 22,
@@ -307,7 +321,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fafafa",
+    backgroundColor: neutral[50],
     borderRadius: 12,
     marginHorizontal: 30,
     marginBottom: 20,
@@ -329,7 +343,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6d6d6d",
+    color: neutral[500],
   },
   tabTextActive: {
     color: neutral[0],
@@ -357,7 +371,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#a3a3a3",
+    borderColor: neutral[300],
     borderRadius: 8,
     padding: 13,
     gap: 15,
@@ -367,7 +381,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#eaeaea",
+    backgroundColor: neutral[100],
   },
   cardInfo: {
     flex: 1,
@@ -376,7 +390,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#303030",
+    color: neutral[700],
     letterSpacing: -0.408,
   },
   statusRow: {
@@ -385,12 +399,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "500",
     letterSpacing: -0.408,
   },
   statusDescription: {
-    color: "#7a7a7a",
+    color: neutral[400],
     fontWeight: "500",
   },
   businessRow: {
@@ -401,7 +415,7 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#7a7a7a",
+    color: neutral[400],
     letterSpacing: -0.408,
   },
   moreButton: {
@@ -433,7 +447,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
     textAlign: "center",
     marginBottom: 20,
   },
@@ -446,6 +460,6 @@ const styles = StyleSheet.create({
   sheetOptionText: {
     fontSize: 15,
     fontWeight: "400",
-    color: "#222b45",
+    color: neutral[800],
   },
 });

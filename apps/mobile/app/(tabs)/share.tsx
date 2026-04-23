@@ -1,6 +1,9 @@
+import { Colors } from "@/constants/theme";
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { background, neutral } = Colors;
 
 export default function ShareScreen() {
   return (
@@ -13,7 +16,7 @@ export default function ShareScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: background.screen },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '600', color: '#000' },
+  title: { fontSize: 24, fontWeight: '600', color: neutral[1000] },
 });

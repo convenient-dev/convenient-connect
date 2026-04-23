@@ -99,12 +99,12 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.background.screen,
     paddingHorizontal: 30,
     paddingTop: 8,
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
+    shadowColor: Colors.neutral[1000],
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeText: {
-    color: "#fff",
+    color: Colors.neutral[0],
     fontSize: 8,
     lineHeight: 10,
   },

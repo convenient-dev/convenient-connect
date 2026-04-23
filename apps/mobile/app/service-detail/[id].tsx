@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background } = Colors;
+const { primary, neutral, background, overlay } = Colors;
 
 interface ServiceDetail {
   id: number;
@@ -141,7 +141,7 @@ function ImageViewerModal({
           onPress={onClose}
           hitSlop={12}
         >
-          <MaterialIcons name="close" size={24} color="#fff" />
+          <MaterialIcons name="close" size={24} color={neutral[0]} />
         </TouchableOpacity>
       </View>
     </Modal>
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   headerSpacer: {
     width: 26,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     padding: 16,
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
   },
   inlineRow: {
     flexDirection: "row",
@@ -466,12 +466,12 @@ const styles = StyleSheet.create({
   },
   inlineValue: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
   },
   serviceTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
   },
   subBlock: {
     gap: 5,
@@ -480,11 +480,11 @@ const styles = StyleSheet.create({
   subBlockLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#303030",
+    color: neutral[700],
   },
   bodyText: {
     fontSize: 12,
-    color: "#505050",
+    color: neutral[600],
     lineHeight: 19,
   },
   imageScrollRow: {
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginRight: 8,
-    backgroundColor: "#eaeaea",
+    backgroundColor: neutral[100],
   },
   certRow: {
     flexDirection: "row",
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   },
   certText: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   certTextTappable: {
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: neutral[1000],
     justifyContent: "center",
     alignItems: "center",
   },
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 48,
     right: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: overlay.medium,
     borderRadius: 20,
     padding: 6,
   },
@@ -538,13 +538,13 @@ const styles = StyleSheet.create({
   },
   pricingLabel: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingValue: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   pricingDivider: {
     height: StyleSheet.hairlineWidth,

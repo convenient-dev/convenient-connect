@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   headerSubtitle: {
     fontSize: 12,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     padding: 16,
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   },
   inlineValue: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
   },
 
   // Toggle
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#303030",
+    color: neutral[700],
   },
   toggleHint: {
     fontSize: 11,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   navRowLabel: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   navRowSub: {
     fontSize: 11,

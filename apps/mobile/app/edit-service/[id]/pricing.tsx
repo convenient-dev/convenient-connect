@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border } = Colors;
+const { primary, secondary, neutral, background, border, status, overlay } = Colors;
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "#222b45" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
   headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   addOnRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   addOnLabel: { width: 100, fontSize: 13, color: neutral[600], lineHeight: 18 },
   saveError: {
-    fontSize: 13, color: "#d32f2f", textAlign: "center",
+    fontSize: 13, color: status.error, textAlign: "center",
     paddingHorizontal: 24, paddingBottom: 6,
   },
   footer: { flexDirection: "row", gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   saveButtonActive: { backgroundColor: primary[400] },
   saveButtonText: { fontSize: 16, fontWeight: "600", color: neutral[400] },
   saveButtonTextActive: { color: neutral[0] },
-  bottomSheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  bottomSheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: overlay.light },
   bottomSheet: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     backgroundColor: background.screen,

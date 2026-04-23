@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 
-const { brand, neutral, background, text } = Colors;
+const { brand, neutral, background, text, overlay } = Colors;
 
 interface Props {
   visible: boolean;
@@ -73,7 +73,7 @@ export function ConfirmModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: overlay.light,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#222b45",
+    color: neutral[800],
     textAlign: "center",
   },
   message: {

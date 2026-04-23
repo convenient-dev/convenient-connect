@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "#222b45" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: "neutral[800]" },
   headerSpacer: { width: 38 },
   card: {
     marginHorizontal: 20,
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: neutral[200],
     paddingHorizontal: 16,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 16,
   },
-  rowLabel: { fontSize: 14, fontWeight: "600", color: "#222b45" },
+  rowLabel: { fontSize: 14, fontWeight: "600", color: "neutral[800]" },
   rowValue: { fontSize: 14, color: neutral[500] },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: neutral[200] },
 });

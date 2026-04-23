@@ -26,7 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border } = Colors;
+const { primary, secondary, neutral, background, border, status, overlay } = Colors;
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
@@ -744,7 +744,7 @@ export default function EditServiceInformationScreen() {
                     }}
                     activeOpacity={0.7}
                   >
-                    <Feather name="x" size={12} color="#fff" />
+                    <Feather name="x" size={12} color={neutral[0]} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -764,7 +764,7 @@ export default function EditServiceInformationScreen() {
                     }
                     activeOpacity={0.7}
                   >
-                    <Feather name="x" size={12} color="#fff" />
+                    <Feather name="x" size={12} color={neutral[0]} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -1225,7 +1225,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "#222b45" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
   headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
@@ -1347,7 +1347,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: overlay.dark,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1398,7 +1398,7 @@ const styles = StyleSheet.create({
   certAddText: { fontSize: 13, fontWeight: "600", color: primary[500] },
   saveError: {
     fontSize: 13,
-    color: "#d32f2f",
+    color: status.error,
     textAlign: "center",
     paddingHorizontal: 24,
     paddingBottom: 6,
@@ -1432,7 +1432,7 @@ const styles = StyleSheet.create({
   saveButtonTextActive: { color: neutral[0] },
   bottomSheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: overlay.light,
   },
   bottomSheet: {
     position: "absolute",
@@ -1484,7 +1484,7 @@ const styles = StyleSheet.create({
     backgroundColor: primary[400],
     alignItems: "center",
   },
-  multiSelectDoneText: { fontSize: 15, fontWeight: "600", color: "#fff" },
+  multiSelectDoneText: { fontSize: 15, fontWeight: "600", color: neutral[0] },
   addressSearchRow: {
     flexDirection: "row",
     alignItems: "center",

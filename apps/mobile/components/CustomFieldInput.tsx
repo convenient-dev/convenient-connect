@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 
-const { primary, secondary, neutral, border } = Colors;
+const { primary, secondary, neutral, border, status } = Colors;
 
 export type CustomField = {
   id: number;
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   inlineError: {
     fontSize: 12,
-    color: "#d32f2f",
+    color: status.error,
     marginTop: 4,
   },
 });

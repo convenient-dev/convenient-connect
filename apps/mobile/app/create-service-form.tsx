@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border } = Colors;
+const { primary, secondary, neutral, background, border, status, overlay } = Colors;
 
 const TOTAL_STEPS = 5;
 
@@ -1036,7 +1036,7 @@ export default function CreateServiceFormScreen() {
                         }
                         activeOpacity={0.7}
                       >
-                        <Feather name="x" size={12} color="#fff" />
+                        <Feather name="x" size={12} color={neutral[0]} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -1459,7 +1459,7 @@ export default function CreateServiceFormScreen() {
                 <View
                   style={[styles.checkbox, consented && styles.checkboxChecked]}
                 >
-                  {consented && <Feather name="check" size={13} color="#fff" />}
+                  {consented && <Feather name="check" size={13} color={neutral[0]} />}
                 </View>
                 <Text style={styles.consentText}>
                   I confirm that the information provided is accurate. I
@@ -2164,7 +2164,7 @@ const styles = StyleSheet.create({
   },
   pdfReviewName: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   // ── Step 4: Pricing ───────────────────────────────────────────
@@ -2244,7 +2244,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     padding: 16,
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -2295,12 +2295,12 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#303030",
+    color: neutral[700],
   },
   serviceTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
   },
   fieldBlock: {
     gap: 2,
@@ -2312,7 +2312,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
   },
   inlineRow: {
     flexDirection: "row",
@@ -2325,7 +2325,7 @@ const styles = StyleSheet.create({
   },
   inlineValue: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
   },
   subBlock: {
     gap: 5,
@@ -2334,11 +2334,11 @@ const styles = StyleSheet.create({
   subBlockLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#303030",
+    color: neutral[700],
   },
   bodyText: {
     fontSize: 12,
-    color: "#505050",
+    color: neutral[600],
     lineHeight: 19,
   },
   certRecord: {
@@ -2381,13 +2381,13 @@ const styles = StyleSheet.create({
   },
   certPdfError: {
     fontSize: 12,
-    color: "#d32f2f",
+    color: status.error,
     marginTop: 2,
     paddingHorizontal: 4,
   },
   inlineError: {
     fontSize: 12,
-    color: "#d32f2f",
+    color: status.error,
     marginTop: 4,
   },
   certAddBtn: {
@@ -2415,7 +2415,7 @@ const styles = StyleSheet.create({
   },
   certText: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingRow: {
@@ -2426,13 +2426,13 @@ const styles = StyleSheet.create({
   },
   pricingLabel: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingValue: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   pricingDivider: {
     height: StyleSheet.hairlineWidth,
@@ -2482,7 +2482,7 @@ const styles = StyleSheet.create({
   // Bottom sheet
   bottomSheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: overlay.light,
   },
   bottomSheet: {
     position: "absolute",
@@ -2546,7 +2546,7 @@ const styles = StyleSheet.create({
   multiSelectDoneText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#fff",
+    color: neutral[0],
   },
   // ── Success screen ────────────────────────────────────────────
   successContainer: {
@@ -2589,7 +2589,7 @@ const styles = StyleSheet.create({
   },
   submitError: {
     fontSize: 13,
-    color: "#d32f2f",
+    color: status.error,
     textAlign: "center",
     paddingHorizontal: 24,
     paddingBottom: 6,
@@ -2614,7 +2614,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: overlay.dark,
     alignItems: "center",
     justifyContent: "center",
   },

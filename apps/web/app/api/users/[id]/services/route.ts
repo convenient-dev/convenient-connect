@@ -20,6 +20,7 @@ export async function GET(
       description: true,
       areaRadius: true,
       createdAt: true,
+      updatedAt: true,
       images: {
         take: 1,
         orderBy: { id: "asc" },

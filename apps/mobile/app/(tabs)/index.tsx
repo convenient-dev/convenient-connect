@@ -1,12 +1,12 @@
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image as ExpoImage } from "expo-image";
+import { Image as ExpoImage, ImageSource } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,30 +17,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const ASSETS = {
-  serviceProvider:
-    "https://www.figma.com/api/mcp/asset/a84d4106-0b75-49ee-88dc-507d02483b49",
-  promoBanner1:
-    "https://www.figma.com/api/mcp/asset/419c7657-05b0-404b-ab20-7ea769c68bf0",
-  promoBanner2:
-    "https://www.figma.com/api/mcp/asset/3960750f-1f03-4cd7-b0d6-8947a776a2c0",
-  emptyState:
-    "https://www.figma.com/api/mcp/asset/f25719ae-10ac-4c69-927d-a9998b76cca6",
-};
-
 const { primary, text, background, neutral } = Colors;
 const BANNER_GAP = 12;
 const BANNER_WIDTH = SCREEN_WIDTH - 44;
 
-const banners = [
-  { id: "1", src: ASSETS.promoBanner1 },
-  { id: "2", src: ASSETS.promoBanner2 },
-];
+const bannerAssets: Record<string, ImageSource> = {
+  "1": require("@/assets/banners/home-banner-1.png"),
+  "2": require("@/assets/banners/home-banner-2.png"),
+};
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [user, setUser] = useState<{
@@ -138,7 +128,10 @@ export default function HomeScreen() {
           {/* My Services header */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Services</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push("/services")}
+            >
               <MaterialIcons
                 name="chevron-right"
                 size={24}
@@ -152,11 +145,12 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.createServiceCard}
             activeOpacity={0.8}
+            onPress={() => router.push("/create-service")}
           >
-            <Image
-              source={{ uri: ASSETS.serviceProvider }}
+            <ExpoImage
+              source={require("@/assets/home/create-service.png")}
               style={styles.serviceProviderImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
             <View style={styles.createServiceAction}>
               <MaterialIcons name="add" size={20} color={primary[400]} />
@@ -168,8 +162,8 @@ export default function HomeScreen() {
           <View style={styles.bannersSection}>
             <FlatList
               ref={bannerRef}
-              data={banners}
-              keyExtractor={(item) => item.id}
+              data={Object.entries(bannerAssets)}
+              keyExtractor={([id]) => id}
               horizontal
               pagingEnabled
               snapToInterval={BANNER_WIDTH + BANNER_GAP}
@@ -177,17 +171,17 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               onScroll={handleBannerScroll}
               scrollEventThrottle={16}
-              renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item.src }}
+              renderItem={({ item: [, source] }) => (
+                <ExpoImage
+                  source={source}
                   style={styles.bannerImage}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               )}
             />
             {/* Swipe dots */}
             <View style={styles.swipeDots}>
-              {banners.map((_, i) => (
+              {Object.keys(bannerAssets).map((_, i) => (
                 <View
                   key={i}
                   style={[
@@ -206,10 +200,10 @@ export default function HomeScreen() {
 
           {/* Empty state */}
           <View style={styles.emptyState}>
-            <Image
-              source={{ uri: ASSETS.emptyState }}
+            <ExpoImage
+              source={require("@/assets/home/empty-state-requests.png")}
               style={styles.emptyStateImage}
-              resizeMode="contain"
+              contentFit="cover"
             />
           </View>
         </View>
@@ -221,7 +215,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: background.screen,
   },
   scrollView: {
     flex: 1,
@@ -391,7 +385,7 @@ const styles = StyleSheet.create({
     backgroundColor: neutral[0],
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,

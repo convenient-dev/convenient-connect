@@ -40,12 +40,17 @@ enum RateUnit {
   hour
 }
 
+enum RadiusUnit {
+  mile
+  km
+}
+
 enum FieldType {
   text
   number
   boolean
   select
-  multiSelect @map("multi_select")
+  multiSelect
   url
   date
   textarea
@@ -58,7 +63,7 @@ model User {
   lastName    String?
   password    String?
   phoneNumber String?
-  address     Address[]
+  addresses   UserAddress[]
   accountType AccountType
   isVerified  Boolean     @default(false)
   avatarUrl   String?
@@ -74,10 +79,10 @@ model User {
 model Business {
   id      Int     @id @default(autoincrement())
   name    String
-  address String?
 
   ownerId      Int                   @unique
   owner        User                  @relation("BusinessOwner", fields: [ownerId], references: [id])
+  addresses    BusinessAddress[]
   affiliations BusinessAffiliation[]
 
   createdAt DateTime @default(now()) @db.Timestamp(6)
@@ -100,17 +105,36 @@ model BusinessAffiliation {
 }
 
 model Address {
-  id        Int       @id @default(autoincrement())
-  user      User      @relation(fields: [userId], references: [id])
-  userId    Int
+  id        Int    @id @default(autoincrement())
   address   String
   latitude  String
   longitude String
-  isDefault Boolean   @default(false)
-  services  Service[]
+
+  users      UserAddress[]
+  businesses BusinessAddress[]
+  services   Service[]
 
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @default(now()) @db.Timestamp(6)
+}
+
+model UserAddress {
+  userId    Int
+  addressId Int
+  isDefault Boolean @default(false)
+  user      User    @relation(fields: [userId], references: [id])
+  address   Address @relation(fields: [addressId], references: [id])
+
+  @@id([userId, addressId])
+}
+
+model BusinessAddress {
+  businessId Int
+  addressId  Int
+  business   Business @relation(fields: [businessId], references: [id])
+  address    Address  @relation(fields: [addressId], references: [id])
+
+  @@id([businessId, addressId])
 }
 
 model Category {
@@ -155,6 +179,7 @@ model Service {
   status       ServiceStatus @default(pendingReview)
   serviceType  ServiceType
   areaRadius   Decimal?      @db.Decimal(10, 2)
+  unit         RadiusUnit    @default(mile)
   description  String
   aboutYou     String
   slogan       String?      @db.VarChar(255)
@@ -162,6 +187,8 @@ model Service {
   baseRateUnit RateUnit
   createdAt    DateTime      @default(now()) @db.Timestamp(6)
   updatedAt    DateTime      @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime?
+  deletionReason String?
 }
 
 model ServiceImage {
@@ -190,10 +217,11 @@ model ServiceCertification {
 }
 
 model ServiceAddon {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   serviceId  Int
   templateId Int
-  price      Decimal @db.Decimal(12, 2)
+  price      Decimal  @db.Decimal(12, 2)
+  rateUnit   RateUnit
 
   service  Service                  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   template SubcategoryAddonTemplate @relation(fields: [templateId], references: [id])
@@ -248,8 +276,8 @@ model SubcategoryAddonTemplate {
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
   name          String
   description   String?
-  defaultPrice  Decimal?    @db.Decimal(12, 2)
-  rateUnit      RateUnit
+  defaultPrice    Decimal?    @db.Decimal(12, 2)
+  defaultRateUnit RateUnit
   isRequired    Boolean     @default(false)
   displayOrder  Int         @default(0)
 

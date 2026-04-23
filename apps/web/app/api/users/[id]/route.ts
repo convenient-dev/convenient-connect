@@ -8,12 +8,22 @@ export async function GET(
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id: Number(id) },
-    include: { address: true },
+    include: { addresses: { include: { address: true } } },
   });
 
   if (!user) {
     return Response.json({ error: "User not found" }, { status: 404 });
   }
 
-  return Response.json(user);
+  return Response.json({
+    ...user,
+    address: user.addresses.map((ua) => ({
+      id: ua.address.id,
+      userId: ua.userId,
+      address: ua.address.address,
+      latitude: ua.address.latitude,
+      longitude: ua.address.longitude,
+      isDefault: ua.isDefault,
+    })),
+  });
 }

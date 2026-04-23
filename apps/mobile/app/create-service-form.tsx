@@ -1,9 +1,10 @@
+import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image as ExpoImage } from "expo-image";
 import * as DocumentPicker from "expo-document-picker";
+import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -22,7 +23,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border } = Colors;
+const { primary, secondary, neutral, background, border, status, overlay } =
+  Colors;
 
 const TOTAL_STEPS = 5;
 
@@ -41,22 +43,12 @@ function formatRateUnit(unit: RateUnit): string {
 
 type ServiceType = "in-person" | "remote";
 
-type CustomField = {
-  id: number;
-  fieldName: string;
-  fieldLabel: string;
-  fieldType: string;
-  isRequired: boolean;
-  displayOrder: number;
-  options: string[] | null;
-};
-
 type AddonTemplate = {
   id: number;
   name: string;
   description: string | null;
   defaultPrice: string | null;
-  rateUnit: RateUnit;
+  defaultRateUnit: RateUnit;
   isRequired: boolean;
   displayOrder: number;
 };
@@ -313,6 +305,7 @@ export default function CreateServiceFormScreen() {
   const [description, setDescription] = useState("");
 
   useEffect(() => {
+    if (serviceMode === "business") return;
     fetch(`${API_BASE_URL}/users/1`)
       .then((r) => r.json())
       .then((user) => {
@@ -327,10 +320,36 @@ export default function CreateServiceFormScreen() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (serviceMode !== "business" || !businessAffiliationId) return;
+    fetch(`${API_BASE_URL}/users/1/affiliations`)
+      .then((r) => r.json())
+      .then(
+        (
+          businesses: {
+            id: number;
+            name: string;
+            address: string | null;
+            addressId: number | null;
+          }[],
+        ) => {
+          const business = businesses.find(
+            (b) => b.id === Number(businessAffiliationId),
+          );
+          if (business?.address) setAddress(business.address);
+          if (business?.addressId) setAddressId(business.addressId);
+        },
+      )
+      .catch(() => {});
+  }, []);
+
   const [aboutYou, setAboutYou] = useState("");
   const [slogan, setSlogan] = useState("");
-  type Certification = { name: string; pdf: { uri: string; name: string } | null };
-  const [certifications, setCertifications] = useState<Certification[]>([{ name: "", pdf: null }]);
+  type Certification = {
+    name: string;
+    pdf: { uri: string; name: string } | null;
+  };
+  const [certifications, setCertifications] = useState<Certification[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   async function handlePickPdf(index: number) {
@@ -342,7 +361,9 @@ export default function CreateServiceFormScreen() {
     if (!result.canceled) {
       const asset = result.assets[0];
       setCertifications((prev) =>
-        prev.map((c, i) => i === index ? { ...c, pdf: { uri: asset.uri, name: asset.name } } : c),
+        prev.map((c, i) =>
+          i === index ? { ...c, pdf: { uri: asset.uri, name: asset.name } } : c,
+        ),
       );
     }
   }
@@ -380,7 +401,9 @@ export default function CreateServiceFormScreen() {
     requiredFieldsFilled &&
     description.trim().length > 0 &&
     aboutYou.trim().length > 0 &&
-    slogan.trim().length > 0;
+    slogan.trim().length > 0 &&
+    selectedImages.length > 0 &&
+    !certifications.some((c) => c.name.trim() && !c.pdf);
 
   // ── Step 4 state ──────────────────────────────────────────────
   const [baseRate, setBaseRate] = useState("");
@@ -397,7 +420,7 @@ export default function CreateServiceFormScreen() {
     const units: Record<number, RateUnit> = {};
     subcategoryData.addonTemplates.forEach((t) => {
       rates[t.id] = t.defaultPrice ? parseFloat(t.defaultPrice).toFixed(2) : "";
-      units[t.id] = t.rateUnit;
+      units[t.id] = t.defaultRateUnit;
     });
     setAddonRates(rates);
     setAddonUnits(units);
@@ -460,6 +483,29 @@ export default function CreateServiceFormScreen() {
 
   const canProceedStep4 = baseRate.trim().length > 0;
 
+  // ── Inline validation touched state ──────────────────────────
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (key: string) =>
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  const touchAll3 = () =>
+    setTouched((prev) => ({
+      ...prev,
+      title: true,
+      serviceType: true,
+      address: true,
+      radius: true,
+      description: true,
+      aboutYou: true,
+      slogan: true,
+      images: true,
+      ...Object.fromEntries(
+        allCustomFields
+          .filter((f) => f.isRequired)
+          .map((f) => [`cf_${f.id}`, true]),
+      ),
+    }));
+  const touchAll4 = () => setTouched((prev) => ({ ...prev, baseRate: true }));
+
   // ── Navigation & submission ───────────────────────────────────
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -478,7 +524,6 @@ export default function CreateServiceFormScreen() {
     setSubmitError(null);
     try {
       const body = {
-        userId: 1, // TODO: replace with authenticated user id
         subcategoryId: subcategoryId ? Number(subcategoryId) : undefined,
         serviceMode: serviceMode ?? "freelance",
         businessAffiliationId: businessAffiliationId
@@ -501,10 +546,11 @@ export default function CreateServiceFormScreen() {
           .map((t) => ({
             templateId: t.id,
             price: Number(addonRates[t.id]),
+            rateUnit: addonUnits[t.id] ?? "booking",
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/services`, {
+      const res = await fetch(`${API_BASE_URL}/users/1/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -572,10 +618,17 @@ export default function CreateServiceFormScreen() {
         }
       }
 
-      // Upload certifications (name required, PDF optional)
-      const certsWithPdf = certifications.filter(
-        (c) => c.name.trim() && c.pdf,
+      // Upload certifications (name + PDF both required when providing a cert)
+      const incompleteCert = certifications.find(
+        (c) => c.name.trim() && !c.pdf,
       );
+      if (incompleteCert) {
+        setSubmitError(
+          `Please upload a PDF for "${incompleteCert.name.trim()}".`,
+        );
+        return;
+      }
+      const certsWithPdf = certifications.filter((c) => c.name.trim() && c.pdf);
       if (certsWithPdf.length > 0) {
         const certResults = await Promise.allSettled(
           certsWithPdf.map(async (cert) => {
@@ -629,9 +682,15 @@ export default function CreateServiceFormScreen() {
   }
 
   function handleNext() {
-    if (formStep === 3 && canProceedStep3) setFormStep(4);
-    else if (formStep === 4 && canProceedStep4) setFormStep(5);
-    else if (formStep === 5) handleSubmit();
+    if (formStep === 3) {
+      if (canProceedStep3) setFormStep(4);
+      else touchAll3();
+    } else if (formStep === 4) {
+      if (canProceedStep4) setFormStep(5);
+      else touchAll4();
+    } else if (formStep === 5) {
+      handleSubmit();
+    }
   }
 
   function handleBack() {
@@ -664,7 +723,7 @@ export default function CreateServiceFormScreen() {
             onPress={() => router.replace("/(tabs)/services")}
             activeOpacity={0.85}
           >
-            <Text style={styles.createAnotherText}>Create another Service</Text>
+            <Text style={styles.createAnotherText}>View my Services</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -717,13 +776,24 @@ export default function CreateServiceFormScreen() {
                   placeholderTextColor={neutral[300]}
                   value={title}
                   onChangeText={setTitle}
+                  onBlur={() => touch("title")}
                 />
+                {touched.title && !title.trim() && (
+                  <Text style={styles.inlineError}>
+                    Service title is required.
+                  </Text>
+                )}
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>
                   Service Type <Text style={styles.required}>*</Text>
                 </Text>
+                {touched.serviceType && serviceType === null && (
+                  <Text style={styles.inlineError}>
+                    Please select a service type.
+                  </Text>
+                )}
                 <View style={styles.segmentedControl}>
                   <TouchableOpacity
                     style={[
@@ -769,9 +839,20 @@ export default function CreateServiceFormScreen() {
                       Service Address <Text style={styles.required}>*</Text>
                     </Text>
                     <TouchableOpacity
-                      style={styles.addressInputRow}
-                      onPress={openAddressPicker}
-                      activeOpacity={0.7}
+                      style={[
+                        styles.addressInputRow,
+                        serviceMode === "business" &&
+                          styles.addressInputRowDisabled,
+                      ]}
+                      onPress={
+                        serviceMode === "business"
+                          ? undefined
+                          : () => {
+                              touch("address");
+                              openAddressPicker();
+                            }
+                      }
+                      activeOpacity={serviceMode === "business" ? 1 : 0.7}
                     >
                       <Feather
                         name="map-pin"
@@ -790,12 +871,26 @@ export default function CreateServiceFormScreen() {
                       >
                         {address || "Select service address"}
                       </Text>
-                      <Feather
-                        name="chevron-down"
-                        size={18}
-                        color={neutral[400]}
-                      />
+                      {serviceMode === "business" ? (
+                        <Feather name="lock" size={16} color={neutral[300]} />
+                      ) : (
+                        <Feather
+                          name="chevron-down"
+                          size={18}
+                          color={neutral[400]}
+                        />
+                      )}
                     </TouchableOpacity>
+                    {serviceMode === "business" && (
+                      <Text style={styles.addressLockedHint}>
+                        Managed by affiliated business
+                      </Text>
+                    )}
+                    {touched.address && !address && (
+                      <Text style={styles.inlineError}>
+                        Service address is required.
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.field}>
                     <Text style={styles.label}>
@@ -811,6 +906,7 @@ export default function CreateServiceFormScreen() {
                           setRadiusValue(v.replace(/[^0-9.]/g, ""))
                         }
                         keyboardType="decimal-pad"
+                        onBlur={() => touch("radius")}
                       />
                       <View style={styles.radiusUnitGroup}>
                         {RADIUS_UNITS.map((unit) => (
@@ -837,71 +933,32 @@ export default function CreateServiceFormScreen() {
                         ))}
                       </View>
                     </View>
+                    {touched.radius && !radiusValue.trim() && (
+                      <Text style={styles.inlineError}>
+                        Service area radius is required.
+                      </Text>
+                    )}
                   </View>
                 </>
               )}
 
               {/* Dynamic custom fields from subcategory */}
-              {allCustomFields.map((field) => {
-                if (
-                  field.fieldType === "select" ||
-                  field.fieldType === "multi_select"
-                ) {
-                  const value = customFieldValues[field.id] ?? null;
-                  return (
-                    <View key={field.id} style={styles.field}>
-                      <Text style={styles.label}>
-                        {field.fieldLabel}
-                        {field.isRequired ? (
-                          <Text style={styles.required}> *</Text>
-                        ) : null}
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.dropdown}
-                        onPress={() => openFieldPicker(field)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={
-                            value
-                              ? styles.dropdownValue
-                              : styles.dropdownPlaceholder
-                          }
-                        >
-                          {value ?? field.fieldLabel}
-                        </Text>
-                        <Feather
-                          name="chevron-down"
-                          size={18}
-                          color={neutral[400]}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                }
-                return (
-                  <View key={field.id} style={styles.field}>
-                    <Text style={styles.label}>
-                      {field.fieldLabel}
-                      {field.isRequired ? (
-                        <Text style={styles.required}> *</Text>
-                      ) : null}
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={field.fieldLabel}
-                      placeholderTextColor={neutral[300]}
-                      value={customFieldValues[field.id] ?? ""}
-                      onChangeText={(v) =>
-                        setCustomFieldValues((prev) => ({
-                          ...prev,
-                          [field.id]: v,
-                        }))
-                      }
-                    />
-                  </View>
-                );
-              })}
+              {allCustomFields.map((field) => (
+                <CustomFieldInput
+                  key={field.id}
+                  field={field}
+                  value={customFieldValues[field.id] ?? ""}
+                  onChange={(v) =>
+                    setCustomFieldValues((prev) => ({ ...prev, [field.id]: v }))
+                  }
+                  onBlur={() => touch(`cf_${field.id}`)}
+                  touched={!!touched[`cf_${field.id}`]}
+                  onOpenPicker={(f) => {
+                    touch(`cf_${f.id}`);
+                    openFieldPicker(f);
+                  }}
+                />
+              ))}
 
               <View style={styles.field}>
                 <Text style={styles.label}>
@@ -915,7 +972,13 @@ export default function CreateServiceFormScreen() {
                   onChangeText={setDescription}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() => touch("description")}
                 />
+                {touched.description && !description.trim() && (
+                  <Text style={styles.inlineError}>
+                    Service description is required.
+                  </Text>
+                )}
               </View>
 
               <View style={styles.field}>
@@ -929,7 +992,11 @@ export default function CreateServiceFormScreen() {
                   onChangeText={setAboutYou}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() => touch("aboutYou")}
                 />
+                {touched.aboutYou && !aboutYou.trim() && (
+                  <Text style={styles.inlineError}>About you is required.</Text>
+                )}
               </View>
 
               <View style={styles.field}>
@@ -944,11 +1011,17 @@ export default function CreateServiceFormScreen() {
                   onChangeText={setSlogan}
                   multiline
                   textAlignVertical="top"
+                  onBlur={() => touch("slogan")}
                 />
+                {touched.slogan && !slogan.trim() && (
+                  <Text style={styles.inlineError}>Slogan is required.</Text>
+                )}
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Images / Portfolio</Text>
+                <Text style={styles.label}>
+                  Images / Portfolio <Text style={styles.required}>*</Text>
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -970,7 +1043,7 @@ export default function CreateServiceFormScreen() {
                         }
                         activeOpacity={0.7}
                       >
-                        <Feather name="x" size={12} color="#fff" />
+                        <Feather name="x" size={12} color={neutral[0]} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -983,6 +1056,11 @@ export default function CreateServiceFormScreen() {
                     <Text style={styles.uploadText}>Upload Image</Text>
                   </TouchableOpacity>
                 </ScrollView>
+                {touched.images && selectedImages.length === 0 && (
+                  <Text style={styles.inlineError}>
+                    At least one image is required.
+                  </Text>
+                )}
               </View>
 
               <View style={styles.field}>
@@ -1000,15 +1078,19 @@ export default function CreateServiceFormScreen() {
                         value={cert.name}
                         onChangeText={(v) =>
                           setCertifications((prev) =>
-                            prev.map((c, j) => j === i ? { ...c, name: v } : c),
+                            prev.map((c, j) =>
+                              j === i ? { ...c, name: v } : c,
+                            ),
                           )
                         }
                       />
-                      {certifications.length > 1 && (
+                      {certifications.length >= 1 && (
                         <TouchableOpacity
                           style={styles.certRemoveBtn}
                           onPress={() =>
-                            setCertifications((prev) => prev.filter((_, j) => j !== i))
+                            setCertifications((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
                           }
                           activeOpacity={0.7}
                         >
@@ -1018,14 +1100,20 @@ export default function CreateServiceFormScreen() {
                     </View>
                     {cert.pdf ? (
                       <View style={styles.certPdfRow}>
-                        <Feather name="file-text" size={14} color={neutral[400]} />
+                        <Feather
+                          name="file-text"
+                          size={14}
+                          color={neutral[400]}
+                        />
                         <Text style={styles.certPdfName} numberOfLines={1}>
                           {cert.pdf.name}
                         </Text>
                         <TouchableOpacity
                           onPress={() =>
                             setCertifications((prev) =>
-                              prev.map((c, j) => j === i ? { ...c, pdf: null } : c),
+                              prev.map((c, j) =>
+                                j === i ? { ...c, pdf: null } : c,
+                              ),
                             )
                           }
                           activeOpacity={0.7}
@@ -1034,21 +1122,35 @@ export default function CreateServiceFormScreen() {
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <TouchableOpacity
-                        style={styles.certUploadBtn}
-                        onPress={() => handlePickPdf(i)}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="upload" size={13} color={neutral[400]} />
-                        <Text style={styles.certUploadText}>Upload PDF (optional)</Text>
-                      </TouchableOpacity>
+                      <>
+                        <TouchableOpacity
+                          style={styles.certUploadBtn}
+                          onPress={() => handlePickPdf(i)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather
+                            name="upload"
+                            size={13}
+                            color={neutral[400]}
+                          />
+                          <Text style={styles.certUploadText}>Upload PDF</Text>
+                        </TouchableOpacity>
+                        {cert.name.trim() ? (
+                          <Text style={styles.certPdfError}>
+                            Please upload a PDF for this certification.
+                          </Text>
+                        ) : null}
+                      </>
                     )}
                   </View>
                 ))}
                 <TouchableOpacity
                   style={styles.certAddBtn}
                   onPress={() =>
-                    setCertifications((prev) => [...prev, { name: "", pdf: null }])
+                    setCertifications((prev) => [
+                      ...prev,
+                      { name: "", pdf: null },
+                    ])
                   }
                   activeOpacity={0.7}
                 >
@@ -1085,6 +1187,7 @@ export default function CreateServiceFormScreen() {
                         keyboardType="decimal-pad"
                         placeholder="0.00"
                         placeholderTextColor={neutral[300]}
+                        onBlur={() => touch("baseRate")}
                       />
                     </View>
                     <TouchableOpacity
@@ -1102,6 +1205,11 @@ export default function CreateServiceFormScreen() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {touched.baseRate && !baseRate.trim() && (
+                    <Text style={styles.inlineError}>
+                      Base rate is required.
+                    </Text>
+                  )}
                 </View>
 
                 {/* Dynamic addon rows from subcategory templates */}
@@ -1215,13 +1323,23 @@ export default function CreateServiceFormScreen() {
 
                 {/* Dynamic custom field values */}
                 {allCustomFields.map((field) => {
-                  const value = customFieldValues[field.id];
-                  if (!value) return null;
+                  const raw = customFieldValues[field.id];
+                  if (!raw) return null;
+                  let display = raw;
+                  if (field.fieldType === "multiSelect") {
+                    try {
+                      const arr = JSON.parse(raw) as string[];
+                      if (arr.length === 0) return null;
+                      display = arr.join(", ");
+                    } catch {
+                      display = raw;
+                    }
+                  }
                   return (
                     <ReviewInlineRow
                       key={field.id}
                       label={field.fieldLabel}
-                      value={value}
+                      value={display}
                     />
                   );
                 })}
@@ -1274,26 +1392,28 @@ export default function CreateServiceFormScreen() {
                       Certifications / Licenses
                     </Text>
                     <View style={styles.pdfReviewList}>
-                      {certifications.filter((c) => c.name.trim()).map((cert, i) => (
-                        <View key={i} style={styles.certReviewRow}>
-                          <View style={styles.certReviewLeft}>
-                            <MaterialIcons
-                              name="workspace-premium"
-                              size={14}
-                              color={primary[400]}
-                            />
-                            <Text style={styles.certText}>{cert.name}</Text>
-                          </View>
-                          {cert.pdf ? (
+                      {certifications
+                        .filter((c) => c.name.trim())
+                        .map((cert, i) => (
+                          <View key={i} style={styles.certReviewRow}>
+                            <View style={styles.certReviewLeft}>
+                              <MaterialIcons
+                                name="insert-drive-file"
+                                size={14}
+                                color={neutral[300]}
+                              />
+                              <Text style={styles.certText}>{cert.name}</Text>
+                            </View>
                             <View style={styles.pdfReviewRow}>
-                              <Feather name="file-text" size={12} color={neutral[400]} />
-                              <Text style={styles.pdfReviewName} numberOfLines={1}>
-                                {cert.pdf.name}
+                              <Text
+                                style={styles.pdfReviewName}
+                                numberOfLines={1}
+                              >
+                                {cert.pdf!.name}
                               </Text>
                             </View>
-                          ) : null}
-                        </View>
-                      ))}
+                          </View>
+                        ))}
                     </View>
                   </View>
                 ) : null}
@@ -1343,7 +1463,9 @@ export default function CreateServiceFormScreen() {
                 <View
                   style={[styles.checkbox, consented && styles.checkboxChecked]}
                 >
-                  {consented && <Feather name="check" size={13} color="#fff" />}
+                  {consented && (
+                    <Feather name="check" size={13} color={neutral[0]} />
+                  )}
                 </View>
                 <Text style={styles.consentText}>
                   I confirm that the information provided is accurate. I
@@ -1578,7 +1700,20 @@ export default function CreateServiceFormScreen() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {(pickerField?.options ?? []).map((option, index) => {
               const options = pickerField?.options ?? [];
-              const isSelected = customFieldValues[pickerField!.id] === option;
+              const isMulti = pickerField?.fieldType === "multiSelect";
+              let isSelected: boolean;
+              if (isMulti) {
+                try {
+                  const arr = JSON.parse(
+                    customFieldValues[pickerField!.id] ?? "[]",
+                  ) as string[];
+                  isSelected = arr.includes(option);
+                } catch {
+                  isSelected = false;
+                }
+              } else {
+                isSelected = customFieldValues[pickerField!.id] === option;
+              }
               return (
                 <TouchableOpacity
                   key={option}
@@ -1588,14 +1723,34 @@ export default function CreateServiceFormScreen() {
                       styles.bottomSheetOptionBorder,
                     isSelected && styles.bottomSheetOptionSelected,
                   ]}
-                  onPress={() =>
-                    closeFieldPicker(() =>
-                      setCustomFieldValues((prev) => ({
-                        ...prev,
-                        [pickerField!.id]: option,
-                      })),
-                    )
-                  }
+                  onPress={() => {
+                    if (isMulti) {
+                      setCustomFieldValues((prev) => {
+                        let arr: string[];
+                        try {
+                          arr = JSON.parse(
+                            prev[pickerField!.id] ?? "[]",
+                          ) as string[];
+                        } catch {
+                          arr = [];
+                        }
+                        const next = arr.includes(option)
+                          ? arr.filter((o) => o !== option)
+                          : [...arr, option];
+                        return {
+                          ...prev,
+                          [pickerField!.id]: JSON.stringify(next),
+                        };
+                      });
+                    } else {
+                      closeFieldPicker(() =>
+                        setCustomFieldValues((prev) => ({
+                          ...prev,
+                          [pickerField!.id]: option,
+                        })),
+                      );
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -1613,6 +1768,15 @@ export default function CreateServiceFormScreen() {
               );
             })}
           </ScrollView>
+          {pickerField?.fieldType === "multiSelect" && (
+            <TouchableOpacity
+              style={styles.multiSelectDoneBtn}
+              onPress={() => closeFieldPicker()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.multiSelectDoneText}>Done</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </Modal>
 
@@ -1861,6 +2025,14 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     gap: 10,
   },
+  addressInputRowDisabled: {
+    backgroundColor: background.subtle,
+    borderColor: border.default,
+  },
+  addressLockedHint: {
+    fontSize: 12,
+    color: neutral[400],
+  },
   addressIcon: {
     flexShrink: 0,
   },
@@ -1998,7 +2170,7 @@ const styles = StyleSheet.create({
   },
   pdfReviewName: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   // ── Step 4: Pricing ───────────────────────────────────────────
@@ -2078,7 +2250,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     padding: 16,
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -2129,12 +2301,12 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#303030",
+    color: neutral[700],
   },
   serviceTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
   },
   fieldBlock: {
     gap: 2,
@@ -2146,7 +2318,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
   },
   inlineRow: {
     flexDirection: "row",
@@ -2159,7 +2331,7 @@ const styles = StyleSheet.create({
   },
   inlineValue: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
   },
   subBlock: {
     gap: 5,
@@ -2168,11 +2340,11 @@ const styles = StyleSheet.create({
   subBlockLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#303030",
+    color: neutral[700],
   },
   bodyText: {
     fontSize: 12,
-    color: "#505050",
+    color: neutral[600],
     lineHeight: 19,
   },
   certRecord: {
@@ -2213,6 +2385,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: neutral[400],
   },
+  certPdfError: {
+    fontSize: 12,
+    color: status.error,
+    marginTop: 2,
+    paddingHorizontal: 4,
+  },
+  inlineError: {
+    fontSize: 12,
+    color: status.error,
+    marginTop: 4,
+  },
   certAddBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -2229,7 +2412,6 @@ const styles = StyleSheet.create({
   },
   certReviewLeft: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 6,
   },
   certRow: {
@@ -2239,7 +2421,7 @@ const styles = StyleSheet.create({
   },
   certText: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingRow: {
@@ -2250,13 +2432,13 @@ const styles = StyleSheet.create({
   },
   pricingLabel: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingValue: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   pricingDivider: {
     height: StyleSheet.hairlineWidth,
@@ -2306,7 +2488,7 @@ const styles = StyleSheet.create({
   // Bottom sheet
   bottomSheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: overlay.light,
   },
   bottomSheet: {
     position: "absolute",
@@ -2359,6 +2541,19 @@ const styles = StyleSheet.create({
     color: primary[500],
     fontWeight: "600",
   },
+  multiSelectDoneBtn: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: primary[400],
+    alignItems: "center",
+  },
+  multiSelectDoneText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: neutral[0],
+  },
   // ── Success screen ────────────────────────────────────────────
   successContainer: {
     flex: 1,
@@ -2400,7 +2595,7 @@ const styles = StyleSheet.create({
   },
   submitError: {
     fontSize: 13,
-    color: "#d32f2f",
+    color: status.error,
     textAlign: "center",
     paddingHorizontal: 24,
     paddingBottom: 6,
@@ -2425,7 +2620,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: overlay.dark,
     alignItems: "center",
     justifyContent: "center",
   },

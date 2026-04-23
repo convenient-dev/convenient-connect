@@ -1,11 +1,16 @@
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  Modal,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background } = Colors;
+const { primary, neutral, background, overlay } = Colors;
 
 interface ServiceDetail {
   id: number;
@@ -32,10 +37,10 @@ interface ServiceDetail {
   addons: {
     id: number;
     price: string;
+    rateUnit: "booking" | "hour";
     template: {
       name: string;
       description: string | null;
-      rateUnit: "booking" | "hour";
     };
   }[];
   customValues: {
@@ -113,14 +118,45 @@ function formatCustomValue(
   return cv.valueText ?? null;
 }
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+function ImageViewerModal({
+  uri,
+  onClose,
+}: {
+  uri: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible animationType="fade" transparent statusBarTranslucent>
+      <View style={styles.modalOverlay}>
+        <StatusBar hidden />
+        <ExpoImage
+          source={{ uri }}
+          style={styles.fullscreenImage}
+          contentFit="contain"
+        />
+        <TouchableOpacity
+          style={styles.modalCloseButton}
+          onPress={onClose}
+          hitSlop={12}
+        >
+          <MaterialIcons name="close" size={24} color={neutral[0]} />
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/services/${id}`)
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/1/services/${id}`)
       .then((res) => res.json())
       .then((data: ServiceDetail) => setService(data))
       .finally(() => setLoading(false));
@@ -148,15 +184,15 @@ export default function ServiceDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {selectedImageUri && (
+        <ImageViewerModal
+          uri={selectedImageUri}
+          onClose={() => setSelectedImageUri(null)}
+        />
+      )}
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          hitSlop={8}
-          onPress={() => router.back()}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={styles.headerTitle}>Service Details</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -166,20 +202,6 @@ export default function ServiceDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* SERVICE CATEGORY */}
-        <View style={styles.section}>
-          <SectionHeader label="SERVICE CATEGORY" />
-          {service.subcategory && (
-            <>
-              <InlineRow
-                label="Category"
-                value={service.subcategory.category.name}
-              />
-              <InlineRow label="Subcategory" value={service.subcategory.name} />
-            </>
-          )}
-        </View>
-
         {/* WORK TYPE */}
         <View style={styles.section}>
           <SectionHeader label="WORK TYPE" />
@@ -197,27 +219,46 @@ export default function ServiceDetailScreen() {
           )}
         </View>
 
+        {/* SERVICE CATEGORY */}
+        <View style={styles.section}>
+          <SectionHeader label="SERVICE CATEGORY" />
+          {service.subcategory && (
+            <>
+              <InlineRow
+                label="Category"
+                value={service.subcategory.category.name}
+              />
+              <InlineRow label="Subcategory" value={service.subcategory.name} />
+            </>
+          )}
+        </View>
+
         {/* SERVICE INFORMATION */}
         <View style={styles.section}>
           <SectionHeader label="SERVICE INFORMATION" />
 
           <Text style={styles.serviceTitle}>{service.title}</Text>
 
-          <InlineRow
-            label="Service Type"
-            value={service.serviceType === "inPerson" ? "In-person" : "Remote"}
-          />
-          {service.address && (
-            <FieldBlock
-              label="Service Address"
-              value={service.address.address}
-            />
+          <View style={styles.subBlock}>
+            <Text style={styles.subBlockLabel}>Service Type</Text>
+            <Text style={styles.bodyText}>
+              {service.serviceType === "inPerson" ? "In-person" : "Remote"}
+            </Text>
+          </View>
+
+          {service.serviceType === "inPerson" && service.address && (
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Service Address</Text>
+              <Text style={styles.bodyText}>{service.address.address}</Text>
+            </View>
           )}
           {service.areaRadius && (
-            <InlineRow
-              label="Service Area Radius"
-              value={`${parseFloat(service.areaRadius)} miles`}
-            />
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Service Area Radius</Text>
+              <Text
+                style={styles.bodyText}
+              >{`${parseFloat(service.areaRadius)} miles`}</Text>
+            </View>
           )}
 
           {/* Custom field values */}
@@ -225,11 +266,10 @@ export default function ServiceDetailScreen() {
             const value = formatCustomValue(cv);
             if (!value) return null;
             return (
-              <InlineRow
-                key={cv.id}
-                label={cv.field.fieldLabel}
-                value={value}
-              />
+              <View style={styles.subBlock} key={cv.id}>
+                <Text style={styles.subBlockLabel}>{cv.field.fieldLabel}</Text>
+                <Text style={styles.bodyText}>{value}</Text>
+              </View>
             );
           })}
 
@@ -263,12 +303,17 @@ export default function ServiceDetailScreen() {
                 style={styles.imageScrollRow}
               >
                 {service.images.map((img) => (
-                  <ExpoImage
+                  <TouchableOpacity
                     key={img.id}
-                    source={{ uri: img.url }}
-                    style={styles.thumbnail}
-                    contentFit="cover"
-                  />
+                    onPress={() => setSelectedImageUri(img.url)}
+                    activeOpacity={0.85}
+                  >
+                    <ExpoImage
+                      source={{ uri: img.url }}
+                      style={styles.thumbnail}
+                      contentFit="cover"
+                    />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -280,16 +325,23 @@ export default function ServiceDetailScreen() {
                 Certifications / Licenses
               </Text>
               {service.certifications.map((cert) => (
-                <View key={cert.id} style={styles.certRow}>
+                <TouchableOpacity
+                  key={cert.id}
+                  style={styles.certRow}
+                  onPress={() => WebBrowser.openBrowserAsync(cert.url)}
+                  activeOpacity={0.7}
+                >
                   <MaterialIcons
-                    name="workspace-premium"
+                    name="insert-drive-file"
                     size={15}
-                    color={primary[400]}
+                    color={neutral[300]}
                   />
-                  <Text style={styles.certText}>
-                    {cert.fileName ?? "Certificate"}
+                  <Text style={[styles.certText, styles.certTextTappable]}>
+                    {cert.fileName
+                      ? decodeURIComponent(cert.fileName)
+                      : "Certificate"}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -307,11 +359,12 @@ export default function ServiceDetailScreen() {
           {service.addons.length > 0 && (
             <>
               <View style={styles.pricingDivider} />
+              <Text style={styles.subBlockLabel}>Add-ons</Text>
               {service.addons.map((addon) => (
                 <PricingRow
                   key={addon.id}
                   label={addon.template.name}
-                  value={formatRate(addon.price, addon.template.rateUnit)}
+                  value={formatRate(addon.price, addon.rateUnit)}
                 />
               ))}
             </>
@@ -345,13 +398,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-  backButton: {
-    padding: 4,
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   headerSpacer: {
     width: 26,
@@ -374,7 +424,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     padding: 16,
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -391,7 +441,7 @@ const styles = StyleSheet.create({
     height: 30,
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: neutral[400],
     letterSpacing: 0.5,
@@ -408,7 +458,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
   },
   inlineRow: {
     flexDirection: "row",
@@ -421,12 +471,12 @@ const styles = StyleSheet.create({
   },
   inlineValue: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
   },
   serviceTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
   },
   subBlock: {
     gap: 5,
@@ -435,11 +485,11 @@ const styles = StyleSheet.create({
   subBlockLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#303030",
+    color: neutral[700],
   },
   bodyText: {
     fontSize: 12,
-    color: "#505050",
+    color: neutral[600],
     lineHeight: 19,
   },
   imageScrollRow: {
@@ -450,7 +500,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginRight: 8,
-    backgroundColor: "#eaeaea",
+    backgroundColor: neutral[100],
   },
   certRow: {
     flexDirection: "row",
@@ -459,8 +509,30 @@ const styles = StyleSheet.create({
   },
   certText: {
     fontSize: 12,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
+  },
+  certTextTappable: {
+    color: primary[500],
+    textDecorationLine: "underline",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: neutral[1000],
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: 20,
+    backgroundColor: overlay.medium,
+    borderRadius: 20,
+    padding: 6,
   },
   // Pricing
   pricingRow: {
@@ -471,13 +543,13 @@ const styles = StyleSheet.create({
   },
   pricingLabel: {
     fontSize: 13,
-    color: "#303030",
+    color: neutral[700],
     flex: 1,
   },
   pricingValue: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   pricingDivider: {
     height: StyleSheet.hairlineWidth,

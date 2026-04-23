@@ -1,9 +1,14 @@
+import { BackButton } from "@/components/BackButton";
+import {
+  SERVICE_STATUS_CONFIG,
+  ServiceStatus,
+} from "@/components/ServiceStatusBadge";
 import Divider from "@/components/ui/divider";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -18,12 +23,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background, status } = Colors;
+const { primary, neutral, background, brand } = Colors;
 
 // TODO: replace with real auth user id
 const USER_ID = 1;
-
-type ServiceStatus = "active" | "inactive" | "pendingReview";
 
 interface Service {
   id: number;
@@ -33,32 +36,18 @@ interface Service {
   images: { url: string }[];
   subcategory: { name: string; category: { name: string } } | null;
   business: { business: { name: string } } | null;
+  updatedAt: string;
 }
 
-const STATUS_META: Record<
-  ServiceStatus,
-  {
-    label: string;
-    description: string;
-    icon: "check-circle" | "remove-circle" | "schedule";
-  }
-> = {
-  active: {
-    label: "Active",
-    description: "Accepting new bookings",
-    icon: "check-circle",
-  },
-  inactive: {
-    label: "Inactive",
-    description: "Not accepting bookings",
-    icon: "remove-circle",
-  },
-  pendingReview: {
-    label: "Pending Review",
-    description: "Under review",
-    icon: "schedule",
-  },
-};
+function getRelativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
@@ -158,13 +147,12 @@ function ServiceCard({
   service: Service;
   onMore: () => void;
 }) {
-  const meta = STATUS_META[service.status];
-  const statusColor =
-    service.status === "active"
-      ? status.active
-      : service.status === "inactive"
-        ? status.inactive
-        : "#f0a500";
+  const meta = SERVICE_STATUS_CONFIG[service.status];
+  const statusColor = meta.color;
+  const statusDescription =
+    service.status === "pendingReview"
+      ? getRelativeTime(service.updatedAt)
+      : meta.description;
   const photo = service.images[0]?.url;
 
   return (
@@ -175,18 +163,23 @@ function ServiceCard({
         resizeMode="cover"
       />
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{service.title}</Text>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {service.title}
+        </Text>
         <View style={styles.statusRow}>
           <MaterialIcons name={meta.icon} size={12} color={statusColor} />
           <Text style={styles.statusText}>
             <Text style={{ color: statusColor }}>{meta.label} </Text>
-            <Text style={styles.statusDescription}>· {meta.description}</Text>
+            <Text style={styles.statusDescription}>· {statusDescription}</Text>
           </Text>
         </View>
         {service.serviceMode === "business" && service.business && (
           <View style={styles.businessRow}>
-            <MaterialIcons name="business" size={12} color="#7a7a7a" />
-            <Text style={styles.businessName}>
+            <ExpoImage
+              source={require("@/assets/global-icons/business.svg")}
+              style={{ width: 12, height: 12 }}
+            />
+            <Text style={styles.businessName} numberOfLines={1}>
               {service.business.business.name}
             </Text>
           </View>
@@ -206,12 +199,15 @@ export default function ServicesScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services`)
-      .then((res) => res.json())
-      .then((data: Service[]) => setServices(data))
-      .finally(() => setLoading(false));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services?deleted=false`)
+        .then((res) => res.json())
+        .then((data: Service[]) => setServices(data))
+        .finally(() => setLoading(false));
+    }, []),
+  );
 
   const visibleServices =
     activeTab === "All"
@@ -222,12 +218,7 @@ export default function ServicesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.push("/(tabs)")}
-        >
-          <MaterialIcons name="arrow-back-ios" size={18} color={neutral[700]} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.push("/(tabs)")} />
         <Text style={styles.headerTitle}>My Services</Text>
         <TouchableOpacity
           style={styles.addButton}
@@ -292,12 +283,14 @@ export default function ServicesScreen() {
           if (id) router.push(`/service-detail/${id}`);
         }}
         onEdit={() => {
+          const id = selectedService?.id;
           setSelectedService(null);
-          // TODO: navigate to edit service
+          if (id) router.push(`/edit-service/${id}`);
         }}
         onDelete={() => {
+          const id = selectedService?.id;
           setSelectedService(null);
-          // TODO: handle delete
+          if (id) router.push(`/edit-service/${id}/delete`);
         }}
       />
     </SafeAreaView>
@@ -318,23 +311,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 23,
-    backgroundColor: neutral[0],
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-  },
   headerTitle: {
     fontSize: 20,
     fontWeight: "500",
-    color: "#222b45",
+    color: neutral[800],
   },
   addButton: {
     width: 22,
@@ -346,7 +326,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fafafa",
+    backgroundColor: neutral[50],
     borderRadius: 12,
     marginHorizontal: 30,
     marginBottom: 20,
@@ -368,7 +348,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6d6d6d",
+    color: neutral[500],
   },
   tabTextActive: {
     color: neutral[0],
@@ -396,7 +376,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#a3a3a3",
+    borderColor: neutral[300],
     borderRadius: 8,
     padding: 13,
     gap: 15,
@@ -406,7 +386,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#eaeaea",
+    backgroundColor: neutral[100],
   },
   cardInfo: {
     flex: 1,
@@ -415,7 +395,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#303030",
+    color: neutral[700],
     letterSpacing: -0.408,
   },
   statusRow: {
@@ -424,12 +404,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "500",
     letterSpacing: -0.408,
   },
   statusDescription: {
-    color: "#7a7a7a",
+    color: neutral[400],
     fontWeight: "500",
   },
   businessRow: {
@@ -440,7 +420,7 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#7a7a7a",
+    color: neutral[400],
     letterSpacing: -0.408,
   },
   moreButton: {
@@ -472,7 +452,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#222b45",
+    color: neutral[800],
     textAlign: "center",
     marginBottom: 20,
   },
@@ -485,6 +465,6 @@ const styles = StyleSheet.create({
   sheetOptionText: {
     fontSize: 15,
     fontWeight: "400",
-    color: "#222b45",
+    color: neutral[800],
   },
 });

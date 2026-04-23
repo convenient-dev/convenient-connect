@@ -68,6 +68,13 @@ export const Colors = {
   status: {
     active:   '#00b383',
     inactive: '#c0830f',
+    error:    '#d32f2f',
+  },
+
+  overlay: {
+    light:  'rgba(0,0,0,0.4)',
+    medium: 'rgba(0,0,0,0.5)',
+    dark:   'rgba(0,0,0,0.55)',
   },
 
   border: {

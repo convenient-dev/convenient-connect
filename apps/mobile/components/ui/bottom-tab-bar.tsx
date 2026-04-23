@@ -1,31 +1,43 @@
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+import { Colors } from "@/constants/theme";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import * as Haptics from "expo-haptics";
+import { Image as ExpoImage, ImageSource } from "expo-image";
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TAB_CONFIG: Record<string, { label: string; icon: string; badge?: string }> = {
+const icons = {
+  home: require("@/assets/home/nav-home.svg"),
+  services: require("@/assets/home/nav-services.svg"),
+  calendar: require("@/assets/home/nav-calender.svg"),
+  chats: require("@/assets/home/nav-chats.svg"),
+  share: require("@/assets/home/nav-share.svg"),
+};
+
+const TAB_CONFIG: Record<
+  string,
+  { label: string; icon: ImageSource; badge?: string }
+> = {
   index: {
-    label: 'Home',
-    icon: 'https://www.figma.com/api/mcp/asset/b5993281-5a8d-4e59-8707-ae689962e918',
+    label: "Home",
+    icon: icons.home,
   },
   services: {
-    label: 'Services',
-    icon: 'https://www.figma.com/api/mcp/asset/e5f99bca-5ebe-422d-a39f-4a908d4b1266',
+    label: "Services",
+    icon: icons.services,
   },
   calendar: {
-    label: 'Calendar',
-    icon: 'https://www.figma.com/api/mcp/asset/2ffd7967-612b-486f-a9e4-ef09537a1f93',
+    label: "Calendar",
+    icon: icons.calendar,
   },
   chats: {
-    label: 'Chats',
-    icon: 'https://www.figma.com/api/mcp/asset/ed119bf2-922d-4200-bf74-be0e15be2b4d',
-    badge: '2',
+    label: "Chats",
+    icon: icons.chats,
+    badge: "2",
   },
   share: {
-    label: 'Share',
-    icon: 'https://www.figma.com/api/mcp/asset/a1c97608-db06-44c6-aea2-fee85d62c6fe',
+    label: "Share",
+    icon: icons.share,
   },
 };
 
@@ -41,11 +53,11 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
         const isFocused = state.index === index;
 
         const onPress = () => {
-          if (process.env.EXPO_OS === 'ios') {
+          if (process.env.EXPO_OS === "ios") {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }
           const event = navigation.emit({
-            type: 'tabPress',
+            type: "tabPress",
             target: route.key,
             canPreventDefault: true,
           });
@@ -62,14 +74,19 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
             activeOpacity={0.7}
           >
             <View style={styles.iconWrapper}>
-              <Image source={{ uri: tab.icon }} style={styles.icon} resizeMode="contain" />
+              <ExpoImage source={tab.icon} style={styles.icon} />
               {tab.badge && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{tab.badge}</Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.label, isFocused ? styles.labelActive : styles.labelInactive]}>
+            <Text
+              style={[
+                styles.label,
+                isFocused ? styles.labelActive : styles.labelInactive,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -81,21 +98,21 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    backgroundColor: Colors.background.screen,
     paddingHorizontal: 30,
     paddingTop: 8,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: Colors.neutral[1000],
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 10,
   },
   tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     minWidth: 48,
   },
@@ -108,18 +125,18 @@ const styles = StyleSheet.create({
     height: 24,
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -6,
     width: 14,
     height: 14,
     borderRadius: 7,
     backgroundColor: Colors.brand.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   badgeText: {
-    color: '#fff',
+    color: Colors.neutral[0],
     fontSize: 8,
     lineHeight: 10,
   },
@@ -129,10 +146,10 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: Colors.brand.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   labelInactive: {
     color: Colors.text.muted,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

@@ -1,3 +1,4 @@
+import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -46,6 +47,7 @@ export default function HomeScreen() {
     }[];
     avatarUrl: string | null;
   } | null>(null);
+  const [services, setServices] = useState<MyServiceCardData[]>([]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/users/1`)
@@ -58,6 +60,11 @@ export default function HomeScreen() {
           avatarUrl: data.avatarUrl,
         }),
       )
+      .catch(() => {});
+
+    fetch(`${API_BASE_URL}/users/1/services?deleted=false`)
+      .then((res) => res.json())
+      .then((data: MyServiceCardData[]) => setServices(data ?? []))
       .catch(() => {});
   }, []);
 
@@ -140,24 +147,39 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
           </View>
-
-          {/* Create service card */}
-          <TouchableOpacity
-            style={styles.createServiceCard}
-            activeOpacity={0.8}
-            onPress={() => router.push("/create-service")}
-          >
-            <ExpoImage
-              source={require("@/assets/home/create-service.png")}
-              style={styles.serviceProviderImage}
-              contentFit="cover"
+          /* Show current services */
+          {services.length > 0 ? (
+            <FlatList
+              data={services}
+              keyExtractor={(item) => String(item.id)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.myServicesList}
+              renderItem={({ item }) => (
+                <MyServiceCard
+                  service={item}
+                  onPress={() => router.push(`/service-detail/${item.id}`)}
+                />
+              )}
             />
-            <View style={styles.createServiceAction}>
-              <MaterialIcons name="add" size={20} color={primary[400]} />
-              <Text style={styles.createServiceText}>Create a service</Text>
-            </View>
-          </TouchableOpacity>
-
+          ) : (
+            /* Empty State: Create service card */
+            <TouchableOpacity
+              style={styles.createServiceCard}
+              activeOpacity={0.8}
+              onPress={() => router.push("/create-service")}
+            >
+              <ExpoImage
+                source={require("@/assets/home/create-service.png")}
+                style={styles.serviceProviderImage}
+                contentFit="cover"
+              />
+              <View style={styles.createServiceAction}>
+                <MaterialIcons name="add" size={20} color={primary[400]} />
+                <Text style={styles.createServiceText}>Create a service</Text>
+              </View>
+            </TouchableOpacity>
+          )}
           {/* Banners carousel */}
           <View style={styles.bannersSection}>
             <FlatList
@@ -192,12 +214,10 @@ export default function HomeScreen() {
               ))}
             </View>
           </View>
-
           {/* New Requests header */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>New Requests</Text>
           </View>
-
           {/* Empty state */}
           <View style={styles.emptyState}>
             <ExpoImage
@@ -301,6 +321,10 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: text.primary,
     letterSpacing: -0.408,
+  },
+  myServicesList: {
+    gap: 16,
+    paddingVertical: 4,
   },
   createServiceCard: {
     backgroundColor: background.subtle,

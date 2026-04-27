@@ -1,4 +1,5 @@
 import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
+import { SideMenu } from "@/components/SideMenu";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -48,6 +49,7 @@ export default function HomeScreen() {
     avatarUrl: string | null;
   } | null>(null);
   const [services, setServices] = useState<MyServiceCardData[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/users/1`)
@@ -114,7 +116,10 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.menuButton, styles.roundShadow]}>
+            <TouchableOpacity
+              style={[styles.menuButton, styles.roundShadow]}
+              onPress={() => setMenuOpen(true)}
+            >
               <MaterialIcons name="menu" size={24} color={text.primary} />
             </TouchableOpacity>
           </View>
@@ -147,7 +152,7 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
           </View>
-          /* Show current services */
+          {/* Show current services */}
           {services.length > 0 ? (
             <FlatList
               data={services}
@@ -163,7 +168,7 @@ export default function HomeScreen() {
               )}
             />
           ) : (
-            /* Empty State: Create service card */
+            // Empty State: Create service card
             <TouchableOpacity
               style={styles.createServiceCard}
               activeOpacity={0.8}
@@ -228,6 +233,19 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+      <SideMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        user={
+          user
+            ? {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                avatarUrl: user.avatarUrl,
+              }
+            : null
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -259,6 +277,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
+
   },
   locationRow: {
     flex: 1,

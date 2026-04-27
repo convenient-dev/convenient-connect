@@ -65,7 +65,6 @@ export default function RootLayout() {
           name="edit-service/[id]/delete-reason"
           options={{ headerShown: false }}
         />
-        `
       </Stack>
 
       <StatusBar style="auto" />

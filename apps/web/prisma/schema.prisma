@@ -67,6 +67,7 @@ model User {
   accountType AccountType
   isVerified  Boolean     @default(false)
   avatarUrl   String?
+  aboutMe     String?
 
   ownedBusiness        Business?             @relation("BusinessOwner")
   businessAffiliations BusinessAffiliation[]

@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage, ImageSource } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
@@ -48,6 +49,7 @@ export function SideMenu({
   membership = { tier: "Gold" },
   appVersion = "1.0.0",
 }: SideMenuProps) {
+  const router = useRouter();
   const translateX = useRef(new Animated.Value(-MENU_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [rendered, setRendered] = React.useState(visible);
@@ -91,6 +93,10 @@ export function SideMenu({
       key: "profile",
       label: "Profile",
       icon: require("@/assets/side-menu/profile.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/profile");
+      },
     },
     {
       key: "earnings",

@@ -27,3 +27,31 @@ export async function GET(
     })),
   });
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await req.json();
+
+  const data: { aboutMe?: string | null } = {};
+  if ("aboutMe" in body) {
+    data.aboutMe = typeof body.aboutMe === "string" ? body.aboutMe : null;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return Response.json(
+      { error: "No supported fields to update" },
+      { status: 400 },
+    );
+  }
+
+  const user = await prisma.user.update({
+    where: { id: Number(id) },
+    data,
+    select: { id: true, aboutMe: true },
+  });
+
+  return Response.json(user);
+}

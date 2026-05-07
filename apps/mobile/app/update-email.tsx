@@ -19,16 +19,25 @@ const { secondary, neutral, text, background, border } = Colors;
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
-const PLACEHOLDER =
-  "Help clients learn more about you. Please write a general introduction, since you may offer different types of services.";
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const INVALID_EMAIL_MESSAGE = "Please enter a valid email address.";
 
-export default function AboutMeScreen() {
+export default function UpdateEmailScreen() {
   const router = useRouter();
-  const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
+  const { email: initial } = useLocalSearchParams<{ email?: string }>();
 
-  const [value, setValue] = useState<string>(initial ?? "");
+  const [email, setEmail] = useState<string>(initial ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const trimmed = email.trim();
+  const emailError =
+    trimmed.length > 0 && !EMAIL_REGEX.test(trimmed)
+      ? INVALID_EMAIL_MESSAGE
+      : null;
+  const isChanged =
+    trimmed.toLowerCase() !== (initial ?? "").trim().toLowerCase();
+  const canSave = trimmed.length > 0 && !emailError && isChanged && !saving;
 
   async function handleSave() {
     setSaving(true);
@@ -37,7 +46,7 @@ export default function AboutMeScreen() {
       const res = await fetch(`${API_BASE_URL}/users/1`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aboutMe: value.trim() }),
+        body: JSON.stringify({ email: trimmed }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -59,37 +68,49 @@ export default function AboutMeScreen() {
         <View style={styles.header}>
           <BackButton onPress={() => router.back()} />
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>About Me</Text>
+            <Text style={styles.headerTitle}>Update Email</Text>
           </View>
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.body}>
-          <TextInput
-            style={styles.textArea}
-            placeholder={PLACEHOLDER}
-            placeholderTextColor={neutral[400]}
-            multiline
-            textAlignVertical="top"
-            value={value}
-            onChangeText={setValue}
-            editable={!saving}
-          />
+          <View style={styles.field}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={[styles.input, emailError && styles.inputError]}
+              placeholder="you@example.com"
+              placeholderTextColor={neutral[400]}
+              value={email}
+              onChangeText={setEmail}
+              editable={!saving}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              returnKeyType="done"
+            />
+            {emailError && <Text style={styles.fieldError}>{emailError}</Text>}
+          </View>
+          <Text style={styles.subtitle}>
+            If you wish to update your email address or no longer have access to
+            the previous one, you can update it here. Make sure to provide a
+            valid email address to receive order updates, promotional and
+            account information.
+          </Text>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
             activeOpacity={0.85}
             onPress={handleSave}
-            disabled={saving}
+            disabled={!canSave}
           >
             {saving ? (
               <ActivityIndicator color={neutral[0]} />
             ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
+              <Text style={styles.saveButtonText}>Update</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -127,18 +148,40 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
-    gap: 12,
+    gap: 16,
   },
-  textArea: {
-    minHeight: 220,
+  field: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  input: {
+    height: 48,
     borderWidth: 1,
     borderColor: border.default,
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
     fontSize: 14,
     color: text.primary,
     letterSpacing: -0.408,
+  },
+  inputError: {
+    borderColor: secondary[500],
+  },
+  fieldError: {
+    fontSize: 12,
+    color: secondary[500],
+    letterSpacing: -0.408,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: neutral[400],
+    letterSpacing: -0.408,
+    lineHeight: 20,
   },
   errorText: {
     fontSize: 13,

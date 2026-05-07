@@ -201,7 +201,20 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.list}>
-          <ProfileRow label="Name" value={fullName} valueMuted />
+          <ProfileRow
+            label="Name"
+            value={fullName}
+            valueMuted
+            onPress={() =>
+              router.push({
+                pathname: "/update-name",
+                params: {
+                  firstName: user?.firstName ?? "",
+                  lastName: user?.lastName ?? "",
+                },
+              })
+            }
+          />
           <View style={styles.rowDivider} />
 
           <ProfileRow
@@ -209,6 +222,12 @@ export default function ProfileScreen() {
             value={user?.phoneNumber ?? "—"}
             valueMuted
             trailingIcon="verified"
+            onPress={() =>
+              router.push({
+                pathname: "/update-phone",
+                params: { phoneNumber: user?.phoneNumber ?? "" },
+              })
+            }
           />
           <View style={styles.rowDivider} />
 
@@ -217,6 +236,12 @@ export default function ProfileScreen() {
             value={user?.email ?? "—"}
             valueMuted
             trailingIcon="verified"
+            onPress={() =>
+              router.push({
+                pathname: "/update-email",
+                params: { email: user?.email ?? "" },
+              })
+            }
           />
           <View style={styles.rowDivider} />
 
@@ -235,7 +260,7 @@ export default function ProfileScreen() {
                 : "Please complete your background check"
             }
             valueMuted
-            trailingIcon={backgroundComplete ? undefined : "warning"}
+            trailingIcon={backgroundComplete ? "verified" : "warning"}
           />
           <View style={styles.rowDivider} />
 

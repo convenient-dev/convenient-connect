@@ -60,14 +60,12 @@ export default function AffiliationsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <BackButton onPress={() => router.back()} />
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.titleBlock}>
-        <Text style={styles.title}>My Affiliations</Text>
-        <Text style={styles.subtitle}>
-          Businesses you&apos;re currently affiliated with
-        </Text>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>My Affiliations</Text>
+          <Text style={styles.subtitle}>
+            Businesses you&apos;re currently affiliated with
+          </Text>
+        </View>
       </View>
 
       {loading ? (

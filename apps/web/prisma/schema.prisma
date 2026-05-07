@@ -19,6 +19,11 @@ enum AccountType {
   business
 }
 
+enum ProfileTypeStatus {
+  active
+  pending
+}
+
 enum ServiceStatus {
   active
   inactive
@@ -64,10 +69,11 @@ model User {
   password    String?
   phoneNumber String?
   addresses   UserAddress[]
-  accountType AccountType
-  isVerified  Boolean     @default(false)
-  avatarUrl   String?
-  aboutMe     String?
+  accountType        AccountType
+  profileTypeStatus  ProfileTypeStatus @default(active)
+  isBackgroundCheck  Boolean           @default(false)
+  avatarUrl          String?
+  aboutMe            String?
 
   ownedBusiness        Business?             @relation("BusinessOwner")
   businessAffiliations BusinessAffiliation[]

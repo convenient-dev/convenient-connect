@@ -25,11 +25,12 @@ interface UserProfile {
   lastName: string | null;
   email: string | null;
   phoneNumber: string | null;
-  isVerified: boolean;
+  isBackgroundCheck: boolean;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   avatarUrl: string | null;
   accountType: "individual" | "business" | string;
+  profileTypeStatus?: "active" | "pending" | string;
   backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
   aboutMe?: string | null;
 }
@@ -51,6 +52,7 @@ interface RowProps {
   value: string;
   valueMuted?: boolean;
   trailingIcon?: "verified" | "warning";
+  badge?: string;
   onPress?: () => void;
 }
 
@@ -59,6 +61,7 @@ function ProfileRow({
   value,
   valueMuted,
   trailingIcon,
+  badge,
   onPress,
 }: RowProps) {
   return (
@@ -87,6 +90,11 @@ function ProfileRow({
               color={status.error}
               style={styles.rowValueIcon}
             />
+          )}
+          {badge && (
+            <View style={styles.rowBadge}>
+              <Text style={styles.rowBadgeText}>{badge}</Text>
+            </View>
           )}
         </View>
       </View>
@@ -145,7 +153,7 @@ export default function ProfileScreen() {
         <BackButton onPress={() => router.back()} />
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>My Profile</Text>
-          {user?.isVerified && (
+          {user?.isBackgroundCheck && (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
@@ -249,6 +257,18 @@ export default function ProfileScreen() {
             label="Profile Type"
             value={profileTypeLabel}
             valueMuted
+            trailingIcon={
+              user?.profileTypeStatus === "pending" ? "warning" : undefined
+            }
+            onPress={() =>
+              router.push({
+                pathname:
+                  user?.profileTypeStatus === "pending"
+                    ? "/profile-type-pending"
+                    : "/profile-type",
+                params: { accountType: user?.accountType ?? "individual" },
+              })
+            }
           />
           <View style={styles.rowDivider} />
 
@@ -403,6 +423,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: text.primary,
+    letterSpacing: -0.408,
+  },
+  rowBadge: {
+    marginLeft: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: status.inactive + "22",
+  },
+  rowBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: status.inactive,
     letterSpacing: -0.408,
   },
   rowValueWrap: {

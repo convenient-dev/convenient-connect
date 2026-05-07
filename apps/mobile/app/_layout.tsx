@@ -31,6 +31,11 @@ export default function RootLayout() {
         <Stack.Screen name="update-name" options={{ headerShown: false }} />
         <Stack.Screen name="update-phone" options={{ headerShown: false }} />
         <Stack.Screen name="update-email" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-type" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-type-pending" options={{ headerShown: false }} />
+        <Stack.Screen name="business-details" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-business" options={{ headerShown: false }} />
+        <Stack.Screen name="update-bank-account" options={{ headerShown: false }} />
         <Stack.Screen name="create-service" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-service-category"

@@ -19,9 +19,6 @@ const { secondary, neutral, text, background, border } = Colors;
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
-const PLACEHOLDER =
-  "Help clients learn more about you. Please write a general introduction, since you may offer different types of services.";
-
 export default function AboutMeScreen() {
   const router = useRouter();
   const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
@@ -67,8 +64,7 @@ export default function AboutMeScreen() {
         <View style={styles.body}>
           <TextInput
             style={styles.textArea}
-            placeholder={PLACEHOLDER}
-            placeholderTextColor={neutral[400]}
+            placeholder="Write a brief introduction about yourself, your experience, and the services you offer."
             multiline
             textAlignVertical="top"
             value={value}
@@ -77,6 +73,11 @@ export default function AboutMeScreen() {
           />
 
           {error && <Text style={styles.errorText}>{error}</Text>}
+
+          <Text style={styles.subtitle}>
+            Help clients learn more about you. Please write a general
+            introduction, since you may offer different types of services.
+          </Text>
         </View>
 
         <View style={styles.footer}>
@@ -143,6 +144,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: secondary[500],
+  },
+  subtitle: {
+    fontSize: 14,
+    color: neutral[400],
+    letterSpacing: -0.408,
+    lineHeight: 20,
   },
   footer: {
     paddingHorizontal: 20,

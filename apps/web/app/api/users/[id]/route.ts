@@ -54,7 +54,7 @@ export async function PUT(
     phoneNumber?: string;
     email?: string;
     aboutMe?: string | null;
-    isVerified?: boolean;
+    isBackgroundCheck?: boolean;
   } = {};
 
   // update first and last name(require re-verification)
@@ -79,13 +79,13 @@ export async function PUT(
     // check user verification status
     const current = await prisma.user.findUnique({
       where: { id: Number(id) },
-      select: { isVerified: true },
+      select: { isBackgroundCheck: true },
     });
     if (!current) {
       return Response.json({ error: "User not found" }, { status: 404 });
     }
-    if (current.isVerified) {
-      data.isVerified = false;
+    if (current.isBackgroundCheck) {
+      data.isBackgroundCheck = false;
     }
   }
 
@@ -140,7 +140,7 @@ export async function PUT(
         phoneNumber: true,
         email: true,
         aboutMe: true,
-        isVerified: true,
+        isBackgroundCheck: true,
       },
     });
     return Response.json(user);

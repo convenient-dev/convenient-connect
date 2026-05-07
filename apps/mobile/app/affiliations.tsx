@@ -60,12 +60,8 @@ export default function AffiliationsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <BackButton onPress={() => router.back()} />
-        <View style={styles.titleBlock}>
-          <Text style={styles.title}>My Affiliations</Text>
-          <Text style={styles.subtitle}>
-            Businesses you&apos;re currently affiliated with
-          </Text>
-        </View>
+        <Text style={styles.title}>My Affiliations</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {loading ? (
@@ -80,6 +76,9 @@ export default function AffiliationsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <Text style={styles.subtitle}>
+            Businesses you&apos;re currently affiliated with
+          </Text>
           {affiliations.length === 0 ? (
             <Text style={styles.emptyText}>No affiliations yet.</Text>
           ) : (
@@ -133,24 +132,21 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 6,
   },
-  headerSpacer: { flex: 1 },
-  titleBlock: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 18,
-    gap: 6,
-  },
+  headerSpacer: { width: 40 },
   title: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "600",
     color: text.primary,
+    textAlign: "center",
     letterSpacing: -0.408,
   },
   subtitle: {
     fontSize: 14,
     color: text.primary,
+    textAlign: "center",
     letterSpacing: -0.408,
+    marginBottom: 18,
   },
   scroll: { flex: 1 },
   scrollContent: {

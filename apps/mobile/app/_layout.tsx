@@ -24,6 +24,13 @@ export default function RootLayout() {
           name="modal"
           options={{ presentation: "modal", title: "Modal" }}
         />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="edit-avatar" options={{ headerShown: false }} />
+        <Stack.Screen name="affiliations" options={{ headerShown: false }} />
+        <Stack.Screen name="about-me" options={{ headerShown: false }} />
+        <Stack.Screen name="update-name" options={{ headerShown: false }} />
+        <Stack.Screen name="update-phone" options={{ headerShown: false }} />
+        <Stack.Screen name="update-email" options={{ headerShown: false }} />
         <Stack.Screen name="create-service" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-service-category"

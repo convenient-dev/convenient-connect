@@ -93,7 +93,7 @@ export default function HomeScreen() {
                 : require("@/assets/default-avatar-square.svg")
             }
             style={styles.avatar}
-            contentFit="contain"
+            contentFit="cover"
           />
 
           {/* Address + Menu */}
@@ -277,7 +277,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-
+    borderRadius: 16,
+    overflow: "hidden",
   },
   locationRow: {
     flex: 1,

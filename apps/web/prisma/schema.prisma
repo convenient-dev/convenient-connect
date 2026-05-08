@@ -71,7 +71,8 @@ model User {
   addresses   UserAddress[]
   accountType        AccountType
   profileTypeStatus  ProfileTypeStatus @default(active)
-  isBackgroundCheck  Boolean           @default(false)
+  isPersonVerified   Boolean           @default(false)
+  isBusinessVerified Boolean           @default(false)
   avatarUrl          String?
   aboutMe            String?
 
@@ -86,6 +87,9 @@ model User {
 model Business {
   id      Int     @id @default(autoincrement())
   name    String
+  registerDoc  String?
+  ownerIdDoc   String?
+  ein          String?
 
   ownerId      Int                   @unique
   owner        User                  @relation("BusinessOwner", fields: [ownerId], references: [id])
@@ -114,8 +118,8 @@ model BusinessAffiliation {
 model Address {
   id        Int    @id @default(autoincrement())
   address   String
-  latitude  String
-  longitude String
+  latitude  String?
+  longitude String?
 
   users      UserAddress[]
   businesses BusinessAddress[]

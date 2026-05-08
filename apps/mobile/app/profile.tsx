@@ -25,7 +25,7 @@ interface UserProfile {
   lastName: string | null;
   email: string | null;
   phoneNumber: string | null;
-  isBackgroundCheck: boolean;
+  isPersonVerified: boolean;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   avatarUrl: string | null;
@@ -153,7 +153,7 @@ export default function ProfileScreen() {
         <BackButton onPress={() => router.back()} />
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>My Profile</Text>
-          {user?.isBackgroundCheck && (
+          {user?.isPersonVerified && (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
@@ -281,6 +281,7 @@ export default function ProfileScreen() {
             }
             valueMuted
             trailingIcon={backgroundComplete ? "verified" : "warning"}
+            onPress={() => router.push("/background-check-1")}
           />
           <View style={styles.rowDivider} />
 

@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
+import { BusinessSignupProvider } from "@/contexts/BusinessSignupContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export const unstable_settings = {
@@ -18,66 +19,88 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
-        />
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-avatar" options={{ headerShown: false }} />
-        <Stack.Screen name="affiliations" options={{ headerShown: false }} />
-        <Stack.Screen name="about-me" options={{ headerShown: false }} />
-        <Stack.Screen name="update-name" options={{ headerShown: false }} />
-        <Stack.Screen name="update-phone" options={{ headerShown: false }} />
-        <Stack.Screen name="update-email" options={{ headerShown: false }} />
-        <Stack.Screen name="profile-type" options={{ headerShown: false }} />
-        <Stack.Screen name="profile-type-pending" options={{ headerShown: false }} />
-        <Stack.Screen name="business-details" options={{ headerShown: false }} />
-        <Stack.Screen name="verify-business" options={{ headerShown: false }} />
-        <Stack.Screen name="update-bank-account" options={{ headerShown: false }} />
-        <Stack.Screen name="create-service" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="create-service-category"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="create-service-subcategory"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="create-service-form"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="service-detail/[id]"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/index"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/category"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/information"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/pricing"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/delete"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="edit-service/[id]/delete-reason"
-          options={{ headerShown: false }}
-        />
-      </Stack>
+      <BusinessSignupProvider>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="modal"
+            options={{ presentation: "modal", title: "Modal" }}
+          />
+          <Stack.Screen name="profile" options={{ headerShown: false }} />
+          <Stack.Screen name="edit-avatar" options={{ headerShown: false }} />
+          <Stack.Screen name="affiliations" options={{ headerShown: false }} />
+          <Stack.Screen name="about-me" options={{ headerShown: false }} />
+          <Stack.Screen name="update-name" options={{ headerShown: false }} />
+          <Stack.Screen name="update-phone" options={{ headerShown: false }} />
+          <Stack.Screen name="update-email" options={{ headerShown: false }} />
+          <Stack.Screen name="profile-type" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="profile-type-pending"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="business-details"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="verify-business"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="update-bank-account"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="background-check-1"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="background-check-2"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="create-service" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="create-service-category"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="create-service-subcategory"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="create-service-form"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="service-detail/[id]"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/category"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/information"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/pricing"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/delete"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-service/[id]/delete-reason"
+            options={{ headerShown: false }}
+          />
+        </Stack>
+      </BusinessSignupProvider>
 
       <StatusBar style="auto" />
     </ThemeProvider>

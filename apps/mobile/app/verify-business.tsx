@@ -1,9 +1,17 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
+import {
+  UploadedDoc,
+  useBusinessSignup,
+} from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,13 +25,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+
+const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/png"];
+
+type DocType = "registration" | "governmentId";
+
 interface UploadCardProps {
   icon: keyof typeof MaterialIcons.glyphMap;
   title: string;
   description: string;
   acceptedHeading: string;
   acceptedItems: string[];
-  uploaded: string | null;
+  uploaded: UploadedDoc | null;
+  uploading: boolean;
+  error: string | null;
   onPick: () => void;
 }
 
@@ -34,6 +51,8 @@ function UploadCard({
   acceptedHeading,
   acceptedItems,
   uploaded,
+  uploading,
+  error,
   onPick,
 }: UploadCardProps) {
   return (
@@ -63,29 +82,46 @@ function UploadCard({
         style={styles.uploadZone}
         activeOpacity={0.7}
         onPress={onPick}
+        disabled={uploading}
       >
-        <MaterialIcons
-          name={uploaded ? "check-circle" : "file-upload"}
-          size={22}
-          color={uploaded ? primary[500] : neutral[400]}
-        />
-        <Text style={styles.uploadText}>{uploaded ?? "Upload Document"}</Text>
+        {uploading ? (
+          <ActivityIndicator size="small" color={primary[500]} />
+        ) : (
+          <MaterialIcons
+            name={uploaded ? "check-circle" : "file-upload"}
+            size={22}
+            color={uploaded ? primary[500] : neutral[400]}
+          />
+        )}
+        <Text style={styles.uploadText}>
+          {uploading
+            ? "Uploading…"
+            : (uploaded?.fileName ?? "Upload Document")}
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.uploadMeta}>
         <Text style={styles.metaText}>Accepted formats: PDF, JPG, PNG</Text>
         <Text style={styles.metaText}>Max size: 5MB</Text>
       </View>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 }
 
 export default function VerifyBusinessScreen() {
   const router = useRouter();
+  const { data, update } = useBusinessSignup();
+  const { registrationDoc, governmentId, ein } = data;
 
-  const [registrationDoc, setRegistrationDoc] = useState<string | null>(null);
-  const [governmentId, setGovernmentId] = useState<string | null>(null);
-  const [ein, setEin] = useState("");
+  const [uploadingDoc, setUploadingDoc] = useState<DocType | null>(null);
+  const [registrationError, setRegistrationError] = useState<string | null>(
+    null,
+  );
+  const [governmentIdError, setGovernmentIdError] = useState<string | null>(
+    null,
+  );
 
   function formatEin(raw: string) {
     const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -95,6 +131,128 @@ export default function VerifyBusinessScreen() {
 
   const einValid = /^\d{2}-\d{7}$/.test(ein);
   const canContinue = !!registrationDoc && !!governmentId && einValid;
+
+  function handlePickDoc(docType: DocType) {
+    Alert.alert("Upload Document", "Choose where to pick the file from.", [
+      { text: "Choose from Files", onPress: () => pickFromFiles(docType) },
+      { text: "Choose from Photos", onPress: () => pickFromPhotos(docType) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
+  async function pickFromFiles(docType: DocType) {
+    const setError =
+      docType === "registration" ? setRegistrationError : setGovernmentIdError;
+    setError(null);
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ACCEPTED_MIME,
+      multiple: false,
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    const mime = asset.mimeType ?? "application/octet-stream";
+    await uploadAsset(docType, {
+      uri: asset.uri,
+      name: asset.name,
+      mime,
+      size: asset.size ?? null,
+    });
+  }
+
+  async function pickFromPhotos(docType: DocType) {
+    const setError =
+      docType === "registration" ? setRegistrationError : setGovernmentIdError;
+    setError(null);
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      setError("Photo library permission denied.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.8,
+      exif: false,
+    });
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    const mime = asset.mimeType ?? "image/jpeg";
+    const fallbackName = `photo-${Date.now()}.${mime === "image/png" ? "png" : "jpg"}`;
+    await uploadAsset(docType, {
+      uri: asset.uri,
+      name: asset.fileName ?? fallbackName,
+      mime,
+      size: asset.fileSize ?? null,
+    });
+  }
+
+  async function uploadAsset(
+    docType: DocType,
+    asset: { uri: string; name: string; mime: string; size: number | null },
+  ) {
+    const setError =
+      docType === "registration" ? setRegistrationError : setGovernmentIdError;
+
+    if (!ACCEPTED_MIME.includes(asset.mime)) {
+      setError("Unsupported file type. Use PDF, JPG, or PNG.");
+      return;
+    }
+    if (asset.size && asset.size > 5 * 1024 * 1024) {
+      setError("File exceeds 5MB limit.");
+      return;
+    }
+
+    setUploadingDoc(docType);
+    try {
+      const formData = new FormData();
+      formData.append("userId", "1"); // TODO: read from auth/session
+      formData.append("docType", docType);
+
+      if (Platform.OS === "web") {
+        const blobRes = await fetch(asset.uri);
+        const blob = await blobRes.blob();
+        formData.append(
+          "file",
+          new File([blob], asset.name, { type: asset.mime }),
+        );
+      } else {
+        formData.append("file", {
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mime,
+        } as unknown as Blob);
+      }
+
+      // upload doc to server and get back the hosted URL
+      const res = await fetch(`${API_BASE_URL}/uploads/business-docs`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? "Upload failed. Please try again.");
+        return;
+      }
+
+      const json = (await res.json()) as UploadedDoc;
+      if (docType === "registration") {
+        update({ registrationDoc: json });
+      } else {
+        update({ governmentId: json });
+      }
+    } catch {
+      setError("Network error. Please check your connection.");
+    } finally {
+      setUploadingDoc(null);
+    }
+  }
 
   function handleContinue() {
     router.push("/update-bank-account");
@@ -134,7 +292,9 @@ export default function VerifyBusinessScreen() {
               "Business License",
             ]}
             uploaded={registrationDoc}
-            onPick={() => setRegistrationDoc("registration.pdf")}
+            uploading={uploadingDoc === "registration"}
+            error={registrationError}
+            onPick={() => handlePickDoc("registration")}
           />
 
           <UploadCard
@@ -144,7 +304,9 @@ export default function VerifyBusinessScreen() {
             acceptedHeading="Accepted IDs:"
             acceptedItems={["Driver's License", "Passport", "State ID"]}
             uploaded={governmentId}
-            onPick={() => setGovernmentId("id.pdf")}
+            uploading={uploadingDoc === "governmentId"}
+            error={governmentIdError}
+            onPick={() => handlePickDoc("governmentId")}
           />
 
           <View style={styles.card}>
@@ -169,7 +331,7 @@ export default function VerifyBusinessScreen() {
               placeholder="XX-XXXXXXX"
               placeholderTextColor={neutral[400]}
               value={ein}
-              onChangeText={(v) => setEin(formatEin(v))}
+              onChangeText={(v) => update({ ein: formatEin(v) })}
               keyboardType="number-pad"
               maxLength={10}
             />
@@ -331,6 +493,12 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  errorText: {
+    fontSize: 12,
+    color: secondary[500],
+    marginTop: 8,
     letterSpacing: -0.408,
   },
 

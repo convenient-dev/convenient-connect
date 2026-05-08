@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
+import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -66,6 +67,7 @@ const ACKNOWLEDGEMENTS = [
 
 export default function ProfileTypeScreen() {
   const router = useRouter();
+  const { reset: resetBusinessSignup } = useBusinessSignup();
   const { accountType } = useLocalSearchParams<{ accountType?: string }>();
 
   const current: AccountType =
@@ -173,6 +175,7 @@ export default function ProfileTypeScreen() {
           disabled={!allChecked}
           onPress={() => {
             if (target === "business") {
+              resetBusinessSignup();
               router.push("/business-details");
             }
           }}

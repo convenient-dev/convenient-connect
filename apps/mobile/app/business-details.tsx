@@ -1,7 +1,11 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import {
+  BusinessSignupState,
+  useBusinessSignup,
+} from "@/contexts/BusinessSignupContext";
+import { useRouter } from "expo-router";
+import React from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,21 +20,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
 
+type FormKey =
+  | "businessName"
+  | "businessAddress"
+  | "city"
+  | "state"
+  | "zipCode";
+
 interface FieldConfig {
-  key: keyof FormState;
+  key: FormKey;
   label: string;
   placeholder: string;
   autoCapitalize?: "none" | "words" | "characters";
   keyboardType?: "default" | "number-pad";
   maxLength?: number;
-}
-
-interface FormState {
-  businessName: string;
-  businessAddress: string;
-  city: string;
-  state: string;
-  zipCode: string;
 }
 
 const FIELDS: FieldConfig[] = [
@@ -70,20 +73,12 @@ const FIELDS: FieldConfig[] = [
 
 export default function BusinessDetailsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<Partial<FormState>>();
+  const { data, update } = useBusinessSignup();
 
-  const [form, setForm] = useState<FormState>({
-    businessName: params.businessName ?? "",
-    businessAddress: params.businessAddress ?? "",
-    city: params.city ?? "",
-    state: params.state ?? "",
-    zipCode: params.zipCode ?? "",
-  });
+  const allFilled = FIELDS.every((f) => data[f.key].trim().length > 0);
 
-  const allFilled = FIELDS.every((f) => form[f.key].trim().length > 0);
-
-  function update(key: keyof FormState, value: string) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  function setField(key: FormKey, value: string) {
+    update({ [key]: value } as Partial<BusinessSignupState>);
   }
 
   function handleContinue() {
@@ -123,8 +118,8 @@ export default function BusinessDetailsScreen() {
                   style={styles.input}
                   placeholder={f.placeholder}
                   placeholderTextColor={neutral[400]}
-                  value={form[f.key]}
-                  onChangeText={(v) => update(f.key, v)}
+                  value={data[f.key]}
+                  onChangeText={(v) => setField(f.key, v)}
                   autoCapitalize={f.autoCapitalize}
                   autoCorrect={false}
                   keyboardType={f.keyboardType}

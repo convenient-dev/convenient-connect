@@ -1,6 +1,7 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
+import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -23,6 +24,7 @@ const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
   const router = useRouter();
+  const { data, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -38,7 +40,20 @@ export default function UpdateBankAccountScreen() {
     try {
       const res = await fetch(
         `${API_BASE_URL}/users/1/profile-type-change`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessName: data.businessName,
+            businessAddress: data.businessAddress,
+            city: data.city,
+            state: data.state,
+            zipCode: data.zipCode,
+            registrationDoc: data.registrationDoc?.url ?? "",
+            governmentId: data.governmentId?.url ?? "",
+            ein: data.ein,
+          }),
+        },
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -53,6 +68,7 @@ export default function UpdateBankAccountScreen() {
 
   function handleSuccessConfirm() {
     setSuccessVisible(false);
+    reset();
     router.dismissAll();
   }
 

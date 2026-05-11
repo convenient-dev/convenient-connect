@@ -118,6 +118,10 @@ export function SideMenu({
       key: "support",
       label: "Customer Support",
       icon: require("@/assets/side-menu/support.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/customer-support");
+      },
     },
     {
       key: "about",

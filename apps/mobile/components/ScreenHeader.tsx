@@ -11,6 +11,7 @@ interface Props {
   subtitle?: string;
   onBack?: () => void;
   titleAccessory?: React.ReactNode;
+  rightAccessory?: React.ReactNode;
 }
 
 export function ScreenHeader({
@@ -18,6 +19,7 @@ export function ScreenHeader({
   subtitle,
   onBack,
   titleAccessory,
+  rightAccessory,
 }: Props) {
   const router = useRouter();
   const handleBack = onBack ?? (() => router.back());
@@ -36,7 +38,11 @@ export function ScreenHeader({
           </Text>
         )}
       </View>
-      <View style={styles.headerSpacer} />
+      {rightAccessory ? (
+        <View style={styles.headerRight}>{rightAccessory}</View>
+      ) : (
+        <View style={styles.headerSpacer} />
+      )}
     </View>
   );
 }
@@ -72,4 +78,9 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   headerSpacer: { width: 40 },
+  headerRight: {
+    width: 40,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
 });

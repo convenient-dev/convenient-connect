@@ -64,6 +64,10 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="customer-support"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="background-check-1"
               options={{ headerShown: false }}
             />

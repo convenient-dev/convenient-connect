@@ -22,7 +22,7 @@ export default function ProfileTypePendingScreen() {
   const target: AccountType = current === "individual" ? "business" : "individual";
 
   function handleSupport() {
-    // TODO: Open the support center.
+    router.push("/customer-support");
   }
 
   return (

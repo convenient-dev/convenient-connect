@@ -18,8 +18,6 @@ export default function BackgroundCheck4Screen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* <ScreenHeader title="Background Check Completed" /> */}
-
       <View style={styles.body}>
         <ExpoImage
           source={require("@/assets/global-icons/verified-success.png")}

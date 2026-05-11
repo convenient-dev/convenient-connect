@@ -67,6 +67,11 @@ export default function RootLayout() {
               name="customer-support"
               options={{ headerShown: false }}
             />
+            <Stack.Screen name="earnings" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="manage-payout-methods"
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="background-check-1"
               options={{ headerShown: false }}

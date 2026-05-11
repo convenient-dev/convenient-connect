@@ -102,6 +102,10 @@ export function SideMenu({
       key: "earnings",
       label: "Earnings",
       icon: require("@/assets/side-menu/earnings.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/earnings" as never);
+      },
     },
     {
       key: "schedule",

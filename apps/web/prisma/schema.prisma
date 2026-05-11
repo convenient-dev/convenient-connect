@@ -19,6 +19,11 @@ enum AccountType {
   business
 }
 
+enum ProfileTypeStatus {
+  active
+  pending
+}
+
 enum ServiceStatus {
   active
   inactive
@@ -64,10 +69,12 @@ model User {
   password    String?
   phoneNumber String?
   addresses   UserAddress[]
-  accountType AccountType
-  isVerified  Boolean     @default(false)
-  avatarUrl   String?
-  aboutMe     String?
+  accountType        AccountType
+  profileTypeStatus  ProfileTypeStatus @default(active)
+  isPersonVerified   Boolean           @default(false)
+  isBusinessVerified Boolean           @default(false)
+  avatarUrl          String?
+  aboutMe            String?
 
   ownedBusiness        Business?             @relation("BusinessOwner")
   businessAffiliations BusinessAffiliation[]
@@ -80,6 +87,9 @@ model User {
 model Business {
   id      Int     @id @default(autoincrement())
   name    String
+  registerDoc  String?
+  ownerIdDoc   String?
+  ein          String?
 
   ownerId      Int                   @unique
   owner        User                  @relation("BusinessOwner", fields: [ownerId], references: [id])
@@ -108,8 +118,8 @@ model BusinessAffiliation {
 model Address {
   id        Int    @id @default(autoincrement())
   address   String
-  latitude  String
-  longitude String
+  latitude  String?
+  longitude String?
 
   users      UserAddress[]
   businesses BusinessAddress[]

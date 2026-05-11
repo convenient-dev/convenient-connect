@@ -4,7 +4,7 @@ import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage, ImageSource } from "expo-image";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -33,6 +33,7 @@ const API_BASE_URL =
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { openMenu } = useLocalSearchParams<{ openMenu?: string }>();
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [user, setUser] = useState<{
@@ -50,6 +51,14 @@ export default function HomeScreen() {
   } | null>(null);
   const [services, setServices] = useState<MyServiceCardData[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (openMenu === "1") {
+      setMenuOpen(true);
+      // Clear the param so re-focusing the tab doesn't reopen the menu.
+      router.setParams({ openMenu: undefined });
+    }
+  }, [openMenu, router]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/users/1`)

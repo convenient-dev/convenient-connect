@@ -49,7 +49,7 @@ async function main() {
       password: "hashed_password_1",
       phoneNumber: "555-0101",
       accountType: "individual",
-      isVerified: true,
+      isPersonVerified: true,
       avatarUrl:
         "https://api.dicebear.com/9.x/initials/png?seed=Alice+Smith&radius=20&backgroundColor=58c6ce",
     },
@@ -67,7 +67,7 @@ async function main() {
       password: "hashed_password_2",
       phoneNumber: "555-0202",
       accountType: "business",
-      isVerified: false,
+      isPersonVerified: false,
       avatarUrl: "https://api.dicebear.com/9.x/initials/png?seed=Bob+Jones",
     },
   });

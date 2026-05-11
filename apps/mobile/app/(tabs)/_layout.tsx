@@ -14,6 +14,10 @@ export default function TabLayout() {
       <Tabs.Screen name="calendar" options={{ title: "Calendar" }} />
       <Tabs.Screen name="chats" options={{ title: "Chats" }} />
       <Tabs.Screen name="share" options={{ title: "Share" }} />
+      {/* Profile lives inside the tabs navigator so the bottom tab bar shows
+          on /profile. BottomTabBar filters out routes not in TAB_CONFIG, so
+          no extra tab button is rendered for it. */}
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
     </Tabs>
   );
 }

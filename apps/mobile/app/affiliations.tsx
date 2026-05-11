@@ -60,12 +60,8 @@ export default function AffiliationsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <BackButton onPress={() => router.back()} />
-        <View style={styles.titleBlock}>
-          <Text style={styles.title}>My Affiliations</Text>
-          <Text style={styles.subtitle}>
-            Businesses you&apos;re currently affiliated with
-          </Text>
-        </View>
+        <Text style={styles.title}>My Affiliations</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {loading ? (
@@ -80,8 +76,20 @@ export default function AffiliationsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <Text style={styles.subtitle}>
+            Businesses you&apos;re currently affiliated with
+          </Text>
           {affiliations.length === 0 ? (
-            <Text style={styles.emptyText}>No affiliations yet.</Text>
+            <View style={styles.emptyState}>
+              <ExpoImage
+                source={require("@/assets/global-icons/embarrassed.svg")}
+                style={styles.emptyIcon}
+                contentFit="contain"
+              />
+              <Text style={styles.emptyText}>
+                You are not affiliate with any business yet
+              </Text>
+            </View>
           ) : (
             affiliations.map((a) => (
               <View key={a.id} style={styles.card}>
@@ -133,36 +141,43 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 6,
   },
-  headerSpacer: { flex: 1 },
-  titleBlock: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 18,
-    gap: 6,
-  },
+  headerSpacer: { width: 40 },
   title: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "600",
     color: text.primary,
+    textAlign: "center",
     letterSpacing: -0.408,
   },
   subtitle: {
     fontSize: 14,
     color: text.primary,
+    textAlign: "center",
     letterSpacing: -0.408,
+    marginBottom: 18,
   },
   scroll: { flex: 1 },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingBottom: 40,
     gap: 12,
   },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 100,
+    height: 100,
+  },
   emptyText: {
-    fontSize: 14,
+    fontSize: 12,
     color: neutral[400],
     textAlign: "center",
-    paddingTop: 40,
   },
   card: {
     flexDirection: "row",

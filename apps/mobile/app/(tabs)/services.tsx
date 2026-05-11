@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background, brand } = Colors;
+const { primary, neutral, background, brand, text } = Colors;
 
 // TODO: replace with real auth user id
 const USER_ID = 1;
@@ -109,7 +109,7 @@ function ManageServiceSheet({
                 source={require("@/assets/global-icons/view-detail.svg")}
                 style={{ width: 20, height: 20 }}
               />
-              <Text style={styles.sheetOptionText}>Service Detail</Text>
+              <Text style={styles.sheetOptionText}>Service Details</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sheetOption}
@@ -202,7 +202,9 @@ export default function ServicesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services?deleted=false`)
+      fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services?deleted=false`,
+      )
         .then((res) => res.json())
         .then((data: Service[]) => setServices(data))
         .finally(() => setLoading(false));
@@ -312,9 +314,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "500",
-    color: neutral[800],
+    fontSize: 18,
+    fontWeight: "600",
+    color: text.primary,
+    letterSpacing: -0.408,
   },
   addButton: {
     width: 22,

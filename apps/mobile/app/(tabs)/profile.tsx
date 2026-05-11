@@ -1,9 +1,9 @@
-import { BackButton } from "@/components/BackButton";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,11 +25,12 @@ interface UserProfile {
   lastName: string | null;
   email: string | null;
   phoneNumber: string | null;
-  isVerified: boolean;
+  isPersonVerified: boolean;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   avatarUrl: string | null;
   accountType: "individual" | "business" | string;
+  profileTypeStatus?: "active" | "pending" | string;
   backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
   aboutMe?: string | null;
 }
@@ -51,6 +52,7 @@ interface RowProps {
   value: string;
   valueMuted?: boolean;
   trailingIcon?: "verified" | "warning";
+  badge?: string;
   onPress?: () => void;
 }
 
@@ -59,6 +61,7 @@ function ProfileRow({
   value,
   valueMuted,
   trailingIcon,
+  badge,
   onPress,
 }: RowProps) {
   return (
@@ -88,6 +91,11 @@ function ProfileRow({
               style={styles.rowValueIcon}
             />
           )}
+          {badge && (
+            <View style={styles.rowBadge}>
+              <Text style={styles.rowBadgeText}>{badge}</Text>
+            </View>
+          )}
         </View>
       </View>
       <MaterialIcons name="chevron-right" size={22} color={neutral[300]} />
@@ -97,9 +105,21 @@ function ProfileRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  function handleBack() {
+    // When we arrive from the background-check flow, we want the back button
+    // to land on the home tab with the side menu open instead of unwinding
+    // the (already-replaced) background-check stack.
+    if (from === "background-check") {
+      router.replace({ pathname: "/(tabs)", params: { openMenu: "1" } });
+      return;
+    }
+    router.back();
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -141,20 +161,19 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          {user?.isVerified && (
+      <ScreenHeader
+        title="My Profile"
+        onBack={handleBack}
+        titleAccessory={
+          user?.isPersonVerified ? (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
               contentFit="contain"
             />
-          )}
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+          ) : null
+        }
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -249,6 +268,18 @@ export default function ProfileScreen() {
             label="Profile Type"
             value={profileTypeLabel}
             valueMuted
+            trailingIcon={
+              user?.profileTypeStatus === "pending" ? "warning" : undefined
+            }
+            onPress={() =>
+              router.push({
+                pathname:
+                  user?.profileTypeStatus === "pending"
+                    ? "/profile-type-pending"
+                    : "/profile-type",
+                params: { accountType: user?.accountType ?? "individual" },
+              })
+            }
           />
           <View style={styles.rowDivider} />
 
@@ -261,6 +292,7 @@ export default function ProfileScreen() {
             }
             valueMuted
             trailingIcon={backgroundComplete ? "verified" : "warning"}
+            onPress={() => router.push("/background-check-1")}
           />
           <View style={styles.rowDivider} />
 
@@ -302,31 +334,10 @@ const styles = StyleSheet.create({
   },
   loader: { flex: 1 },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
   headerBadge: {
     width: 18,
     height: 18,
   },
-  headerSpacer: { width: 40 },
 
   scroll: { flex: 1 },
   scrollContent: {
@@ -403,6 +414,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: text.primary,
+    letterSpacing: -0.408,
+  },
+  rowBadge: {
+    marginLeft: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: status.inactive + "22",
+  },
+  rowBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: status.inactive,
     letterSpacing: -0.408,
   },
   rowValueWrap: {

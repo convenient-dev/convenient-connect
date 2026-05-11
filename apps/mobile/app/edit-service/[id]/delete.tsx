@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -45,11 +45,7 @@ export default function DeleteServiceScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
 
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Delete Service</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Delete Service" />
 
       <View style={styles.body}>
         <Text style={styles.warningText}>

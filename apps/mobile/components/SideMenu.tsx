@@ -118,6 +118,10 @@ export function SideMenu({
       key: "support",
       label: "Customer Support",
       icon: require("@/assets/side-menu/support.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/customer-support");
+      },
     },
     {
       key: "about",
@@ -274,6 +278,7 @@ export function SideMenu({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    paddingTop: 50,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

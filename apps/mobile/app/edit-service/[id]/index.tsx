@@ -1,5 +1,5 @@
-import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -179,17 +179,7 @@ export default function EditServiceScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Edit Service</Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>
-            {service.title}
-          </Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Edit Service" subtitle={service.title} />
 
       <ScrollView
         style={styles.scroll}
@@ -326,31 +316,6 @@ const styles = StyleSheet.create({
     color: neutral[400],
     fontSize: 14,
   },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: neutral[800],
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: neutral[400],
-    maxWidth: 200,
-  },
-  headerSpacer: { width: 38 },
 
   // Scroll
   scroll: { flex: 1 },

@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -18,9 +18,6 @@ const { secondary, neutral, text, background, border } = Colors;
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-
-const PLACEHOLDER =
-  "Help clients learn more about you. Please write a general introduction, since you may offer different types of services.";
 
 export default function AboutMeScreen() {
   const router = useRouter();
@@ -56,19 +53,12 @@ export default function AboutMeScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <BackButton onPress={() => router.back()} />
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>About Me</Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader title="About Me" />
 
         <View style={styles.body}>
           <TextInput
             style={styles.textArea}
-            placeholder={PLACEHOLDER}
-            placeholderTextColor={neutral[400]}
+            placeholder="Write a brief introduction about yourself, your experience, and the services you offer."
             multiline
             textAlignVertical="top"
             value={value}
@@ -77,6 +67,11 @@ export default function AboutMeScreen() {
           />
 
           {error && <Text style={styles.errorText}>{error}</Text>}
+
+          <Text style={styles.subtitle}>
+            Help clients learn more about you. Please write a general
+            introduction, since you may offer different types of services.
+          </Text>
         </View>
 
         <View style={styles.footer}>
@@ -104,25 +99,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  headerSpacer: { width: 40 },
   body: {
     flex: 1,
     paddingHorizontal: 20,
@@ -143,6 +119,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: secondary[500],
+  },
+  subtitle: {
+    fontSize: 14,
+    color: neutral[400],
+    letterSpacing: -0.408,
+    lineHeight: 20,
   },
   footer: {
     paddingHorizontal: 20,

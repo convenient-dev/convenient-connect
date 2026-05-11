@@ -3,7 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -105,9 +105,21 @@ function ProfileRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  function handleBack() {
+    // When we arrive from the background-check flow, we want the back button
+    // to land on the home tab with the side menu open instead of unwinding
+    // the (already-replaced) background-check stack.
+    if (from === "background-check") {
+      router.replace({ pathname: "/(tabs)", params: { openMenu: "1" } });
+      return;
+    }
+    router.back();
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -151,6 +163,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScreenHeader
         title="My Profile"
+        onBack={handleBack}
         titleAccessory={
           user?.isPersonVerified ? (
             <ExpoImage

@@ -1,5 +1,5 @@
-import { BackButton } from "@/components/BackButton";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -149,20 +149,18 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          {user?.isPersonVerified && (
+      <ScreenHeader
+        title="My Profile"
+        titleAccessory={
+          user?.isPersonVerified ? (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
               contentFit="contain"
             />
-          )}
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+          ) : null
+        }
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -323,31 +321,10 @@ const styles = StyleSheet.create({
   },
   loader: { flex: 1 },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
   headerBadge: {
     width: 18,
     height: 18,
   },
-  headerSpacer: { width: 40 },
 
   scroll: { flex: 1 },
   scrollContent: {

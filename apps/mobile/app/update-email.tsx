@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -65,13 +65,7 @@ export default function UpdateEmailScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <BackButton onPress={() => router.back()} />
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Update Email</Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader title="Update Email" />
 
         <View style={styles.body}>
           <View style={styles.field}>
@@ -125,25 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  headerSpacer: { width: 40 },
   body: {
     flex: 1,
     paddingHorizontal: 20,

@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background } = Colors;
+const { primary, neutral, background } = Colors;
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
@@ -107,13 +107,7 @@ export default function EditAvatarScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Edit Photo</Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Edit Photo" />
 
       <View style={styles.body}>
         <View style={styles.previewWrap}>
@@ -167,25 +161,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  headerSpacer: { width: 40 },
   body: {
     flex: 1,
     alignItems: "center",

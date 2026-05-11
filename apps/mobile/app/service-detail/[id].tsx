@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -191,11 +191,7 @@ export default function ServiceDetailScreen() {
         />
       )}
       {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Service Details</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Service Details" subtitle={service.title} />
 
       <ScrollView
         style={styles.scroll}

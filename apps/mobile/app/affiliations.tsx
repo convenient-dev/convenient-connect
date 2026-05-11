@@ -80,7 +80,16 @@ export default function AffiliationsScreen() {
             Businesses you&apos;re currently affiliated with
           </Text>
           {affiliations.length === 0 ? (
-            <Text style={styles.emptyText}>No affiliations yet.</Text>
+            <View style={styles.emptyState}>
+              <ExpoImage
+                source={require("@/assets/global-icons/embarrassed.svg")}
+                style={styles.emptyIcon}
+                contentFit="contain"
+              />
+              <Text style={styles.emptyText}>
+                You are not affiliate with any business yet
+              </Text>
+            </View>
           ) : (
             affiliations.map((a) => (
               <View key={a.id} style={styles.card}>
@@ -150,15 +159,25 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingBottom: 40,
     gap: 12,
   },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 100,
+    height: 100,
+  },
   emptyText: {
-    fontSize: 14,
+    fontSize: 12,
     color: neutral[400],
     textAlign: "center",
-    paddingTop: 40,
   },
   card: {
     flexDirection: "row",

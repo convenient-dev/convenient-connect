@@ -1,0 +1,389 @@
+import {
+  FilterBottomSheet,
+  type FilterSection,
+  type FilterValues,
+} from "@/components/FilterBottomSheet";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { TabBar } from "@/components/TabBar";
+import { Colors } from "@/constants/theme";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import React, { useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const { brand, neutral, text, background, border, secondary, status } = Colors;
+
+type TabKey = "earnings" | "pending" | "withdrawals";
+type ViewMode = "calendar" | "list";
+
+// TODO: Replace dummy data with backend earnings API.
+interface EarningItem {
+  id: string;
+  startDate: string;
+  endDate: string;
+  title: string;
+  listingPrice: number;
+  convenientFee: number;
+  payout: number;
+  feeLabel?: string;
+}
+
+interface WithdrawalItem {
+  id: string;
+  title: string;
+  payoutDate: string;
+  amount: number;
+}
+
+const DUMMY_WITHDRAWALS: WithdrawalItem[] = [
+  {
+    id: "w1",
+    title: "Doggy Day Care for Boba",
+    payoutDate: "01/15/2026",
+    amount: 42.2,
+  },
+  {
+    id: "w2",
+    title: "Dog Boarding for Charlie",
+    payoutDate: "01/15/2026",
+    amount: 73.0,
+  },
+  {
+    id: "w3",
+    title: "Drop-In Visits for Vasco",
+    payoutDate: "11/22/2025",
+    amount: 144.0,
+  },
+];
+
+const DUMMY_EARNINGS: Record<"earnings" | "pending", EarningItem[]> = {
+  earnings: [
+    {
+      id: "e1",
+      startDate: "02/08/2026",
+      endDate: "02/09/2026",
+      title: "Doggy Day Care for Boba",
+      listingPrice: 54.0,
+      convenientFee: 10.8,
+      payout: 42.2,
+    },
+    {
+      id: "e2",
+      startDate: "02/08/2026",
+      endDate: "02/09/2026",
+      title: "Dog Boarding for Charlie",
+      listingPrice: 88.0,
+      convenientFee: 15.0,
+      payout: 73.0,
+    },
+  ],
+  pending: [
+    {
+      id: "p1",
+      startDate: "03/02/2026",
+      endDate: "03/04/2026",
+      title: "Dog Walking for Max",
+      listingPrice: 60.0,
+      convenientFee: 12.0,
+      payout: 48.0,
+    },
+    {
+      id: "p2",
+      startDate: "03/05/2026",
+      endDate: "03/05/2026",
+      title: "Pet Sitting for Luna",
+      listingPrice: 75.0,
+      convenientFee: 15.0,
+      payout: 60.0,
+    },
+    {
+      id: "p3",
+      startDate: "03/10/2026",
+      endDate: "03/12/2026",
+      title: "Dog Boarding for Rocky",
+      listingPrice: 132.0,
+      convenientFee: 26.4,
+      payout: 105.6,
+    },
+  ],
+};
+
+function formatAmount(value: number) {
+  return `$${value.toFixed(2)}`;
+}
+
+export default function EarningHistoryScreen() {
+  const [activeTab, setActiveTab] = useState<TabKey>("earnings");
+  const [viewMode, setViewMode] = useState<ViewMode>("calendar");
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({
+    time: [],
+    category: [],
+  });
+
+  // TODO: Implement actual filtering logic based on selected filter values.
+  // TODO: category filter would be retrived from backend based on listing categories.
+  const filterSections: FilterSection[] = [
+    {
+      key: "time",
+      title: "Time",
+      options: [
+        { key: "today", label: "Today" },
+        { key: "tomorrow", label: "Tomorrow" },
+        { key: "this_week", label: "This week" },
+        { key: "this_month", label: "This month" },
+        { key: "this_year", label: "This year" },
+      ],
+    },
+    {
+      key: "category",
+      title: "Categories",
+      options: [
+        { key: "pet_care", label: "Pet Care" },
+        { key: "sanitation", label: "Sanitation" },
+        { key: "it", label: "IT" },
+      ],
+    },
+  ];
+
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: "earnings", label: "Earnings" },
+    { key: "pending", label: "Pending Earnings" },
+    { key: "withdrawals", label: "Withdrawals" },
+  ];
+
+  const items = activeTab === "withdrawals" ? [] : DUMMY_EARNINGS[activeTab];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="Earning History"
+        rightAccessory={
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              style={[
+                styles.viewToggleButton,
+                viewMode === "calendar" && styles.viewToggleButtonActive,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => setViewMode("calendar")}
+            >
+              <MaterialCommunityIcons
+                name="calendar-month-outline"
+                size={18}
+                color={viewMode === "calendar" ? neutral[0] : text.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.viewToggleButton,
+                viewMode === "list" && styles.viewToggleButtonActive,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => setViewMode("list")}
+            >
+              <Feather
+                name="list"
+                size={18}
+                color={viewMode === "list" ? neutral[0] : text.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        }
+      />
+
+      {viewMode === "calendar" ? (
+        <View style={styles.calendarPlaceholder}>
+          {/* TODO: Implement calendar view for earnings. */}
+          <Text style={styles.calendarPlaceholderText}>TODO</Text>
+        </View>
+      ) : (
+        <>
+      <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
+
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          activeOpacity={0.7}
+          onPress={() => setFilterVisible(true)}
+        >
+          <Feather name="filter" size={16} color={secondary[500]} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === "withdrawals"
+          ? DUMMY_WITHDRAWALS.map((item, i) => (
+              <View key={item.id}>
+                <View style={styles.earningRow}>
+                  <View style={styles.earningInfo}>
+                    <Text style={styles.earningTitle}>{item.title}</Text>
+                    <Text style={styles.earningListing}>
+                      Payout Date: {item.payoutDate}
+                    </Text>
+                  </View>
+                  <Text style={styles.earningPayout}>
+                    {formatAmount(item.amount)}
+                  </Text>
+                </View>
+                {i < DUMMY_WITHDRAWALS.length - 1 && (
+                  <View style={styles.divider} />
+                )}
+              </View>
+            ))
+          : items.map((item, i) => (
+              <View key={item.id}>
+                <View style={styles.earningRow}>
+                  <View style={styles.earningInfo}>
+                    <Text style={styles.earningDate}>
+                      {item.startDate} - {item.endDate}
+                    </Text>
+                    <Text style={styles.earningTitle}>{item.title}</Text>
+                    <Text style={styles.earningListing}>
+                      Listing Price: {formatAmount(item.listingPrice)}
+                    </Text>
+                    <Text style={styles.earningFee}>
+                      {item.feeLabel ?? "Convenient Fee"}:{" "}
+                      {formatAmount(item.convenientFee)}
+                    </Text>
+                  </View>
+                  <Text style={styles.earningPayout}>
+                    {formatAmount(item.payout)}
+                  </Text>
+                </View>
+                {i < items.length - 1 && <View style={styles.divider} />}
+              </View>
+            ))}
+      </ScrollView>
+        </>
+      )}
+
+      <FilterBottomSheet
+        visible={filterVisible}
+        sections={filterSections}
+        initialValue={filterValues}
+        onClose={() => setFilterVisible(false)}
+        onApply={setFilterValues}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: background.screen,
+  },
+
+  viewToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: neutral[50],
+    borderRadius: 10,
+    padding: 2,
+  },
+  viewToggleButton: {
+    width: 40,
+    height: 28,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewToggleButtonActive: {
+    backgroundColor: brand.primary,
+  },
+  calendarPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarPlaceholderText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+
+  filterRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  filterButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: neutral[0],
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+  },
+  earningRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    gap: 12,
+  },
+  earningInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  earningDate: {
+    fontSize: 14,
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  earningTitle: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: text.primary,
+    letterSpacing: -0.408,
+    marginTop: 2,
+  },
+  earningListing: {
+    fontSize: 13,
+    color: neutral[400],
+    letterSpacing: -0.408,
+    marginTop: 4,
+  },
+  earningFee: {
+    fontSize: 13,
+    color: secondary[500],
+    letterSpacing: -0.408,
+    marginTop: 2,
+  },
+  earningPayout: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: status.active,
+    letterSpacing: -0.408,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: border.default,
+  },
+});

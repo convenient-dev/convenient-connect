@@ -32,6 +32,7 @@ export default function EarningsScreen() {
     {
       key: "earning-history",
       label: "Earning History",
+      onPress: () => router.push("/earning-history" as never),
     },
     {
       key: "tax-documents",

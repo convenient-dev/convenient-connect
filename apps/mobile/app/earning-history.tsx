@@ -1,4 +1,8 @@
 import {
+  EarningsCalendar,
+  type CalendarEarningItem,
+} from "@/components/EarningsCalendar";
+import {
   FilterBottomSheet,
   type FilterSection,
   type FilterValues,
@@ -8,7 +12,7 @@ import { TabBar } from "@/components/TabBar";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -45,20 +49,20 @@ interface WithdrawalItem {
 const DUMMY_WITHDRAWALS: WithdrawalItem[] = [
   {
     id: "w1",
-    title: "Doggy Day Care for Boba",
-    payoutDate: "01/15/2026",
-    amount: 42.2,
+    title: "Weekly Payout",
+    payoutDate: "05/11/2026",
+    amount: 123.0,
   },
   {
     id: "w2",
-    title: "Dog Boarding for Charlie",
-    payoutDate: "01/15/2026",
-    amount: 73.0,
+    title: "Doggy Day Care for Boba",
+    payoutDate: "05/02/2026",
+    amount: 42.2,
   },
   {
     id: "w3",
     title: "Drop-In Visits for Vasco",
-    payoutDate: "11/22/2025",
+    payoutDate: "05/12/2026",
     amount: 144.0,
   },
 ];
@@ -67,50 +71,50 @@ const DUMMY_EARNINGS: Record<"earnings" | "pending", EarningItem[]> = {
   earnings: [
     {
       id: "e1",
-      startDate: "02/08/2026",
-      endDate: "02/09/2026",
+      startDate: "05/03/2026",
+      endDate: "05/03/2026",
+      title: "Drop-In Visits for Bella",
+      listingPrice: 95.0,
+      convenientFee: 19.0,
+      payout: 76.0,
+    },
+    {
+      id: "e2",
+      startDate: "05/08/2026",
+      endDate: "05/09/2026",
       title: "Doggy Day Care for Boba",
       listingPrice: 54.0,
       convenientFee: 10.8,
       payout: 42.2,
     },
     {
-      id: "e2",
-      startDate: "02/08/2026",
-      endDate: "02/09/2026",
-      title: "Dog Boarding for Charlie",
-      listingPrice: 88.0,
-      convenientFee: 15.0,
-      payout: 73.0,
+      id: "e3",
+      startDate: "04/13/2026",
+      endDate: "04/13/2026",
+      title: "Dog Walking for Max",
+      listingPrice: 42.5,
+      convenientFee: 8.5,
+      payout: 34.0,
     },
   ],
   pending: [
     {
       id: "p1",
-      startDate: "03/02/2026",
-      endDate: "03/04/2026",
-      title: "Dog Walking for Max",
-      listingPrice: 60.0,
-      convenientFee: 12.0,
-      payout: 48.0,
+      startDate: "05/20/2026",
+      endDate: "05/22/2026",
+      title: "Dog Boarding for Charlie",
+      listingPrice: 88.0,
+      convenientFee: 15.0,
+      payout: 73.0,
     },
     {
       id: "p2",
-      startDate: "03/05/2026",
-      endDate: "03/05/2026",
+      startDate: "05/21/2026",
+      endDate: "05/22/2026",
       title: "Pet Sitting for Luna",
-      listingPrice: 75.0,
-      convenientFee: 15.0,
-      payout: 60.0,
-    },
-    {
-      id: "p3",
-      startDate: "03/10/2026",
-      endDate: "03/12/2026",
-      title: "Dog Boarding for Rocky",
-      listingPrice: 132.0,
-      convenientFee: 26.4,
-      payout: 105.6,
+      listingPrice: 65.0,
+      convenientFee: 13.0,
+      payout: 52.0,
     },
   ],
 };
@@ -161,6 +165,33 @@ export default function EarningHistoryScreen() {
 
   const items = activeTab === "withdrawals" ? [] : DUMMY_EARNINGS[activeTab];
 
+  const calendarItems = useMemo<CalendarEarningItem[]>(() => {
+    return [
+      ...DUMMY_EARNINGS.earnings.map<CalendarEarningItem>((e) => ({
+        id: e.id,
+        type: "earning",
+        title: e.title,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        amount: e.payout,
+        listingPrice: e.listingPrice,
+        convenientFee: e.convenientFee,
+        feeLabel: e.feeLabel,
+      })),
+      ...DUMMY_EARNINGS.pending.map<CalendarEarningItem>((e) => ({
+        id: e.id,
+        type: "pending",
+        title: e.title,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        amount: e.payout,
+        listingPrice: e.listingPrice,
+        convenientFee: e.convenientFee,
+        feeLabel: e.feeLabel,
+      })),
+    ];
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScreenHeader
@@ -200,72 +231,69 @@ export default function EarningHistoryScreen() {
       />
 
       {viewMode === "calendar" ? (
-        <View style={styles.calendarPlaceholder}>
-          {/* TODO: Implement calendar view for earnings. */}
-          <Text style={styles.calendarPlaceholderText}>TODO</Text>
-        </View>
+        <EarningsCalendar items={calendarItems} />
       ) : (
         <>
-      <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
+          <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
 
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={styles.filterButton}
-          activeOpacity={0.7}
-          onPress={() => setFilterVisible(true)}
-        >
-          <Feather name="filter" size={16} color={secondary[500]} />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              style={styles.filterButton}
+              activeOpacity={0.7}
+              onPress={() => setFilterVisible(true)}
+            >
+              <Feather name="filter" size={16} color={secondary[500]} />
+            </TouchableOpacity>
+          </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === "withdrawals"
-          ? DUMMY_WITHDRAWALS.map((item, i) => (
-              <View key={item.id}>
-                <View style={styles.earningRow}>
-                  <View style={styles.earningInfo}>
-                    <Text style={styles.earningTitle}>{item.title}</Text>
-                    <Text style={styles.earningListing}>
-                      Payout Date: {item.payoutDate}
-                    </Text>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {activeTab === "withdrawals"
+              ? DUMMY_WITHDRAWALS.map((item, i) => (
+                  <View key={item.id}>
+                    <View style={styles.earningRow}>
+                      <View style={styles.earningInfo}>
+                        <Text style={styles.earningTitle}>{item.title}</Text>
+                        <Text style={styles.earningListing}>
+                          Payout Date: {item.payoutDate}
+                        </Text>
+                      </View>
+                      <Text style={styles.earningPayout}>
+                        {formatAmount(item.amount)}
+                      </Text>
+                    </View>
+                    {i < DUMMY_WITHDRAWALS.length - 1 && (
+                      <View style={styles.divider} />
+                    )}
                   </View>
-                  <Text style={styles.earningPayout}>
-                    {formatAmount(item.amount)}
-                  </Text>
-                </View>
-                {i < DUMMY_WITHDRAWALS.length - 1 && (
-                  <View style={styles.divider} />
-                )}
-              </View>
-            ))
-          : items.map((item, i) => (
-              <View key={item.id}>
-                <View style={styles.earningRow}>
-                  <View style={styles.earningInfo}>
-                    <Text style={styles.earningDate}>
-                      {item.startDate} - {item.endDate}
-                    </Text>
-                    <Text style={styles.earningTitle}>{item.title}</Text>
-                    <Text style={styles.earningListing}>
-                      Listing Price: {formatAmount(item.listingPrice)}
-                    </Text>
-                    <Text style={styles.earningFee}>
-                      {item.feeLabel ?? "Convenient Fee"}:{" "}
-                      {formatAmount(item.convenientFee)}
-                    </Text>
+                ))
+              : items.map((item, i) => (
+                  <View key={item.id}>
+                    <View style={styles.earningRow}>
+                      <View style={styles.earningInfo}>
+                        <Text style={styles.earningDate}>
+                          {item.startDate} - {item.endDate}
+                        </Text>
+                        <Text style={styles.earningTitle}>{item.title}</Text>
+                        <Text style={styles.earningListing}>
+                          Listing Price: {formatAmount(item.listingPrice)}
+                        </Text>
+                        <Text style={styles.earningFee}>
+                          {item.feeLabel ?? "Convenient Fee"}:{" "}
+                          {formatAmount(item.convenientFee)}
+                        </Text>
+                      </View>
+                      <Text style={styles.earningPayout}>
+                        {formatAmount(item.payout)}
+                      </Text>
+                    </View>
+                    {i < items.length - 1 && <View style={styles.divider} />}
                   </View>
-                  <Text style={styles.earningPayout}>
-                    {formatAmount(item.payout)}
-                  </Text>
-                </View>
-                {i < items.length - 1 && <View style={styles.divider} />}
-              </View>
-            ))}
-      </ScrollView>
+                ))}
+          </ScrollView>
         </>
       )}
 
@@ -302,17 +330,6 @@ const styles = StyleSheet.create({
   },
   viewToggleButtonActive: {
     backgroundColor: brand.primary,
-  },
-  calendarPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarPlaceholderText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: neutral[400],
-    letterSpacing: -0.408,
   },
 
   filterRow: {

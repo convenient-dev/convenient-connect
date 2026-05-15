@@ -37,6 +37,9 @@ interface SideMenuProps {
     firstName: string;
     lastName: string;
     avatarUrl: string | null;
+    accountType?: "individual" | "business" | string;
+    isPersonVerified?: boolean;
+    isBusinessVerified?: boolean;
   } | null;
   membership?: { tier: string };
   appVersion?: string;
@@ -102,6 +105,10 @@ export function SideMenu({
       key: "earnings",
       label: "Earnings",
       icon: require("@/assets/side-menu/earnings.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/earnings" as never);
+      },
     },
     {
       key: "schedule",
@@ -191,11 +198,16 @@ export function SideMenu({
                   style={styles.avatar}
                   contentFit="cover"
                 />
-                <ExpoImage
-                  source={require("@/assets/global-icons/verified.svg")}
-                  style={styles.avatarBadge}
-                  contentFit="contain"
-                />
+                {((user?.accountType === "individual" &&
+                  user?.isPersonVerified) ||
+                  (user?.accountType === "business" &&
+                    user?.isBusinessVerified)) && (
+                  <ExpoImage
+                    source={require("@/assets/global-icons/verified.svg")}
+                    style={styles.avatarBadge}
+                    contentFit="contain"
+                  />
+                )}
               </View>
 
               {/* Name */}

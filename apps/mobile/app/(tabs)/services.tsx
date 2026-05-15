@@ -3,6 +3,7 @@ import {
   SERVICE_STATUS_CONFIG,
   ServiceStatus,
 } from "@/components/ServiceStatusBadge";
+import { TabBar } from "@/components/TabBar";
 import Divider from "@/components/ui/divider";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -231,25 +232,11 @@ export default function ServicesScreen() {
         </TouchableOpacity>
       </View>
       {/* Filter tabs */}
-      <View style={styles.tabBar}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === tab && styles.tabTextActive,
-              ]}
-            >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <TabBar
+        tabs={TABS.map((tab) => ({ key: tab, label: tab }))}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+      />
       {/* Service list */}
       {loading ? (
         <ActivityIndicator
@@ -324,37 +311,6 @@ const styles = StyleSheet.create({
     height: 22,
     alignItems: "center",
     justifyContent: "center",
-  },
-  // Filter tabs
-  tabBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: neutral[50],
-    borderRadius: 12,
-    marginHorizontal: 30,
-    marginBottom: 20,
-    padding: 4,
-    gap: 6,
-  },
-  tab: {
-    flex: 1,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-    paddingHorizontal: 8,
-  },
-  tabActive: {
-    backgroundColor: primary[400],
-    borderRadius: 8,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[500],
-  },
-  tabTextActive: {
-    color: neutral[0],
   },
   // List
   loader: {

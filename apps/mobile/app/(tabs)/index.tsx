@@ -48,6 +48,9 @@ export default function HomeScreen() {
       isDefault: boolean;
     }[];
     avatarUrl: string | null;
+    accountType: "individual" | "business" | string;
+    isPersonVerified: boolean;
+    isBusinessVerified: boolean;
   } | null>(null);
   const [services, setServices] = useState<MyServiceCardData[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,6 +72,9 @@ export default function HomeScreen() {
           lastName: data.lastName,
           addresses: data.address ?? [],
           avatarUrl: data.avatarUrl,
+          accountType: data.accountType,
+          isPersonVerified: data.isPersonVerified ?? false,
+          isBusinessVerified: data.isBusinessVerified ?? false,
         }),
       )
       .catch(() => {});
@@ -251,6 +257,9 @@ export default function HomeScreen() {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 avatarUrl: user.avatarUrl,
+                accountType: user.accountType,
+                isPersonVerified: user.isPersonVerified,
+                isBusinessVerified: user.isBusinessVerified,
               }
             : null
         }

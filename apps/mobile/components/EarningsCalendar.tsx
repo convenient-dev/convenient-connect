@@ -10,24 +10,21 @@ import {
 } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 
-
 const { brand, neutral, text, border, secondary, primary } = Colors;
 
-export type EarningType = "earning" | "pending" | "withdrawal";
+export type EarningType = "earning" | "pending";
 
 export const TYPE_COLORS: Record<EarningType, string> = {
   earning: "#00b383",
   pending: "#f97316",
-  withdrawal: "#0ea5e9",
 };
 
 const TYPE_LABELS: Record<EarningType, string> = {
   earning: "Earning",
   pending: "Pending",
-  withdrawal: "Withdrawal",
 };
 
-const TYPE_ORDER: EarningType[] = ["earning", "pending", "withdrawal"];
+const TYPE_ORDER: EarningType[] = ["earning", "pending"];
 
 export interface CalendarEarningItem {
   id: string;
@@ -84,7 +81,9 @@ function mdyToYmd(mdy: string): string {
 }
 
 function formatDateRange(start: string, end: string): string {
-  return start === end ? mdyToYmd(start) : `${mdyToYmd(start)} – ${mdyToYmd(end)}`;
+  return start === end
+    ? mdyToYmd(start)
+    : `${mdyToYmd(start)} – ${mdyToYmd(end)}`;
 }
 
 export function EarningsCalendar({ items }: EarningsCalendarProps) {
@@ -120,7 +119,14 @@ export function EarningsCalendar({ items }: EarningsCalendarProps) {
   }, [endDayItems]);
 
   const markedDates = useMemo(() => {
-    const marked: Record<string, { dots?: { key: string; color: string }[]; selected?: boolean; selectedColor?: string }> = {};
+    const marked: Record<
+      string,
+      {
+        dots?: { key: string; color: string }[];
+        selected?: boolean;
+        selectedColor?: string;
+      }
+    > = {};
     for (const [day, types] of Object.entries(rangeTypesByDay)) {
       marked[day] = {
         dots: TYPE_ORDER.filter((t) => types.has(t)).map((t) => ({
@@ -312,7 +318,8 @@ export function EarningsCalendar({ items }: EarningsCalendarProps) {
                 <View style={styles.cardHeaderLeft}>
                   <TypeBadge type={item.type} />
                   <Text style={styles.cardDates}>
-                    {item.subtitle ?? formatDateRange(item.startDate, item.endDate)}
+                    {item.subtitle ??
+                      formatDateRange(item.startDate, item.endDate)}
                   </Text>
                 </View>
                 <Text

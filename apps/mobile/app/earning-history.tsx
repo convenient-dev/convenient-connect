@@ -10,6 +10,7 @@ import {
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { Colors } from "@/constants/theme";
+import earningHistoryData from "@/assets/data/earning-history.json";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useMemo, useState } from "react";
@@ -46,77 +47,11 @@ interface WithdrawalItem {
   amount: number;
 }
 
-const DUMMY_WITHDRAWALS: WithdrawalItem[] = [
-  {
-    id: "w1",
-    title: "Weekly Payout",
-    payoutDate: "05/11/2026",
-    amount: 123.0,
-  },
-  {
-    id: "w2",
-    title: "Doggy Day Care for Boba",
-    payoutDate: "05/02/2026",
-    amount: 42.2,
-  },
-  {
-    id: "w3",
-    title: "Drop-In Visits for Vasco",
-    payoutDate: "05/12/2026",
-    amount: 144.0,
-  },
-];
+const DUMMY_WITHDRAWALS: WithdrawalItem[] = earningHistoryData.withdrawals;
 
 const DUMMY_EARNINGS: Record<"earnings" | "pending", EarningItem[]> = {
-  earnings: [
-    {
-      id: "e1",
-      startDate: "05/03/2026",
-      endDate: "05/03/2026",
-      title: "Drop-In Visits for Bella",
-      listingPrice: 95.0,
-      convenientFee: 19.0,
-      payout: 76.0,
-    },
-    {
-      id: "e2",
-      startDate: "05/08/2026",
-      endDate: "05/09/2026",
-      title: "Doggy Day Care for Boba",
-      listingPrice: 54.0,
-      convenientFee: 10.8,
-      payout: 42.2,
-    },
-    {
-      id: "e3",
-      startDate: "04/13/2026",
-      endDate: "04/13/2026",
-      title: "Dog Walking for Max",
-      listingPrice: 42.5,
-      convenientFee: 8.5,
-      payout: 34.0,
-    },
-  ],
-  pending: [
-    {
-      id: "p1",
-      startDate: "05/20/2026",
-      endDate: "05/22/2026",
-      title: "Dog Boarding for Charlie",
-      listingPrice: 88.0,
-      convenientFee: 15.0,
-      payout: 73.0,
-    },
-    {
-      id: "p2",
-      startDate: "05/21/2026",
-      endDate: "05/22/2026",
-      title: "Pet Sitting for Luna",
-      listingPrice: 65.0,
-      convenientFee: 13.0,
-      payout: 52.0,
-    },
-  ],
+  earnings: earningHistoryData.earnings,
+  pending: earningHistoryData.pending,
 };
 
 function formatAmount(value: number) {

@@ -87,6 +87,25 @@ async function main() {
     create: { userId: alice.id, businessId: hiddenGemPetLodge.id },
   });
 
+  // Seed default weekly availability — Mon–Fri 9:00–17:00 for every user.
+  // Idempotent: clear existing weekly rows for the user, then recreate.
+  async function seedDefaultWeeklyAvailability(userId: number) {
+    await prisma.weeklyAvailabilitySlot.deleteMany({ where: { userId } });
+    await prisma.weeklyAvailabilitySlot.createMany({
+      data: [1, 2, 3, 4, 5].map((dayOfWeek) => ({
+        userId,
+        dayOfWeek,
+        startTime: "09:00",
+        endTime: "17:00",
+      })),
+    });
+  }
+
+  await Promise.all([
+    seedDefaultWeeklyAvailability(alice.id),
+    seedDefaultWeeklyAvailability(bob.id),
+  ]);
+
   // Seed Addresses
   const addresses = await Promise.all(
     ADDRESS.map(({ id, address, latitude, longitude }) =>

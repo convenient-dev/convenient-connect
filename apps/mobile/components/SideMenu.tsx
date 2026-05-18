@@ -114,6 +114,10 @@ export function SideMenu({
       key: "schedule",
       label: "Schedule",
       icon: require("@/assets/side-menu/schedule.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/schedule" as never);
+      },
     },
     {
       key: "notifications",

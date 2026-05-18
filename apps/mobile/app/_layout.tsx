@@ -68,6 +68,7 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen name="earnings" options={{ headerShown: false }} />
+            <Stack.Screen name="schedule" options={{ headerShown: false }} />
             <Stack.Screen
               name="earning-history"
               options={{ headerShown: false }}

@@ -2,21 +2,31 @@
   "withdrawals": [
     {
       "id": "w1",
-      "title": "Weekly Payout",
       "payoutDate": "05/11/2026",
-      "amount": 123.0
+      "amount": 123.0,
+      "status": "completed",
+      "destination": "Bank account ending in 5114"
     },
     {
       "id": "w2",
-      "title": "Doggy Day Care for Boba",
       "payoutDate": "05/02/2026",
-      "amount": 42.2
+      "amount": 42.2,
+      "status": "completed",
+      "destination": "Bank account ending in 5114"
     },
     {
       "id": "w3",
-      "title": "Drop-In Visits for Vasco",
       "payoutDate": "05/12/2026",
-      "amount": 144.0
+      "amount": 144.0,
+      "status": "pending",
+      "destination": "Bank account ending in 5114"
+    },
+    {
+      "id": "w4",
+      "payoutDate": "04/28/2026",
+      "amount": 34.0,
+      "status": "failed",
+      "destination": "Bank account ending in 5114"
     }
   ],
   "earnings": [

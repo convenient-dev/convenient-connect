@@ -1,3 +1,4 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -131,10 +132,22 @@ export default function ScheduleScreen() {
   const [hourRanges, setHourRanges] = useState<HourRange[]>([
     { id: "0", start: DEFAULT_START, end: DEFAULT_END },
   ]);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [dayRanges, setDayRanges] = useState<Record<DayKey, HourRange[]>>(
+    () => {
+      const obj = {} as Record<DayKey, HourRange[]>;
+      for (const d of DAYS) obj[d] = [];
+      return obj;
+    },
+  );
+  const [editing, setEditing] = useState<{
+    day: DayKey | null;
+    id: string;
+  } | null>(null);
   const [overrideDays, setOverrideDays] = useState<OverrideDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
+  const [confirmOffVisible, setConfirmOffVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -145,11 +158,23 @@ export default function ScheduleScreen() {
           setAvailable(data.availabilityEnabled);
 
           const days = new Set<DayKey>();
+          const map: Record<DayKey, HourRange[]> = {} as Record<
+            DayKey,
+            HourRange[]
+          >;
+          for (const d of DAYS) map[d] = [];
           for (const slot of data.weeklyAvailabilitySlots) {
             const key = DAYS[slot.dayOfWeek];
-            if (key) days.add(key);
+            if (!key) continue;
+            days.add(key);
+            map[key].push({
+              id: `${key}-${slot.id}`,
+              start: parseHHmm(slot.startTime),
+              end: parseHHmm(slot.endTime),
+            });
           }
           setSelectedDays(days);
+          setDayRanges(map);
 
           const seen = new Set<string>();
           const ranges: HourRange[] = [];
@@ -169,6 +194,25 @@ export default function ScheduleScreen() {
               : [{ id: "0", start: DEFAULT_START, end: DEFAULT_END }],
           );
 
+          // Same hours when every selected day shares an identical range set.
+          const sel = Array.from(days);
+          let same = true;
+          if (sel.length > 1) {
+            const sig = (rs: HourRange[]) =>
+              rs
+                .map((r) => `${formatHHmm(r.start)}-${formatHHmm(r.end)}`)
+                .sort()
+                .join("|");
+            const first = sig(map[sel[0]]);
+            for (let i = 1; i < sel.length; i++) {
+              if (sig(map[sel[i]]) !== first) {
+                same = false;
+                break;
+              }
+            }
+          }
+          setSameHours(same);
+
           setOverrideDays(data.availabilityOverrideDays ?? []);
         })
         .catch(() => {
@@ -182,31 +226,82 @@ export default function ScheduleScreen() {
   function toggleDay(day: DayKey) {
     setSelectedDays((prev) => {
       const next = new Set(prev);
-      if (next.has(day)) next.delete(day);
-      else next.add(day);
+      if (next.has(day)) {
+        next.delete(day);
+      } else {
+        next.add(day);
+        if (!sameHours) seedDayRanges(day);
+      }
       return next;
     });
   }
 
-  function addRange() {
-    setHourRanges((prev) => [
-      ...prev,
-      { id: String(Date.now()), start: DEFAULT_START, end: DEFAULT_END },
-    ]);
+  function seedDayRanges(day: DayKey) {
+    setDayRanges((prev) => {
+      if ((prev[day] ?? []).length > 0) return prev;
+      return {
+        ...prev,
+        [day]: hourRanges.map((r, i) => ({
+          id: `${day}-seed-${i}-${Date.now()}`,
+          start: r.start,
+          end: r.end,
+        })),
+      };
+    });
   }
 
-  function removeRange(id: string) {
-    setHourRanges((prev) =>
+  function handleSameHoursChange(value: boolean) {
+    if (!value) {
+      // Seed each selected day from the shared hours, but preserve any
+      // existing per-day edits the user has already made.
+      setDayRanges((prev) => {
+        const next = { ...prev };
+        for (const day of selectedDays) {
+          if (!next[day] || next[day].length === 0) {
+            next[day] = hourRanges.map((r, i) => ({
+              id: `${day}-seed-${i}-${Date.now()}`,
+              start: r.start,
+              end: r.end,
+            }));
+          }
+        }
+        return next;
+      });
+    }
+    setSameHours(value);
+  }
+
+  function addRange(day: DayKey | null) {
+    setEditing({ day, id: `new-${Date.now()}` });
+  }
+
+  function removeRange(day: DayKey | null, id: string) {
+    updateRanges(day, (prev) =>
       prev.length === 1 ? prev : prev.filter((r) => r.id !== id),
     );
   }
 
   function saveEditing(start: TimeValue, end: TimeValue) {
-    if (editingId === null) return;
-    setHourRanges((prev) =>
-      prev.map((r) => (r.id === editingId ? { ...r, start, end } : r)),
-    );
-    setEditingId(null);
+    if (editing === null) return;
+    const { day, id } = editing;
+    updateRanges(day, (prev) => {
+      const exists = prev.some((r) => r.id === id);
+      if (exists)
+        return prev.map((r) => (r.id === id ? { ...r, start, end } : r));
+      return [...prev, { id, start, end }];
+    });
+    setEditing(null);
+  }
+
+  function updateRanges(
+    day: DayKey | null,
+    updater: (prev: HourRange[]) => HourRange[],
+  ) {
+    if (day === null) {
+      setHourRanges(updater);
+    } else {
+      setDayRanges((prev) => ({ ...prev, [day]: updater(prev[day] ?? []) }));
+    }
   }
 
   async function handleSave() {
@@ -218,7 +313,8 @@ export default function ScheduleScreen() {
     for (const day of selectedDays) {
       const dayOfWeek = DAYS.indexOf(day);
       if (dayOfWeek < 0) continue;
-      for (const range of hourRanges) {
+      const ranges = sameHours ? hourRanges : (dayRanges[day] ?? []);
+      for (const range of ranges) {
         slots.push({
           dayOfWeek,
           startTime: formatHHmm(range.start),
@@ -245,13 +341,62 @@ export default function ScheduleScreen() {
         );
         return;
       }
-      router.back();
+      setSuccessVisible(true);
     } finally {
       setSaving(false);
     }
   }
 
-  const editingRange = hourRanges.find((r) => r.id === editingId);
+  function handleSuccessConfirm() {
+    setSuccessVisible(false);
+  }
+
+  function handleAvailableChange(value: boolean) {
+    if (!value) {
+      setConfirmOffVisible(true);
+    } else {
+      setAvailable(true);
+    }
+  }
+
+  async function confirmTurnOff() {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/users/${USER_ID}/availability`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ availabilityEnabled: false }),
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        Alert.alert(
+          "Couldn't update",
+          data?.error ?? "Failed to update. Please try again.",
+        );
+        return;
+      }
+      setAvailable(false);
+    } finally {
+      setConfirmOffVisible(false);
+    }
+  }
+
+  function cancelTurnOff() {
+    setConfirmOffVisible(false);
+  }
+
+  const editingList =
+    editing?.day != null ? (dayRanges[editing.day] ?? []) : hourRanges;
+  const editingRange = editingList.find((r) => r.id === editing?.id);
+  const otherRanges = useMemo(
+    () =>
+      editingList
+        .filter((r) => r.id !== editing?.id)
+        .map((r) => ({ start: r.start, end: r.end })),
+    [editingList, editing?.id],
+  );
 
   const headerTitle = useMemo(() => "When are you available?", []);
 
@@ -266,219 +411,306 @@ export default function ScheduleScreen() {
           style={styles.loader}
         />
       ) : (
-      <View style={styles.body}>
-        <View style={styles.availableCard}>
-          <View style={styles.availableTextWrap}>
-            <Text style={styles.availableTitle}>I&apos;m Available</Text>
-            <Text style={styles.availableSubtitle}>
-              Once turned off, your services will be hidden from the public.
-            </Text>
-          </View>
-          <Switch
-            value={available}
-            onValueChange={setAvailable}
-            trackColor={{ false: neutral[200], true: secondary[500] }}
-            thumbColor={neutral[0]}
-            ios_backgroundColor={neutral[200]}
-          />
-        </View>
-
-        <View style={styles.segmented}>
-          <TouchableOpacity
-            style={[styles.segment, tab === "days" && styles.segmentActive]}
-            activeOpacity={0.85}
-            onPress={() => setTab("days")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                tab === "days" && styles.segmentTextActive,
-              ]}
-            >
-              Days & Hours
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segment, tab === "modify" && styles.segmentActive]}
-            activeOpacity={0.85}
-            onPress={() => setTab("modify")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                tab === "modify" && styles.segmentTextActive,
-              ]}
-            >
-              Modify
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {tab === "days" ? (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.daysRow}>
-              {DAYS.map((day) => {
-                const active = selectedDays.has(day);
-                return (
-                  <TouchableOpacity
-                    key={day}
-                    style={[styles.dayCircle, active && styles.dayCircleActive]}
-                    activeOpacity={0.85}
-                    onPress={() => toggleDay(day)}
-                  >
-                    <Text
-                      style={[styles.dayText, active && styles.dayTextActive]}
-                    >
-                      {day}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Use same hours for all days</Text>
-              <Switch
-                value={sameHours}
-                onValueChange={setSameHours}
-                trackColor={{ false: neutral[200], true: primary[400] }}
-                thumbColor={neutral[0]}
-                ios_backgroundColor={neutral[200]}
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.timezoneRow}>
-              <Text style={styles.timezoneLabel}>Eastern Time (EST)</Text>
-              <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
-                <Feather name="edit-2" size={16} color={primary[400]} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.hoursSection}>
-              {hourRanges.map((range, idx) => (
-                <View key={range.id} style={styles.hoursRow}>
-                  {idx === 0 ? (
-                    <Text style={styles.hoursLabel}>Hours</Text>
-                  ) : (
-                    <View style={styles.hoursLabelSpacer} />
-                  )}
-                  <TouchableOpacity
-                    style={styles.hoursInput}
-                    activeOpacity={0.85}
-                    onPress={() => setEditingId(range.id)}
-                  >
-                    <Text style={styles.hoursInputText}>
-                      {formatRange(range.start, range.end)}
-                    </Text>
-                  </TouchableOpacity>
-                  {idx === 0 ? (
-                    <TouchableOpacity
-                      hitSlop={8}
-                      activeOpacity={0.7}
-                      onPress={addRange}
-                    >
-                      <Feather
-                        name="plus-circle"
-                        size={22}
-                        color={primary[400]}
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.iconSpacer} />
-                  )}
-                  <TouchableOpacity
-                    hitSlop={8}
-                    activeOpacity={0.7}
-                    onPress={() => removeRange(range.id)}
-                  >
-                    <Feather name="trash-2" size={20} color={secondary[500]} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        ) : (
-          <ScrollView
-            style={styles.modifyList}
-            showsVerticalScrollIndicator={false}
-          >
-            {overrideDays.length === 0 ? (
-              <Text style={styles.emptyOverridesText}>
-                No date-specific changes yet.
+        <View style={styles.body}>
+          <View style={styles.availableCard}>
+            <View style={styles.availableTextWrap}>
+              <Text style={styles.availableTitle}>I&apos;m Available</Text>
+              <Text style={styles.availableSubtitle}>
+                Once turned off, your services will be hidden from the public.
               </Text>
-            ) : (
-              overrideDays.map((day) => (
-                <View key={day.id} style={styles.overrideCard}>
-                  <View style={styles.overrideHeader}>
-                    <Text style={styles.overrideDate}>
-                      {formatOverrideDate(day.date)}
-                    </Text>
-                    <Text
+            </View>
+            <Switch
+              value={available}
+              onValueChange={handleAvailableChange}
+              trackColor={{ false: neutral[200], true: secondary[500] }}
+              thumbColor={neutral[0]}
+              ios_backgroundColor={neutral[200]}
+            />
+          </View>
+
+          <View style={[styles.disableable, !available && styles.disabled]}>
+          <View style={styles.segmented}>
+            <TouchableOpacity
+              style={[styles.segment, tab === "days" && styles.segmentActive]}
+              activeOpacity={0.85}
+              onPress={() => setTab("days")}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  tab === "days" && styles.segmentTextActive,
+                ]}
+              >
+                Days & Hours
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.segment, tab === "modify" && styles.segmentActive]}
+              activeOpacity={0.85}
+              onPress={() => setTab("modify")}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  tab === "modify" && styles.segmentTextActive,
+                ]}
+              >
+                Modify
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {tab === "days" ? (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.daysRow}>
+                {DAYS.map((day) => {
+                  const active = selectedDays.has(day);
+                  return (
+                    <TouchableOpacity
+                      key={day}
                       style={[
-                        styles.overrideStatus,
-                        day.isAvailable
-                          ? styles.overrideAvailable
-                          : styles.overrideUnavailable,
+                        styles.dayCircle,
+                        active && styles.dayCircleActive,
                       ]}
+                      activeOpacity={0.85}
+                      onPress={() => toggleDay(day)}
                     >
-                      {day.isAvailable ? "Available" : "Unavailable"}
-                    </Text>
-                  </View>
-                  {day.isAvailable && day.slots.length > 0 && (
-                    <View style={styles.overrideSlots}>
-                      {day.slots.map((slot) => (
-                        <Text key={slot.id} style={styles.overrideSlotText}>
-                          {formatOverrideTime(slot.startTime)} –{" "}
-                          {formatOverrideTime(slot.endTime)}
-                        </Text>
-                      ))}
+                      <Text
+                        style={[styles.dayText, active && styles.dayTextActive]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Use same hours for all days</Text>
+                <Switch
+                  value={sameHours}
+                  onValueChange={handleSameHoursChange}
+                  trackColor={{ false: neutral[200], true: primary[400] }}
+                  thumbColor={neutral[0]}
+                  ios_backgroundColor={neutral[200]}
+                />
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.timezoneRow}>
+                <Text style={styles.timezoneLabel}>Eastern Time (EST)</Text>
+                <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
+                  <Feather name="edit-2" size={16} color={primary[400]} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.hoursSection}>
+                {sameHours
+                  ? hourRanges.map((range, idx) => (
+                      <View key={range.id} style={styles.hoursRow}>
+                        {idx === 0 ? (
+                          <Text style={styles.hoursLabel}>Hours</Text>
+                        ) : (
+                          <View style={styles.hoursLabelSpacer} />
+                        )}
+                        <TouchableOpacity
+                          style={styles.hoursInput}
+                          activeOpacity={0.85}
+                          onPress={() =>
+                            setEditing({ day: null, id: range.id })
+                          }
+                        >
+                          <Text style={styles.hoursInputText}>
+                            {formatRange(range.start, range.end)}
+                          </Text>
+                        </TouchableOpacity>
+                        {idx === 0 ? (
+                          <TouchableOpacity
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                            onPress={() => addRange(null)}
+                          >
+                            <Feather
+                              name="plus-circle"
+                              size={22}
+                              color={primary[400]}
+                            />
+                          </TouchableOpacity>
+                        ) : (
+                          <View style={styles.iconSpacer} />
+                        )}
+                        <TouchableOpacity
+                          hitSlop={8}
+                          activeOpacity={0.7}
+                          onPress={() => removeRange(null, range.id)}
+                        >
+                          <Feather
+                            name="trash-2"
+                            size={20}
+                            color={secondary[500]}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  : DAYS.filter((d) => selectedDays.has(d)).map((day) => {
+                      const ranges = dayRanges[day] ?? [];
+                      return (
+                        <View key={day} style={styles.dayHoursBlock}>
+                          {ranges.map((range, idx) => (
+                            <View key={range.id} style={styles.hoursRow}>
+                              {idx === 0 ? (
+                                <Text style={styles.hoursLabel}>{day}</Text>
+                              ) : (
+                                <View style={styles.hoursLabelSpacer} />
+                              )}
+                              <TouchableOpacity
+                                style={styles.hoursInput}
+                                activeOpacity={0.85}
+                                onPress={() =>
+                                  setEditing({ day, id: range.id })
+                                }
+                              >
+                                <Text style={styles.hoursInputText}>
+                                  {formatRange(range.start, range.end)}
+                                </Text>
+                              </TouchableOpacity>
+                              {idx === 0 ? (
+                                <TouchableOpacity
+                                  hitSlop={8}
+                                  activeOpacity={0.7}
+                                  onPress={() => addRange(day)}
+                                >
+                                  <Feather
+                                    name="plus-circle"
+                                    size={22}
+                                    color={primary[400]}
+                                  />
+                                </TouchableOpacity>
+                              ) : (
+                                <View style={styles.iconSpacer} />
+                              )}
+                              <TouchableOpacity
+                                hitSlop={8}
+                                activeOpacity={0.7}
+                                onPress={() => removeRange(day, range.id)}
+                              >
+                                <Feather
+                                  name="trash-2"
+                                  size={20}
+                                  color={secondary[500]}
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })}
+              </View>
+            </ScrollView>
+          ) : (
+            <ScrollView
+              style={styles.modifyList}
+              showsVerticalScrollIndicator={false}
+            >
+              {overrideDays.length === 0 ? (
+                <Text style={styles.emptyOverridesText}>
+                  No date-specific changes yet.
+                </Text>
+              ) : (
+                overrideDays.map((day) => (
+                  <View key={day.id} style={styles.overrideCard}>
+                    <View style={styles.overrideHeader}>
+                      <Text style={styles.overrideDate}>
+                        {formatOverrideDate(day.date)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.overrideStatus,
+                          day.isAvailable
+                            ? styles.overrideAvailable
+                            : styles.overrideUnavailable,
+                        ]}
+                      >
+                        {day.isAvailable ? "Available" : "Unavailable"}
+                      </Text>
                     </View>
-                  )}
-                </View>
-              ))
-            )}
-          </ScrollView>
-        )}
-      </View>
+                    {day.isAvailable && day.slots.length > 0 && (
+                      <View style={styles.overrideSlots}>
+                        {day.slots.map((slot) => (
+                          <Text key={slot.id} style={styles.overrideSlotText}>
+                            {formatOverrideTime(slot.startTime)} –{" "}
+                            {formatOverrideTime(slot.endTime)}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          )}
+          </View>
+        </View>
       )}
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.footerButton, styles.cancelButton]}
-          activeOpacity={0.85}
-          onPress={() => router.back()}
-          disabled={saving}
-        >
-          <Text style={styles.footerButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.footerButton,
-            styles.saveButton,
-            saving && styles.saveButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.footerButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      {available && (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.footerButton, styles.cancelButton]}
+            activeOpacity={0.85}
+            onPress={() => router.back()}
+            disabled={saving}
+          >
+            <Text style={styles.footerButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.footerButton,
+              styles.saveButton,
+              saving && styles.saveButtonDisabled,
+            ]}
+            activeOpacity={0.85}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={neutral[0]} />
+            ) : (
+              <Text style={styles.footerButtonText}>Save</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <TimeRangePickerModal
-        visible={editingRange !== undefined}
+        visible={editing !== null}
         initialStart={editingRange?.start ?? DEFAULT_START}
         initialEnd={editingRange?.end ?? DEFAULT_END}
-        onCancel={() => setEditingId(null)}
+        excludeRanges={otherRanges}
+        onCancel={() => setEditing(null)}
         onSave={saveEditing}
+      />
+
+      <ConfirmModal
+        visible={successVisible}
+        icon="success"
+        title="Success"
+        message="Your weekly availability has been updated."
+        confirmLabel="Done"
+        onConfirm={handleSuccessConfirm}
+      />
+
+      <ConfirmModal
+        visible={confirmOffVisible}
+        title="Turn off availability?"
+        message="Turning this off will hide your service from customers. Are you sure you want to continue?"
+        confirmLabel="Yes, turn off"
+        cancelLabel="Cancel"
+        onConfirm={confirmTurnOff}
+        onCancel={cancelTurnOff}
       />
     </SafeAreaView>
   );
@@ -488,26 +720,101 @@ interface TimeRangePickerModalProps {
   visible: boolean;
   initialStart: TimeValue;
   initialEnd: TimeValue;
+  excludeRanges: { start: TimeValue; end: TimeValue }[];
   onCancel: () => void;
   onSave: (start: TimeValue, end: TimeValue) => void;
+}
+
+// Returns disjoint slot-index intervals [p, q) representing free half-hours.
+// Existing ranges occupy slot indices [startIdx, endIdx) — the end is exclusive,
+// so adjacent ranges (one ending where the next starts) are not merged.
+function computeFreeSegments(
+  excludeRanges: { start: TimeValue; end: TimeValue }[],
+): [number, number][] {
+  const sorted = excludeRanges
+    .map((r) => [timeToSlotIndex(r.start), timeToSlotIndex(r.end)] as const)
+    .filter(([a, b]) => b > a)
+    .sort((a, b) => a[0] - b[0]);
+  const segs: [number, number][] = [];
+  let cursor = 0;
+  for (const [a, b] of sorted) {
+    if (a > cursor) segs.push([cursor, a]);
+    cursor = Math.max(cursor, b);
+  }
+  if (cursor < TIME_SLOTS.length) segs.push([cursor, TIME_SLOTS.length]);
+  return segs;
+}
+
+function findSegment(
+  segments: [number, number][],
+  slot: number,
+): [number, number] | undefined {
+  return segments.find(([p, q]) => slot >= p && slot < q);
 }
 
 function TimeRangePickerModal({
   visible,
   initialStart,
   initialEnd,
+  excludeRanges,
   onCancel,
   onSave,
 }: TimeRangePickerModalProps) {
-  const [startIdx, setStartIdx] = useState(() => timeToSlotIndex(initialStart));
-  const [endIdx, setEndIdx] = useState(() => timeToSlotIndex(initialEnd));
+  const freeSegments = useMemo(
+    () => computeFreeSegments(excludeRanges),
+    [excludeRanges],
+  );
 
-  React.useEffect(() => {
-    if (visible) {
-      setStartIdx(timeToSlotIndex(initialStart));
-      setEndIdx(timeToSlotIndex(initialEnd));
+  // Start-time data: every free slot that has at least one half-hour after it
+  // (so an end can be picked). The last slot of the day (23:30) is never a
+  // valid start because there's no representable end after it.
+  const startData = useMemo(() => {
+    const result: typeof TIME_SLOTS = [];
+    for (const [p, q] of freeSegments) {
+      const maxStart = q < TIME_SLOTS.length ? q - 1 : TIME_SLOTS.length - 2;
+      for (let s = p; s <= maxStart; s++) result.push(TIME_SLOTS[s]);
     }
-  }, [visible, initialStart, initialEnd]);
+    return result;
+  }, [freeSegments]);
+
+  const initialStartIdx = useMemo(() => {
+    const i = timeToSlotIndex(initialStart);
+    return startData.some((s) => s.value === i)
+      ? i
+      : (startData[0]?.value ?? 0);
+  }, [initialStart, startData]);
+
+  const [startIdx, setStartIdx] = useState(initialStartIdx);
+
+  // End-time data: must lie strictly after start and within the same free
+  // segment as start. End can equal the start of the next existing range
+  // (adjacent, not overlapping).
+  const endData = useMemo(() => {
+    const seg = findSegment(freeSegments, startIdx);
+    if (!seg) return [];
+    const [, q] = seg;
+    const maxEnd = q < TIME_SLOTS.length ? q : TIME_SLOTS.length - 1;
+    const result: typeof TIME_SLOTS = [];
+    for (let e = startIdx + 1; e <= maxEnd; e++) result.push(TIME_SLOTS[e]);
+    return result;
+  }, [startIdx, freeSegments]);
+
+  const [endIdx, setEndIdx] = useState(() => {
+    const i = timeToSlotIndex(initialEnd);
+    return i > initialStartIdx ? i : initialStartIdx + 1;
+  });
+
+  // Reset to initial values whenever the modal is reopened
+  React.useEffect(() => {
+    if (visible) setStartIdx(initialStartIdx);
+  }, [visible, initialStartIdx]);
+
+  // Clamp end whenever start (or its segment) changes
+  React.useEffect(() => {
+    if (endData.length === 0) return;
+    const stillValid = endData.some((s) => s.value === endIdx);
+    if (!stillValid) setEndIdx(endData[0].value);
+  }, [endData, endIdx]);
 
   return (
     <Modal
@@ -523,7 +830,7 @@ function TimeRangePickerModal({
             <View style={styles.pickerCol}>
               <Text style={styles.pickerColTitle}>Start Time</Text>
               <WheelPicker
-                data={TIME_SLOTS}
+                data={startData}
                 value={startIdx}
                 itemHeight={36}
                 visibleItemCount={5}
@@ -536,7 +843,7 @@ function TimeRangePickerModal({
             <View style={styles.pickerCol}>
               <Text style={styles.pickerColTitle}>End Time</Text>
               <WheelPicker
-                data={TIME_SLOTS}
+                data={endData}
                 value={endIdx}
                 itemHeight={36}
                 visibleItemCount={5}
@@ -559,6 +866,7 @@ function TimeRangePickerModal({
             <TouchableOpacity
               style={[styles.pickerButton, styles.pickerSaveButton]}
               activeOpacity={0.85}
+              disabled={endData.length === 0}
               onPress={() =>
                 onSave(TIME_SLOTS[startIdx].time, TIME_SLOTS[endIdx].time)
               }
@@ -691,6 +999,16 @@ const styles = StyleSheet.create({
   hoursSection: {
     marginTop: 18,
     gap: 12,
+  },
+  dayHoursBlock: {
+    gap: 12,
+  },
+  disableable: {
+    flex: 1,
+  },
+  disabled: {
+    opacity: 0.5,
+    pointerEvents: "none",
   },
   hoursRow: {
     flexDirection: "row",

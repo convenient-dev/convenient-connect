@@ -48,3 +48,45 @@ export async function GET(
 
   return Response.json(user);
 }
+
+// POST /api/users/:id/availability
+// Update the user's availabilityEnabled flag.
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const userId = Number(id);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return Response.json({ error: "Invalid user id" }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return Response.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { availabilityEnabled } = body as Record<string, unknown>;
+  if (typeof availabilityEnabled !== "boolean") {
+    return Response.json(
+      { error: "availabilityEnabled must be a boolean" },
+      { status: 400 },
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!user) {
+    return Response.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { availabilityEnabled },
+    select: { availabilityEnabled: true },
+  });
+
+  return Response.json(updated);
+}

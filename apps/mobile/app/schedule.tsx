@@ -117,10 +117,11 @@ function formatOverrideDate(iso: string): string {
 }
 
 function toDateKey(iso: string): string {
+  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
   const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -131,7 +132,7 @@ function todayKey(): string {
 function parseAnyTime(s: string): TimeValue {
   if (s.includes("T")) {
     const d = new Date(s);
-    return { hour: d.getHours(), minute: d.getMinutes() };
+    return { hour: d.getUTCHours(), minute: d.getUTCMinutes() };
   }
   return parseHHmm(s);
 }
@@ -162,6 +163,7 @@ export default function ScheduleScreen() {
   const [overrideRangesByDate, setOverrideRangesByDate] = useState<
     Record<string, HourRange[]>
   >({});
+  const [lastOverrideDate, setLastOverrideDate] = useState<string | null>(null);
   const [selectedModifyDate, setSelectedModifyDate] =
     useState<string>(todayKey());
   const [visibleMonth, setVisibleMonth] = useState<string>(() =>
@@ -170,6 +172,9 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(
+    "Your weekly availability has been updated.",
+  );
   const [confirmOffVisible, setConfirmOffVisible] = useState(false);
 
   useFocusEffect(
@@ -311,6 +316,18 @@ export default function ScheduleScreen() {
   }
 
   function removeRange(day: DayKey | null, id: string) {
+    if (day !== null) {
+      const ranges = dayRanges[day] ?? [];
+      if (ranges.length === 1 && ranges[0].id === id) {
+        setSelectedDays((prev) => {
+          const next = new Set(prev);
+          next.delete(day);
+          return next;
+        });
+        setDayRanges((prev) => ({ ...prev, [day]: [] }));
+        return;
+      }
+    }
     updateRanges(day, (prev) =>
       prev.length === 1 ? prev : prev.filter((r) => r.id !== id),
     );
@@ -324,6 +341,7 @@ export default function ScheduleScreen() {
     modifyOverrideRanges(dateKey, (prev) =>
       prev.length === 0 ? prev : prev.filter((r) => r.id !== id),
     );
+    setLastOverrideDate(dateKey);
   }
 
   function modifyOverrideRanges(
@@ -347,6 +365,7 @@ export default function ScheduleScreen() {
     };
     if (date) {
       modifyOverrideRanges(date, apply);
+      setLastOverrideDate(date);
     } else {
       updateRanges(day, apply);
     }
@@ -395,9 +414,34 @@ export default function ScheduleScreen() {
       }
     }
 
+    const overrides: {
+      date: string;
+      isAvailable: boolean;
+      slots: { startTime: string; endTime: string }[];
+    }[] = [];
+    const explicitOverrideDates = new Set<string>();
+    for (const [date, ranges] of Object.entries(overrideRangesByDate)) {
+      explicitOverrideDates.add(date);
+      overrides.push({
+        date,
+        isAvailable: ranges.length > 0,
+        slots: ranges.map((r) => ({
+          startTime: formatHHmm(r.start),
+          endTime: formatHHmm(r.end),
+        })),
+      });
+    }
+    // Preserve any pre-loaded unavailable overrides the user didn't touch.
+    for (const od of overrideDays) {
+      if (od.isAvailable) continue;
+      const key = toDateKey(od.date);
+      if (explicitOverrideDates.has(key)) continue;
+      overrides.push({ date: key, isAvailable: false, slots: [] });
+    }
+
     setSaving(true);
     try {
-      const res = await fetch(
+      const weeklyRes = await fetch(
         `${API_BASE_URL}/users/${USER_ID}/availability/weekly`,
         {
           method: "PUT",
@@ -405,13 +449,47 @@ export default function ScheduleScreen() {
           body: JSON.stringify({ slots }),
         },
       );
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      if (!weeklyRes.ok) {
+        const data = await weeklyRes.json().catch(() => ({}));
         Alert.alert(
           "Couldn't save",
           data?.error ?? "Failed to save. Please try again.",
         );
         return;
+      }
+
+      const overrideRes = await fetch(
+        `${API_BASE_URL}/users/${USER_ID}/availability/overrides`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ overrides }),
+        },
+      );
+      if (!overrideRes.ok) {
+        const data = await overrideRes.json().catch(() => ({}));
+        Alert.alert(
+          "Couldn't save",
+          data?.error ?? "Failed to save overrides. Please try again.",
+        );
+        return;
+      }
+
+      const latest =
+        (lastOverrideDate &&
+          overrides.find((o) => o.date === lastOverrideDate)) ||
+        null;
+      if (!latest) {
+        setSuccessMessage("Your weekly availability has been updated.");
+      } else if (!latest.isAvailable) {
+        setSuccessMessage(
+          `Marked ${formatOverrideDate(latest.date)} as unavailable.`,
+        );
+      } else {
+        const n = latest.slots.length;
+        setSuccessMessage(
+          `Updated ${formatOverrideDate(latest.date)} with ${n} ${n === 1 ? "slot" : "slots"}.`,
+        );
       }
       setSuccessVisible(true);
     } finally {
@@ -1020,7 +1098,7 @@ export default function ScheduleScreen() {
         visible={successVisible}
         icon="success"
         title="Success"
-        message="Your weekly availability has been updated."
+        message={successMessage}
         confirmLabel="Done"
         onConfirm={handleSuccessConfirm}
       />

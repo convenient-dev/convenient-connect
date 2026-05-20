@@ -25,7 +25,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { brand, neutral, text, background, border, secondary, status } = Colors;
 
-type TabKey = "earnings" | "pending" | "withdrawals";
+type TabKey = "earnings" | "pending";
 type ViewMode = "calendar" | "list";
 
 // TODO: Replace dummy data with backend earnings API.
@@ -40,16 +40,7 @@ interface EarningItem {
   feeLabel?: string;
 }
 
-interface WithdrawalItem {
-  id: string;
-  title: string;
-  payoutDate: string;
-  amount: number;
-}
-
-const DUMMY_WITHDRAWALS: WithdrawalItem[] = earningHistoryData.withdrawals;
-
-const DUMMY_EARNINGS: Record<"earnings" | "pending", EarningItem[]> = {
+const DUMMY_EARNINGS: Record<TabKey, EarningItem[]> = {
   earnings: earningHistoryData.earnings,
   pending: earningHistoryData.pending,
 };
@@ -95,10 +86,9 @@ export default function EarningHistoryScreen() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "earnings", label: "Earnings" },
     { key: "pending", label: "Pending Earnings" },
-    { key: "withdrawals", label: "Withdrawals" },
   ];
 
-  const items = activeTab === "withdrawals" ? [] : DUMMY_EARNINGS[activeTab];
+  const items = DUMMY_EARNINGS[activeTab];
 
   const calendarItems = useMemo<CalendarEarningItem[]>(() => {
     return [
@@ -186,48 +176,29 @@ export default function EarningHistoryScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {activeTab === "withdrawals"
-              ? DUMMY_WITHDRAWALS.map((item, i) => (
-                  <View key={item.id}>
-                    <View style={styles.earningRow}>
-                      <View style={styles.earningInfo}>
-                        <Text style={styles.earningTitle}>{item.title}</Text>
-                        <Text style={styles.earningListing}>
-                          Payout Date: {item.payoutDate}
-                        </Text>
-                      </View>
-                      <Text style={styles.earningPayout}>
-                        {formatAmount(item.amount)}
-                      </Text>
-                    </View>
-                    {i < DUMMY_WITHDRAWALS.length - 1 && (
-                      <View style={styles.divider} />
-                    )}
+            {items.map((item, i) => (
+              <View key={item.id}>
+                <View style={styles.earningRow}>
+                  <View style={styles.earningInfo}>
+                    <Text style={styles.earningDate}>
+                      {item.startDate} - {item.endDate}
+                    </Text>
+                    <Text style={styles.earningTitle}>{item.title}</Text>
+                    <Text style={styles.earningListing}>
+                      Listing Price: {formatAmount(item.listingPrice)}
+                    </Text>
+                    <Text style={styles.earningFee}>
+                      {item.feeLabel ?? "Convenient Fee"}:{" "}
+                      {formatAmount(item.convenientFee)}
+                    </Text>
                   </View>
-                ))
-              : items.map((item, i) => (
-                  <View key={item.id}>
-                    <View style={styles.earningRow}>
-                      <View style={styles.earningInfo}>
-                        <Text style={styles.earningDate}>
-                          {item.startDate} - {item.endDate}
-                        </Text>
-                        <Text style={styles.earningTitle}>{item.title}</Text>
-                        <Text style={styles.earningListing}>
-                          Listing Price: {formatAmount(item.listingPrice)}
-                        </Text>
-                        <Text style={styles.earningFee}>
-                          {item.feeLabel ?? "Convenient Fee"}:{" "}
-                          {formatAmount(item.convenientFee)}
-                        </Text>
-                      </View>
-                      <Text style={styles.earningPayout}>
-                        {formatAmount(item.payout)}
-                      </Text>
-                    </View>
-                    {i < items.length - 1 && <View style={styles.divider} />}
-                  </View>
-                ))}
+                  <Text style={styles.earningPayout}>
+                    {formatAmount(item.payout)}
+                  </Text>
+                </View>
+                {i < items.length - 1 && <View style={styles.divider} />}
+              </View>
+            ))}
           </ScrollView>
         </>
       )}

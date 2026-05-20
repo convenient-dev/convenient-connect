@@ -77,6 +77,11 @@ export default function RootLayout() {
               name="manage-payout-methods"
               options={{ headerShown: false }}
             />
+            <Stack.Screen name="withdraw" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="withdrawal-history"
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="background-check-1"
               options={{ headerShown: false }}

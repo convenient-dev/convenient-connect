@@ -18,6 +18,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Calendar, type DateData } from "react-native-calendars";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const { primary, secondary, neutral, text, background, border, overlay } =
   Colors;
@@ -105,7 +107,8 @@ function formatHHmm(v: TimeValue): string {
 }
 
 function formatOverrideDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  const localIso = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00` : iso;
+  return new Date(localIso).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -113,13 +116,24 @@ function formatOverrideDate(iso: string): string {
   });
 }
 
-function formatOverrideTime(iso: string): string {
+function toDateKey(iso: string): string {
   const d = new Date(iso);
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayKey(): string {
+  return toDateKey(new Date().toISOString());
+}
+
+function parseAnyTime(s: string): TimeValue {
+  if (s.includes("T")) {
+    const d = new Date(s);
+    return { hour: d.getHours(), minute: d.getMinutes() };
+  }
+  return parseHHmm(s);
 }
 
 export default function ScheduleScreen() {
@@ -141,9 +155,18 @@ export default function ScheduleScreen() {
   );
   const [editing, setEditing] = useState<{
     day: DayKey | null;
+    date?: string;
     id: string;
   } | null>(null);
   const [overrideDays, setOverrideDays] = useState<OverrideDay[]>([]);
+  const [overrideRangesByDate, setOverrideRangesByDate] = useState<
+    Record<string, HourRange[]>
+  >({});
+  const [selectedModifyDate, setSelectedModifyDate] =
+    useState<string>(todayKey());
+  const [visibleMonth, setVisibleMonth] = useState<string>(() =>
+    todayKey().slice(0, 7),
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
@@ -214,10 +237,22 @@ export default function ScheduleScreen() {
           setSameHours(same);
 
           setOverrideDays(data.availabilityOverrideDays ?? []);
+
+          const overrideMap: Record<string, HourRange[]> = {};
+          for (const od of data.availabilityOverrideDays ?? []) {
+            if (!od.isAvailable) continue;
+            overrideMap[toDateKey(od.date)] = od.slots.map((s) => ({
+              id: `od-${od.id}-${s.id}`,
+              start: parseAnyTime(s.startTime),
+              end: parseAnyTime(s.endTime),
+            }));
+          }
+          setOverrideRangesByDate(overrideMap);
         })
         .catch(() => {
           setSelectedDays(new Set());
           setOverrideDays([]);
+          setOverrideRangesByDate({});
         })
         .finally(() => setLoading(false));
     }, []),
@@ -281,15 +316,40 @@ export default function ScheduleScreen() {
     );
   }
 
+  function addOverrideRange(dateKey: string) {
+    setEditing({ day: null, date: dateKey, id: `new-${Date.now()}` });
+  }
+
+  function removeOverrideRange(dateKey: string, id: string) {
+    modifyOverrideRanges(dateKey, (prev) =>
+      prev.length === 0 ? prev : prev.filter((r) => r.id !== id),
+    );
+  }
+
+  function modifyOverrideRanges(
+    dateKey: string,
+    updater: (prev: HourRange[]) => HourRange[],
+  ) {
+    setOverrideRangesByDate((prev) => {
+      const current = prev[dateKey] ?? weeklyRangesForDate(dateKey);
+      return { ...prev, [dateKey]: updater(current) };
+    });
+  }
+
   function saveEditing(start: TimeValue, end: TimeValue) {
     if (editing === null) return;
-    const { day, id } = editing;
-    updateRanges(day, (prev) => {
+    const { day, date, id } = editing;
+    const apply = (prev: HourRange[]) => {
       const exists = prev.some((r) => r.id === id);
       if (exists)
         return prev.map((r) => (r.id === id ? { ...r, start, end } : r));
       return [...prev, { id, start, end }];
-    });
+    };
+    if (date) {
+      modifyOverrideRanges(date, apply);
+    } else {
+      updateRanges(day, apply);
+    }
     setEditing(null);
   }
 
@@ -302,6 +362,18 @@ export default function ScheduleScreen() {
     } else {
       setDayRanges((prev) => ({ ...prev, [day]: updater(prev[day] ?? []) }));
     }
+  }
+
+  function weeklyRangesForDate(dateKey: string): HourRange[] {
+    const dow = new Date(`${dateKey}T00:00:00`).getDay();
+    const dayKey = DAYS[dow];
+    if (!selectedDays.has(dayKey)) return [];
+    const base = sameHours ? hourRanges : (dayRanges[dayKey] ?? []);
+    return base.map((r, i) => ({
+      id: `${dateKey}-w-${i}`,
+      start: r.start,
+      end: r.end,
+    }));
   }
 
   async function handleSave() {
@@ -387,8 +459,11 @@ export default function ScheduleScreen() {
     setConfirmOffVisible(false);
   }
 
-  const editingList =
-    editing?.day != null ? (dayRanges[editing.day] ?? []) : hourRanges;
+  const editingList = editing?.date
+    ? (overrideRangesByDate[editing.date] ?? weeklyRangesForDate(editing.date))
+    : editing?.day != null
+      ? (dayRanges[editing.day] ?? [])
+      : hourRanges;
   const editingRange = editingList.find((r) => r.id === editing?.id);
   const otherRanges = useMemo(
     () =>
@@ -399,6 +474,101 @@ export default function ScheduleScreen() {
   );
 
   const headerTitle = useMemo(() => "When are you available?", []);
+
+  const overridesByDate = useMemo(() => {
+    const map: Record<string, OverrideDay> = {};
+    for (const d of overrideDays) map[toDateKey(d.date)] = d;
+    return map;
+  }, [overrideDays]);
+
+  type DateAvailability = {
+    isAvailable: boolean;
+    isOverride: boolean;
+    slots: { id: string; label: string }[];
+  };
+
+  const getDateAvailability = useCallback(
+    (dateKey: string): DateAvailability => {
+      const overrideRanges = overrideRangesByDate[dateKey];
+      if (overrideRanges) {
+        return {
+          isAvailable: overrideRanges.length > 0,
+          isOverride: true,
+          slots: overrideRanges.map((r) => ({
+            id: r.id,
+            label: formatRange(r.start, r.end),
+          })),
+        };
+      }
+      const override = overridesByDate[dateKey];
+      if (override && !override.isAvailable) {
+        return { isAvailable: false, isOverride: true, slots: [] };
+      }
+      const dow = new Date(`${dateKey}T00:00:00`).getDay();
+      const dayKey = DAYS[dow];
+      if (!selectedDays.has(dayKey)) {
+        return { isAvailable: false, isOverride: false, slots: [] };
+      }
+      const ranges = sameHours ? hourRanges : (dayRanges[dayKey] ?? []);
+      return {
+        isAvailable: ranges.length > 0,
+        isOverride: false,
+        slots: ranges.map((r) => ({
+          id: r.id,
+          label: formatRange(r.start, r.end),
+        })),
+      };
+    },
+    [
+      overrideRangesByDate,
+      overridesByDate,
+      selectedDays,
+      sameHours,
+      hourRanges,
+      dayRanges,
+    ],
+  );
+
+  const modifyMarkedDates = useMemo(() => {
+    const marked: Record<
+      string,
+      {
+        selected?: boolean;
+        selectedColor?: string;
+        dots?: { key: string; color: string }[];
+      }
+    > = {};
+    const [y, m] = visibleMonth.split("-").map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const info = getDateAvailability(key);
+      const dots: { key: string; color: string }[] = [];
+      if (info.isOverride) {
+        dots.push({
+          key: "override",
+          color: info.isAvailable ? secondary[500] : neutral[400],
+        });
+      } else if (info.isAvailable) {
+        dots.push({ key: "weekly", color: primary[400] });
+      }
+      if (dots.length > 0) marked[key] = { dots };
+    }
+    marked[selectedModifyDate] = {
+      ...(marked[selectedModifyDate] ?? {}),
+      selected: true,
+      selectedColor: primary[300],
+    };
+    return marked;
+  }, [visibleMonth, getDateAvailability, selectedModifyDate]);
+
+  const selectedDateRanges =
+    overrideRangesByDate[selectedModifyDate] ??
+    weeklyRangesForDate(selectedModifyDate);
+  const selectedIsExplicitlyUnavailable =
+    !!overridesByDate[selectedModifyDate] &&
+    !overridesByDate[selectedModifyDate].isAvailable &&
+    !overrideRangesByDate[selectedModifyDate];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -615,41 +785,193 @@ export default function ScheduleScreen() {
               style={styles.modifyList}
               showsVerticalScrollIndicator={false}
             >
-              {overrideDays.length === 0 ? (
-                <Text style={styles.emptyOverridesText}>
-                  No date-specific changes yet.
-                </Text>
-              ) : (
-                overrideDays.map((day) => (
-                  <View key={day.id} style={styles.overrideCard}>
-                    <View style={styles.overrideHeader}>
-                      <Text style={styles.overrideDate}>
-                        {formatOverrideDate(day.date)}
-                      </Text>
-                      <Text
+              <Calendar
+                initialDate={selectedModifyDate}
+                current={selectedModifyDate}
+                onDayPress={(day: DateData) =>
+                  setSelectedModifyDate(day.dateString)
+                }
+                onMonthChange={(m: DateData) =>
+                  setVisibleMonth(m.dateString.slice(0, 7))
+                }
+                markedDates={modifyMarkedDates}
+                markingType="dot"
+                enableSwipeMonths
+                hideExtraDays
+                firstDay={0}
+                renderArrow={(direction: "left" | "right") => (
+                  <MaterialIcons
+                    name={
+                      direction === "left" ? "chevron-left" : "chevron-right"
+                    }
+                    size={24}
+                    color={text.primary}
+                  />
+                )}
+                theme={{
+                  backgroundColor: "transparent",
+                  calendarBackground: "transparent",
+                  textSectionTitleColor: neutral[400],
+                  dayTextColor: text.primary,
+                  textDisabledColor: neutral[200],
+                  monthTextColor: text.primary,
+                  textMonthFontWeight: "700",
+                  textDayHeaderFontSize: 12,
+                  selectedDayBackgroundColor: primary[300],
+                  selectedDayTextColor: neutral[0],
+                  todayTextColor: primary[400],
+                  arrowColor: text.primary,
+                }}
+                dayComponent={(props) => {
+                  const date = props.date as DateData | undefined;
+                  const state = props.state as
+                    | ""
+                    | "selected"
+                    | "disabled"
+                    | "today"
+                    | "inactive"
+                    | undefined;
+                  if (!date) return null;
+                  const dateString = date.dateString;
+                  const info = getDateAvailability(dateString);
+                  const hasSlots = info.slots.length > 0;
+                  const isSelected = dateString === selectedModifyDate;
+                  const isToday = state === "today";
+                  const isDisabled = state === "disabled";
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedModifyDate(dateString)}
+                      disabled={isDisabled}
+                      style={styles.dayOuter}
+                    >
+                      <View
                         style={[
-                          styles.overrideStatus,
-                          day.isAvailable
-                            ? styles.overrideAvailable
-                            : styles.overrideUnavailable,
+                          styles.dayBox,
+                          hasSlots && !isSelected && styles.dayBoxActive,
+                          isSelected && styles.dayBoxSelected,
+                          isToday && !isSelected && styles.dayBoxToday,
                         ]}
                       >
-                        {day.isAvailable ? "Available" : "Unavailable"}
-                      </Text>
-                    </View>
-                    {day.isAvailable && day.slots.length > 0 && (
-                      <View style={styles.overrideSlots}>
-                        {day.slots.map((slot) => (
-                          <Text key={slot.id} style={styles.overrideSlotText}>
-                            {formatOverrideTime(slot.startTime)} –{" "}
-                            {formatOverrideTime(slot.endTime)}
-                          </Text>
-                        ))}
+                        <Text
+                          style={[
+                            styles.dayNumber,
+                            isDisabled && styles.dayNumberDisabled,
+                            isSelected && styles.dayNumberSelected,
+                          ]}
+                        >
+                          {date.day}
+                        </Text>
                       </View>
-                    )}
-                  </View>
-                ))
-              )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+
+              <View style={styles.selectedDaySection}>
+                <View style={styles.overrideHeader}>
+                  <Text style={styles.overrideDate}>
+                    {formatOverrideDate(selectedModifyDate)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.overrideStatus,
+                      selectedDateRanges.length > 0
+                        ? styles.overrideAvailable
+                        : styles.overrideUnavailable,
+                    ]}
+                  >
+                    {selectedDateRanges.length}{" "}
+                    {selectedDateRanges.length === 1 ? "slot" : "slots"}
+                  </Text>
+                </View>
+
+                <View style={styles.hoursSection}>
+                  {selectedDateRanges.map((range, idx) => (
+                    <View key={range.id} style={styles.hoursRow}>
+                      {idx === 0 ? (
+                        <Text style={styles.hoursLabel}>Hours</Text>
+                      ) : (
+                        <View style={styles.hoursLabelSpacer} />
+                      )}
+                      <TouchableOpacity
+                        style={styles.hoursInput}
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          setEditing({
+                            day: null,
+                            date: selectedModifyDate,
+                            id: range.id,
+                          })
+                        }
+                      >
+                        <Text style={styles.hoursInputText}>
+                          {formatRange(range.start, range.end)}
+                        </Text>
+                      </TouchableOpacity>
+                      {idx === 0 ? (
+                        <TouchableOpacity
+                          hitSlop={8}
+                          activeOpacity={0.7}
+                          onPress={() => addOverrideRange(selectedModifyDate)}
+                        >
+                          <Feather
+                            name="plus-circle"
+                            size={22}
+                            color={primary[400]}
+                          />
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.iconSpacer} />
+                      )}
+                      <TouchableOpacity
+                        hitSlop={8}
+                        activeOpacity={0.7}
+                        onPress={() =>
+                          removeOverrideRange(selectedModifyDate, range.id)
+                        }
+                      >
+                        <Feather
+                          name="trash-2"
+                          size={20}
+                          color={secondary[500]}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {selectedDateRanges.length === 0 && (
+                    <View style={styles.hoursRow}>
+                      <Text style={styles.hoursLabel}>Hours</Text>
+                      <TouchableOpacity
+                        style={styles.hoursInput}
+                        activeOpacity={0.85}
+                        onPress={() => addOverrideRange(selectedModifyDate)}
+                      >
+                        <Text
+                          style={[styles.hoursInputText, styles.hoursInputEmpty]}
+                        >
+                          {selectedIsExplicitlyUnavailable
+                            ? "Marked unavailable — tap to add"
+                            : "No hours — tap to add"}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        hitSlop={8}
+                        activeOpacity={0.7}
+                        onPress={() => addOverrideRange(selectedModifyDate)}
+                      >
+                        <Feather
+                          name="plus-circle"
+                          size={22}
+                          color={primary[400]}
+                        />
+                      </TouchableOpacity>
+                      <View style={styles.iconSpacer} />
+                    </View>
+                  )}
+                </View>
+              </View>
             </ScrollView>
           )}
           </View>
@@ -1041,6 +1363,10 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
+  hoursInputEmpty: {
+    color: neutral[400],
+    fontWeight: "500",
+  },
   iconSpacer: {
     width: 22,
   },
@@ -1116,13 +1442,44 @@ const styles = StyleSheet.create({
   overrideUnavailable: {
     color: secondary[500],
   },
-  overrideSlots: {
-    gap: 4,
+  selectedDaySection: {
+    marginTop: 16,
+    gap: 12,
   },
-  overrideSlotText: {
-    fontSize: 13,
-    color: neutral[500],
+  dayOuter: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayBoxActive: {
+    backgroundColor: primary[100],
+  },
+  dayBoxSelected: {
+    backgroundColor: primary[300],
+  },
+  dayBoxToday: {
+    borderWidth: 1,
+    borderColor: primary[400],
+  },
+  dayNumber: {
+    fontSize: 15,
+    color: text.primary,
     letterSpacing: -0.408,
+  },
+  dayNumberDisabled: {
+    color: neutral[200],
+  },
+  dayNumberSelected: {
+    color: neutral[0],
+    fontWeight: "600",
   },
   pickerBackdrop: {
     flex: 1,

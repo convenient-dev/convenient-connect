@@ -13,7 +13,8 @@
     "@supabase/supabase-js": "^2.103.2",
     "next": "16.2.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "stripe": "^22.1.1"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.7.0",

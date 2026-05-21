@@ -1,9 +1,12 @@
+import bookingsData from "@/assets/data/bookings.json";
+import { BookingStatusBadge } from "@/components/BookingStatusBadge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import WheelPicker from "@quidone/react-native-wheel-picker";
+import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -112,6 +115,40 @@ function parseHHmm(s: string): TimeValue {
 
 function formatHHmm(v: TimeValue): string {
   return `${String(v.hour).padStart(2, "0")}:${String(v.minute).padStart(2, "0")}`;
+}
+
+type Booking = {
+  id: string;
+  date: string;
+  start: string;
+  end: string;
+  title: string;
+  clientName: string;
+  status: "active" | "completed" | "pending" | "cancelled";
+};
+
+const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
+
+const BOOKING_DOT_COLORS = [
+  "#22C55E",
+  "#3B82F6",
+  "#F59E0B",
+  "#EC4899",
+  "#8B5CF6",
+  "#EF4444",
+  "#14B8A6",
+  "#F97316",
+];
+
+function formatBookingTime(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr);
+  const period = h >= 12 ? "PM" : "AM";
+  const display = h % 12 === 0 ? 12 : h % 12;
+  return m === 0
+    ? `${display}:${String(m).padStart(2, "0")} ${period}`
+    : `${display}:${String(m).padStart(2, "0")} ${period}`;
 }
 
 function formatOverrideDate(iso: string): string {
@@ -687,6 +724,18 @@ export default function ScheduleScreen() {
     ],
   );
 
+  const bookingsByDate = useMemo(() => {
+    const map: Record<string, Booking[]> = {};
+    for (const b of BOOKINGS) {
+      if (!map[b.date]) map[b.date] = [];
+      map[b.date].push(b);
+    }
+    for (const list of Object.values(map)) {
+      list.sort((a, b) => a.start.localeCompare(b.start));
+    }
+    return map;
+  }, []);
+
   const modifyMarkedDates = useMemo(() => {
     const marked: Record<
       string,
@@ -700,16 +749,14 @@ export default function ScheduleScreen() {
     const daysInMonth = new Date(y, m, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
       const key = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const info = getDateAvailability(key);
       const dots: { key: string; color: string }[] = [];
-      if (info.isOverride) {
+      const dayBookings = bookingsByDate[key] ?? [];
+      dayBookings.forEach((b, idx) => {
         dots.push({
-          key: "override",
-          color: info.isAvailable ? secondary[500] : neutral[400],
+          key: `booking-${b.id}`,
+          color: BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length],
         });
-      } else if (info.isAvailable) {
-        dots.push({ key: "weekly", color: primary[400] });
-      }
+      });
       if (dots.length > 0) marked[key] = { dots };
     }
     marked[selectedModifyDate] = {
@@ -718,11 +765,12 @@ export default function ScheduleScreen() {
       selectedColor: primary[300],
     };
     return marked;
-  }, [visibleMonth, getDateAvailability, selectedModifyDate]);
+  }, [visibleMonth, bookingsByDate, selectedModifyDate]);
 
   const selectedDateRanges =
     overrideRangesByDate[selectedModifyDate] ??
     weeklyRangesForDate(selectedModifyDate);
+  const selectedDateBookings = bookingsByDate[selectedModifyDate] ?? [];
   const selectedIsExplicitlyUnavailable =
     !!overridesByDate[selectedModifyDate] &&
     !overridesByDate[selectedModifyDate].isAvailable &&
@@ -957,7 +1005,7 @@ export default function ScheduleScreen() {
                     setVisibleMonth(m.dateString.slice(0, 7))
                   }
                   markedDates={modifyMarkedDates}
-                  markingType="dot"
+                  markingType="multi-dot"
                   enableSwipeMonths
                   hideExtraDays
                   firstDay={0}
@@ -993,6 +1041,9 @@ export default function ScheduleScreen() {
                       | "today"
                       | "inactive"
                       | undefined;
+                    const marking = props.marking as
+                      | { dots?: { key: string; color: string }[] }
+                      | undefined;
                     if (!date) return null;
                     const dateString = date.dateString;
                     const info = getDateAvailability(dateString);
@@ -1000,6 +1051,7 @@ export default function ScheduleScreen() {
                     const isSelected = dateString === selectedModifyDate;
                     const isToday = state === "today";
                     const isDisabled = state === "disabled";
+                    const dots = marking?.dots ?? [];
                     return (
                       <TouchableOpacity
                         activeOpacity={0.7}
@@ -1024,6 +1076,23 @@ export default function ScheduleScreen() {
                           >
                             {date.day}
                           </Text>
+                          {dots.length > 0 ? (
+                            <View style={styles.dayDots}>
+                              {dots.slice(0, 4).map((d) => (
+                                <View
+                                  key={d.key}
+                                  style={[
+                                    styles.dayDot,
+                                    {
+                                      backgroundColor: isSelected
+                                        ? neutral[0]
+                                        : d.color,
+                                    },
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                          ) : null}
                         </View>
                       </TouchableOpacity>
                     );
@@ -1133,6 +1202,74 @@ export default function ScheduleScreen() {
                           />
                         </TouchableOpacity>
                         <View style={styles.iconSpacer} />
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.scheduleSection}>
+                    <View style={styles.scheduleSectionHeader}>
+                      <Text style={styles.scheduleSectionTitle}>Schedule</Text>
+                      <Text style={styles.scheduleSectionCount}>
+                        {selectedDateBookings.length}{" "}
+                        {selectedDateBookings.length === 1
+                          ? "booking"
+                          : "bookings"}
+                      </Text>
+                    </View>
+                    {selectedDateBookings.length > 0 ? (
+                      selectedDateBookings.map((b, idx) => {
+                        const dotColor =
+                          BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length];
+                        return (
+                          <View key={b.id} style={styles.bookingCard}>
+                            <View style={styles.bookingTopRow}>
+                              <View
+                                style={[
+                                  styles.bookingDotRing,
+                                  { borderColor: dotColor },
+                                ]}
+                              ></View>
+                              <Text style={styles.bookingTimeRange}>
+                                {formatBookingTime(b.start)} -{" "}
+                                {formatBookingTime(b.end)}
+                              </Text>
+                              <BookingStatusBadge status={b.status} />
+                            </View>
+                            <View style={styles.bookingMiddleRow}>
+                              <Text
+                                style={styles.bookingTitle}
+                                numberOfLines={2}
+                              >
+                                {b.title}
+                              </Text>
+                              <TouchableOpacity
+                                style={styles.bookingViewButton}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.bookingViewButtonText}>
+                                  View
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                            <Text
+                              style={styles.bookingClient}
+                              numberOfLines={1}
+                            >
+                              By {b.clientName}
+                            </Text>
+                          </View>
+                        );
+                      })
+                    ) : (
+                      <View style={styles.bookingEmpty}>
+                        <ExpoImage
+                          source={require("@/assets/global-icons/coffee-cup.png")}
+                          style={styles.bookingEmptyIcon}
+                          contentFit="contain"
+                        />
+                        <Text style={styles.bookingEmptyText}>
+                          You are free for the day. Enjoy your time off!
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -1636,18 +1773,126 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 12,
   },
+  scheduleSection: {
+    marginTop: 8,
+    gap: 10,
+  },
+  scheduleSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  scheduleSectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  scheduleSectionCount: {
+    fontSize: 13,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  bookingCard: {
+    borderWidth: 1,
+    borderColor: border.default,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: background.card,
+    gap: 8,
+  },
+  bookingTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  bookingDotRing: {
+    width: 10,
+    height: 10,
+    borderRadius: 7,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookingTimeRange: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: neutral[500],
+    letterSpacing: -0.408,
+  },
+  bookingMiddleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 2,
+  },
+  bookingTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "700",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  bookingViewButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: primary[400],
+  },
+  bookingViewButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: neutral[0],
+    letterSpacing: -0.408,
+  },
+  bookingClient: {
+    fontSize: 13,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  bookingEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 28,
+    gap: 12,
+  },
+  bookingEmptyIcon: {
+    width: 80,
+    height: 80,
+  },
+  bookingEmptyText: {
+    fontSize: 13,
+    color: neutral[500],
+    letterSpacing: -0.408,
+    textAlign: "center",
+  },
   dayOuter: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },
   dayBox: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 44,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: 4,
+    paddingBottom: 3,
+    gap: 2,
+  },
+  dayDots: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  dayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   dayBoxActive: {
     backgroundColor: primary[100],

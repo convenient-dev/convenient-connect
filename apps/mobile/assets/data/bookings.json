@@ -1,0 +1,49 @@
+{
+  "bookings": [
+    {
+      "id": "b1",
+      "date": "2026-05-22",
+      "start": "09:00",
+      "end": "10:30",
+      "title": "House Cleaning",
+      "clientName": "Sarah Mitchell",
+      "status": "active"
+    },
+    {
+      "id": "b2",
+      "date": "2026-05-22",
+      "start": "13:00",
+      "end": "14:00",
+      "title": "Dog Walking",
+      "clientName": "Daniel Choi",
+      "status": "active"
+    },
+    {
+      "id": "b3",
+      "date": "2026-05-22",
+      "start": "16:30",
+      "end": "18:00",
+      "title": "Yoga Session",
+      "clientName": "Priya Raman",
+      "status": "active"
+    },
+    {
+      "id": "b4",
+      "date": "2026-05-26",
+      "start": "10:00",
+      "end": "11:30",
+      "title": "Lawn Care",
+      "clientName": "Marcus Bell",
+      "status": "active"
+    },
+    {
+      "id": "b7",
+      "date": "2026-05-25",
+      "start": "14:00",
+      "end": "15:30",
+      "title": "Photography Session",
+      "clientName": "Noah Williams",
+      "status": "pending"
+    }
+  ]
+}

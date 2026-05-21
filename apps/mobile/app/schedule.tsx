@@ -2,9 +2,10 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import WheelPicker from "@quidone/react-native-wheel-picker";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,12 +18,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar, type DateData } from "react-native-calendars";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background, border, overlay } =
-  Colors;
+const {
+  brand,
+  primary,
+  secondary,
+  neutral,
+  text,
+  background,
+  border,
+  overlay,
+} = Colors;
 
 interface TimeValue {
   hour: number;
@@ -176,6 +184,10 @@ export default function ScheduleScreen() {
     "Your weekly availability has been updated.",
   );
   const [confirmOffVisible, setConfirmOffVisible] = useState(false);
+  const [confirmOnVisible, setConfirmOnVisible] = useState(false);
+  const [confirmClearOverridesVisible, setConfirmClearOverridesVisible] =
+    useState(false);
+  const pendingWeeklyActionRef = useRef<(() => void) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -263,16 +275,48 @@ export default function ScheduleScreen() {
     }, []),
   );
 
+  function hasOverrides(): boolean {
+    return (
+      overrideDays.length > 0 || Object.keys(overrideRangesByDate).length > 0
+    );
+  }
+
+  function attemptWeeklyChange(action: () => void) {
+    if (hasOverrides()) {
+      pendingWeeklyActionRef.current = action;
+      setConfirmClearOverridesVisible(true);
+    } else {
+      action();
+    }
+  }
+
+  function confirmClearOverrides() {
+    setOverrideDays([]);
+    setOverrideRangesByDate({});
+    setLastOverrideDate(null);
+    setConfirmClearOverridesVisible(false);
+    const action = pendingWeeklyActionRef.current;
+    pendingWeeklyActionRef.current = null;
+    if (action) action();
+  }
+
+  function cancelClearOverrides() {
+    pendingWeeklyActionRef.current = null;
+    setConfirmClearOverridesVisible(false);
+  }
+
   function toggleDay(day: DayKey) {
-    setSelectedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(day)) {
-        next.delete(day);
-      } else {
-        next.add(day);
-        if (!sameHours) seedDayRanges(day);
-      }
-      return next;
+    attemptWeeklyChange(() => {
+      setSelectedDays((prev) => {
+        const next = new Set(prev);
+        if (next.has(day)) {
+          next.delete(day);
+        } else {
+          next.add(day);
+          if (!sameHours) seedDayRanges(day);
+        }
+        return next;
+      });
     });
   }
 
@@ -291,46 +335,58 @@ export default function ScheduleScreen() {
   }
 
   function handleSameHoursChange(value: boolean) {
-    if (!value) {
-      // Seed each selected day from the shared hours, but preserve any
-      // existing per-day edits the user has already made.
-      setDayRanges((prev) => {
-        const next = { ...prev };
-        for (const day of selectedDays) {
-          if (!next[day] || next[day].length === 0) {
-            next[day] = hourRanges.map((r, i) => ({
-              id: `${day}-seed-${i}-${Date.now()}`,
-              start: r.start,
-              end: r.end,
-            }));
+    attemptWeeklyChange(() => {
+      if (!value) {
+        // Seed each selected day from the shared hours, but preserve any
+        // existing per-day edits the user has already made.
+        setDayRanges((prev) => {
+          const next = { ...prev };
+          for (const day of selectedDays) {
+            if (!next[day] || next[day].length === 0) {
+              next[day] = hourRanges.map((r, i) => ({
+                id: `${day}-seed-${i}-${Date.now()}`,
+                start: r.start,
+                end: r.end,
+              }));
+            }
           }
-        }
-        return next;
-      });
-    }
-    setSameHours(value);
+          return next;
+        });
+      }
+      setSameHours(value);
+    });
   }
 
   function addRange(day: DayKey | null) {
-    setEditing({ day, id: `new-${Date.now()}` });
+    attemptWeeklyChange(() => {
+      setEditing({ day, id: `new-${Date.now()}` });
+    });
+  }
+
+  function editWeeklyRange(day: DayKey | null, id: string) {
+    attemptWeeklyChange(() => {
+      setEditing({ day, id });
+    });
   }
 
   function removeRange(day: DayKey | null, id: string) {
-    if (day !== null) {
-      const ranges = dayRanges[day] ?? [];
-      if (ranges.length === 1 && ranges[0].id === id) {
-        setSelectedDays((prev) => {
-          const next = new Set(prev);
-          next.delete(day);
-          return next;
-        });
-        setDayRanges((prev) => ({ ...prev, [day]: [] }));
-        return;
+    attemptWeeklyChange(() => {
+      if (day !== null) {
+        const ranges = dayRanges[day] ?? [];
+        if (ranges.length === 1 && ranges[0].id === id) {
+          setSelectedDays((prev) => {
+            const next = new Set(prev);
+            next.delete(day);
+            return next;
+          });
+          setDayRanges((prev) => ({ ...prev, [day]: [] }));
+          return;
+        }
       }
-    }
-    updateRanges(day, (prev) =>
-      prev.length === 1 ? prev : prev.filter((r) => r.id !== id),
-    );
+      updateRanges(day, (prev) =>
+        prev.length === 1 ? prev : prev.filter((r) => r.id !== id),
+      );
+    });
   }
 
   function addOverrideRange(dateKey: string) {
@@ -505,20 +561,44 @@ export default function ScheduleScreen() {
     if (!value) {
       setConfirmOffVisible(true);
     } else {
-      setAvailable(true);
+      setConfirmOnVisible(true);
     }
+  }
+
+  async function confirmTurnOn() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ availabilityEnabled: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        Alert.alert(
+          "Couldn't update",
+          data?.error ?? "Failed to update. Please try again.",
+        );
+        return;
+      }
+      setAvailable(true);
+    } catch {
+      Alert.alert("Couldn't update", "Network error. Please try again.");
+    } finally {
+      setConfirmOnVisible(false);
+    }
+  }
+
+  function cancelTurnOn() {
+    setConfirmOnVisible(false);
   }
 
   async function confirmTurnOff() {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/users/${USER_ID}/availability`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ availabilityEnabled: false }),
-        },
-      );
+      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ availabilityEnabled: false }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         Alert.alert(
@@ -677,87 +757,299 @@ export default function ScheduleScreen() {
           </View>
 
           <View style={[styles.disableable, !available && styles.disabled]}>
-          <View style={styles.segmented}>
-            <TouchableOpacity
-              style={[styles.segment, tab === "days" && styles.segmentActive]}
-              activeOpacity={0.85}
-              onPress={() => setTab("days")}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  tab === "days" && styles.segmentTextActive,
-                ]}
+            <View style={styles.segmented}>
+              <TouchableOpacity
+                style={[styles.segment, tab === "days" && styles.segmentActive]}
+                activeOpacity={0.85}
+                onPress={() => setTab("days")}
               >
-                Days & Hours
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.segment, tab === "modify" && styles.segmentActive]}
-              activeOpacity={0.85}
-              onPress={() => setTab("modify")}
-            >
-              <Text
+                <Text
+                  style={[
+                    styles.segmentText,
+                    tab === "days" && styles.segmentTextActive,
+                  ]}
+                >
+                  Days & Hours
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[
-                  styles.segmentText,
-                  tab === "modify" && styles.segmentTextActive,
+                  styles.segment,
+                  tab === "modify" && styles.segmentActive,
                 ]}
+                activeOpacity={0.85}
+                onPress={() => setTab("modify")}
               >
-                Modify
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    tab === "modify" && styles.segmentTextActive,
+                  ]}
+                >
+                  Modify
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          {tab === "days" ? (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.daysRow}>
-                {DAYS.map((day) => {
-                  const active = selectedDays.has(day);
-                  return (
-                    <TouchableOpacity
-                      key={day}
-                      style={[
-                        styles.dayCircle,
-                        active && styles.dayCircleActive,
-                      ]}
-                      activeOpacity={0.85}
-                      onPress={() => toggleDay(day)}
-                    >
-                      <Text
-                        style={[styles.dayText, active && styles.dayTextActive]}
+            {tab === "days" ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.daysRow}>
+                  {DAYS.map((day) => {
+                    const active = selectedDays.has(day);
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={[
+                          styles.dayCircle,
+                          active && styles.dayCircleActive,
+                        ]}
+                        activeOpacity={0.85}
+                        onPress={() => toggleDay(day)}
                       >
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        <Text
+                          style={[
+                            styles.dayText,
+                            active && styles.dayTextActive,
+                          ]}
+                        >
+                          {day}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-              <View style={styles.divider} />
+                <View style={styles.divider} />
 
-              <View style={styles.row}>
-                <Text style={styles.rowLabel}>Use same hours for all days</Text>
-                <Switch
-                  value={sameHours}
-                  onValueChange={handleSameHoursChange}
-                  trackColor={{ false: neutral[200], true: primary[400] }}
-                  thumbColor={neutral[0]}
-                  ios_backgroundColor={neutral[200]}
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>
+                    Use same hours for all days
+                  </Text>
+                  <Switch
+                    value={sameHours}
+                    onValueChange={handleSameHoursChange}
+                    trackColor={{ false: neutral[200], true: primary[400] }}
+                    thumbColor={neutral[0]}
+                    ios_backgroundColor={neutral[200]}
+                  />
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.timezoneRow}>
+                  <Text style={styles.timezoneLabel}>Eastern Time (EST)</Text>
+                  <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
+                    <Feather name="edit-2" size={16} color={primary[400]} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.hoursSection}>
+                  {sameHours
+                    ? hourRanges.map((range, idx) => (
+                        <View key={range.id} style={styles.hoursRow}>
+                          {idx === 0 ? (
+                            <Text style={styles.hoursLabel}>Hours</Text>
+                          ) : (
+                            <View style={styles.hoursLabelSpacer} />
+                          )}
+                          <TouchableOpacity
+                            style={styles.hoursInput}
+                            activeOpacity={0.85}
+                            onPress={() => editWeeklyRange(null, range.id)}
+                          >
+                            <Text style={styles.hoursInputText}>
+                              {formatRange(range.start, range.end)}
+                            </Text>
+                          </TouchableOpacity>
+                          {idx === 0 ? (
+                            <TouchableOpacity
+                              hitSlop={8}
+                              activeOpacity={0.7}
+                              onPress={() => addRange(null)}
+                            >
+                              <Feather
+                                name="plus-circle"
+                                size={22}
+                                color={primary[400]}
+                              />
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={styles.iconSpacer} />
+                          )}
+                          <TouchableOpacity
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                            onPress={() => removeRange(null, range.id)}
+                          >
+                            <Feather
+                              name="trash-2"
+                              size={20}
+                              color={secondary[500]}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    : DAYS.filter((d) => selectedDays.has(d)).map((day) => {
+                        const ranges = dayRanges[day] ?? [];
+                        return (
+                          <View key={day} style={styles.dayHoursBlock}>
+                            {ranges.map((range, idx) => (
+                              <View key={range.id} style={styles.hoursRow}>
+                                {idx === 0 ? (
+                                  <Text style={styles.hoursLabel}>{day}</Text>
+                                ) : (
+                                  <View style={styles.hoursLabelSpacer} />
+                                )}
+                                <TouchableOpacity
+                                  style={styles.hoursInput}
+                                  activeOpacity={0.85}
+                                  onPress={() => editWeeklyRange(day, range.id)}
+                                >
+                                  <Text style={styles.hoursInputText}>
+                                    {formatRange(range.start, range.end)}
+                                  </Text>
+                                </TouchableOpacity>
+                                {idx === 0 ? (
+                                  <TouchableOpacity
+                                    hitSlop={8}
+                                    activeOpacity={0.7}
+                                    onPress={() => addRange(day)}
+                                  >
+                                    <Feather
+                                      name="plus-circle"
+                                      size={22}
+                                      color={primary[400]}
+                                    />
+                                  </TouchableOpacity>
+                                ) : (
+                                  <View style={styles.iconSpacer} />
+                                )}
+                                <TouchableOpacity
+                                  hitSlop={8}
+                                  activeOpacity={0.7}
+                                  onPress={() => removeRange(day, range.id)}
+                                >
+                                  <Feather
+                                    name="trash-2"
+                                    size={20}
+                                    color={secondary[500]}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })}
+                </View>
+              </ScrollView>
+            ) : (
+              <ScrollView
+                style={styles.modifyList}
+                showsVerticalScrollIndicator={false}
+              >
+                <Calendar
+                  initialDate={selectedModifyDate}
+                  current={selectedModifyDate}
+                  onDayPress={(day: DateData) =>
+                    setSelectedModifyDate(day.dateString)
+                  }
+                  onMonthChange={(m: DateData) =>
+                    setVisibleMonth(m.dateString.slice(0, 7))
+                  }
+                  markedDates={modifyMarkedDates}
+                  markingType="dot"
+                  enableSwipeMonths
+                  hideExtraDays
+                  firstDay={0}
+                  renderArrow={(direction: "left" | "right") => (
+                    <MaterialIcons
+                      name={
+                        direction === "left" ? "chevron-left" : "chevron-right"
+                      }
+                      size={24}
+                      color={text.primary}
+                    />
+                  )}
+                  theme={{
+                    backgroundColor: "transparent",
+                    calendarBackground: "transparent",
+                    textSectionTitleColor: neutral[400],
+                    dayTextColor: text.primary,
+                    textDisabledColor: neutral[200],
+                    monthTextColor: text.primary,
+                    textMonthFontWeight: "700",
+                    textDayHeaderFontSize: 12,
+                    selectedDayBackgroundColor: primary[300],
+                    selectedDayTextColor: neutral[0],
+                    todayTextColor: primary[400],
+                    arrowColor: text.primary,
+                  }}
+                  dayComponent={(props) => {
+                    const date = props.date as DateData | undefined;
+                    const state = props.state as
+                      | ""
+                      | "selected"
+                      | "disabled"
+                      | "today"
+                      | "inactive"
+                      | undefined;
+                    if (!date) return null;
+                    const dateString = date.dateString;
+                    const info = getDateAvailability(dateString);
+                    const hasSlots = info.slots.length > 0;
+                    const isSelected = dateString === selectedModifyDate;
+                    const isToday = state === "today";
+                    const isDisabled = state === "disabled";
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setSelectedModifyDate(dateString)}
+                        disabled={isDisabled}
+                        style={styles.dayOuter}
+                      >
+                        <View
+                          style={[
+                            styles.dayBox,
+                            hasSlots && !isSelected && styles.dayBoxActive,
+                            isSelected && styles.dayBoxSelected,
+                            isToday && !isSelected && styles.dayBoxToday,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.dayNumber,
+                              isDisabled && styles.dayNumberDisabled,
+                              isSelected && styles.dayNumberSelected,
+                            ]}
+                          >
+                            {date.day}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
                 />
-              </View>
 
-              <View style={styles.divider} />
+                <View style={styles.selectedDaySection}>
+                  <View style={styles.overrideHeader}>
+                    <Text style={styles.overrideDate}>
+                      {formatOverrideDate(selectedModifyDate)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.overrideStatus,
+                        selectedDateRanges.length > 0
+                          ? styles.overrideAvailable
+                          : styles.overrideUnavailable,
+                      ]}
+                    >
+                      {selectedDateRanges.length}{" "}
+                      {selectedDateRanges.length === 1 ? "slot" : "slots"}
+                    </Text>
+                  </View>
 
-              <View style={styles.timezoneRow}>
-                <Text style={styles.timezoneLabel}>Eastern Time (EST)</Text>
-                <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
-                  <Feather name="edit-2" size={16} color={primary[400]} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.hoursSection}>
-                {sameHours
-                  ? hourRanges.map((range, idx) => (
+                  <View style={styles.hoursSection}>
+                    {selectedDateRanges.map((range, idx) => (
                       <View key={range.id} style={styles.hoursRow}>
                         {idx === 0 ? (
                           <Text style={styles.hoursLabel}>Hours</Text>
@@ -768,7 +1060,11 @@ export default function ScheduleScreen() {
                           style={styles.hoursInput}
                           activeOpacity={0.85}
                           onPress={() =>
-                            setEditing({ day: null, id: range.id })
+                            setEditing({
+                              day: null,
+                              date: selectedModifyDate,
+                              id: range.id,
+                            })
                           }
                         >
                           <Text style={styles.hoursInputText}>
@@ -779,7 +1075,7 @@ export default function ScheduleScreen() {
                           <TouchableOpacity
                             hitSlop={8}
                             activeOpacity={0.7}
-                            onPress={() => addRange(null)}
+                            onPress={() => addOverrideRange(selectedModifyDate)}
                           >
                             <Feather
                               name="plus-circle"
@@ -793,7 +1089,9 @@ export default function ScheduleScreen() {
                         <TouchableOpacity
                           hitSlop={8}
                           activeOpacity={0.7}
-                          onPress={() => removeRange(null, range.id)}
+                          onPress={() =>
+                            removeOverrideRange(selectedModifyDate, range.id)
+                          }
                         >
                           <Feather
                             name="trash-2"
@@ -802,192 +1100,27 @@ export default function ScheduleScreen() {
                           />
                         </TouchableOpacity>
                       </View>
-                    ))
-                  : DAYS.filter((d) => selectedDays.has(d)).map((day) => {
-                      const ranges = dayRanges[day] ?? [];
-                      return (
-                        <View key={day} style={styles.dayHoursBlock}>
-                          {ranges.map((range, idx) => (
-                            <View key={range.id} style={styles.hoursRow}>
-                              {idx === 0 ? (
-                                <Text style={styles.hoursLabel}>{day}</Text>
-                              ) : (
-                                <View style={styles.hoursLabelSpacer} />
-                              )}
-                              <TouchableOpacity
-                                style={styles.hoursInput}
-                                activeOpacity={0.85}
-                                onPress={() =>
-                                  setEditing({ day, id: range.id })
-                                }
-                              >
-                                <Text style={styles.hoursInputText}>
-                                  {formatRange(range.start, range.end)}
-                                </Text>
-                              </TouchableOpacity>
-                              {idx === 0 ? (
-                                <TouchableOpacity
-                                  hitSlop={8}
-                                  activeOpacity={0.7}
-                                  onPress={() => addRange(day)}
-                                >
-                                  <Feather
-                                    name="plus-circle"
-                                    size={22}
-                                    color={primary[400]}
-                                  />
-                                </TouchableOpacity>
-                              ) : (
-                                <View style={styles.iconSpacer} />
-                              )}
-                              <TouchableOpacity
-                                hitSlop={8}
-                                activeOpacity={0.7}
-                                onPress={() => removeRange(day, range.id)}
-                              >
-                                <Feather
-                                  name="trash-2"
-                                  size={20}
-                                  color={secondary[500]}
-                                />
-                              </TouchableOpacity>
-                            </View>
-                          ))}
-                        </View>
-                      );
-                    })}
-              </View>
-            </ScrollView>
-          ) : (
-            <ScrollView
-              style={styles.modifyList}
-              showsVerticalScrollIndicator={false}
-            >
-              <Calendar
-                initialDate={selectedModifyDate}
-                current={selectedModifyDate}
-                onDayPress={(day: DateData) =>
-                  setSelectedModifyDate(day.dateString)
-                }
-                onMonthChange={(m: DateData) =>
-                  setVisibleMonth(m.dateString.slice(0, 7))
-                }
-                markedDates={modifyMarkedDates}
-                markingType="dot"
-                enableSwipeMonths
-                hideExtraDays
-                firstDay={0}
-                renderArrow={(direction: "left" | "right") => (
-                  <MaterialIcons
-                    name={
-                      direction === "left" ? "chevron-left" : "chevron-right"
-                    }
-                    size={24}
-                    color={text.primary}
-                  />
-                )}
-                theme={{
-                  backgroundColor: "transparent",
-                  calendarBackground: "transparent",
-                  textSectionTitleColor: neutral[400],
-                  dayTextColor: text.primary,
-                  textDisabledColor: neutral[200],
-                  monthTextColor: text.primary,
-                  textMonthFontWeight: "700",
-                  textDayHeaderFontSize: 12,
-                  selectedDayBackgroundColor: primary[300],
-                  selectedDayTextColor: neutral[0],
-                  todayTextColor: primary[400],
-                  arrowColor: text.primary,
-                }}
-                dayComponent={(props) => {
-                  const date = props.date as DateData | undefined;
-                  const state = props.state as
-                    | ""
-                    | "selected"
-                    | "disabled"
-                    | "today"
-                    | "inactive"
-                    | undefined;
-                  if (!date) return null;
-                  const dateString = date.dateString;
-                  const info = getDateAvailability(dateString);
-                  const hasSlots = info.slots.length > 0;
-                  const isSelected = dateString === selectedModifyDate;
-                  const isToday = state === "today";
-                  const isDisabled = state === "disabled";
-                  return (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => setSelectedModifyDate(dateString)}
-                      disabled={isDisabled}
-                      style={styles.dayOuter}
-                    >
-                      <View
-                        style={[
-                          styles.dayBox,
-                          hasSlots && !isSelected && styles.dayBoxActive,
-                          isSelected && styles.dayBoxSelected,
-                          isToday && !isSelected && styles.dayBoxToday,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.dayNumber,
-                            isDisabled && styles.dayNumberDisabled,
-                            isSelected && styles.dayNumberSelected,
-                          ]}
-                        >
-                          {date.day}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
+                    ))}
 
-              <View style={styles.selectedDaySection}>
-                <View style={styles.overrideHeader}>
-                  <Text style={styles.overrideDate}>
-                    {formatOverrideDate(selectedModifyDate)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.overrideStatus,
-                      selectedDateRanges.length > 0
-                        ? styles.overrideAvailable
-                        : styles.overrideUnavailable,
-                    ]}
-                  >
-                    {selectedDateRanges.length}{" "}
-                    {selectedDateRanges.length === 1 ? "slot" : "slots"}
-                  </Text>
-                </View>
-
-                <View style={styles.hoursSection}>
-                  {selectedDateRanges.map((range, idx) => (
-                    <View key={range.id} style={styles.hoursRow}>
-                      {idx === 0 ? (
+                    {selectedDateRanges.length === 0 && (
+                      <View style={styles.hoursRow}>
                         <Text style={styles.hoursLabel}>Hours</Text>
-                      ) : (
-                        <View style={styles.hoursLabelSpacer} />
-                      )}
-                      <TouchableOpacity
-                        style={styles.hoursInput}
-                        activeOpacity={0.85}
-                        onPress={() =>
-                          setEditing({
-                            day: null,
-                            date: selectedModifyDate,
-                            id: range.id,
-                          })
-                        }
-                      >
-                        <Text style={styles.hoursInputText}>
-                          {formatRange(range.start, range.end)}
-                        </Text>
-                      </TouchableOpacity>
-                      {idx === 0 ? (
+                        <TouchableOpacity
+                          style={styles.hoursInput}
+                          activeOpacity={0.85}
+                          onPress={() => addOverrideRange(selectedModifyDate)}
+                        >
+                          <Text
+                            style={[
+                              styles.hoursInputText,
+                              styles.hoursInputEmpty,
+                            ]}
+                          >
+                            {selectedIsExplicitlyUnavailable
+                              ? "Marked unavailable — tap to add"
+                              : "Tap to add"}
+                          </Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           hitSlop={8}
                           activeOpacity={0.7}
@@ -999,59 +1132,13 @@ export default function ScheduleScreen() {
                             color={primary[400]}
                           />
                         </TouchableOpacity>
-                      ) : (
                         <View style={styles.iconSpacer} />
-                      )}
-                      <TouchableOpacity
-                        hitSlop={8}
-                        activeOpacity={0.7}
-                        onPress={() =>
-                          removeOverrideRange(selectedModifyDate, range.id)
-                        }
-                      >
-                        <Feather
-                          name="trash-2"
-                          size={20}
-                          color={secondary[500]}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-
-                  {selectedDateRanges.length === 0 && (
-                    <View style={styles.hoursRow}>
-                      <Text style={styles.hoursLabel}>Hours</Text>
-                      <TouchableOpacity
-                        style={styles.hoursInput}
-                        activeOpacity={0.85}
-                        onPress={() => addOverrideRange(selectedModifyDate)}
-                      >
-                        <Text
-                          style={[styles.hoursInputText, styles.hoursInputEmpty]}
-                        >
-                          {selectedIsExplicitlyUnavailable
-                            ? "Marked unavailable — tap to add"
-                            : "No hours — tap to add"}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        hitSlop={8}
-                        activeOpacity={0.7}
-                        onPress={() => addOverrideRange(selectedModifyDate)}
-                      >
-                        <Feather
-                          name="plus-circle"
-                          size={22}
-                          color={primary[400]}
-                        />
-                      </TouchableOpacity>
-                      <View style={styles.iconSpacer} />
-                    </View>
-                  )}
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </ScrollView>
-          )}
+              </ScrollView>
+            )}
           </View>
         </View>
       )}
@@ -1111,6 +1198,26 @@ export default function ScheduleScreen() {
         cancelLabel="Cancel"
         onConfirm={confirmTurnOff}
         onCancel={cancelTurnOff}
+      />
+
+      <ConfirmModal
+        visible={confirmOnVisible}
+        title="Turn on availability?"
+        message="Turning this on will make your service visible to customers. Continue?"
+        confirmLabel="Yes, turn on"
+        cancelLabel="Cancel"
+        onConfirm={confirmTurnOn}
+        onCancel={cancelTurnOn}
+      />
+
+      <ConfirmModal
+        visible={confirmClearOverridesVisible}
+        title="Clear date overrides?"
+        message="Changing your weekly schedule will remove all date-specific overrides you've set. Continue?"
+        confirmLabel="Yes, continue"
+        cancelLabel="Cancel"
+        onConfirm={confirmClearOverrides}
+        onCancel={cancelClearOverrides}
       />
     </SafeAreaView>
   );
@@ -1237,7 +1344,9 @@ function TimeRangePickerModal({
                 width="100%"
                 overlayItemStyle={styles.wheelOverlayItem}
                 itemTextStyle={styles.wheelItemText}
-                onValueChanged={({ item }) => setStartIdx(item.value)}
+                onValueChanged={({ item }) => {
+                  if (item) setStartIdx(item.value);
+                }}
               />
             </View>
             <View style={styles.pickerCol}>
@@ -1250,7 +1359,9 @@ function TimeRangePickerModal({
                 width="100%"
                 overlayItemStyle={styles.wheelOverlayItem}
                 itemTextStyle={styles.wheelItemText}
-                onValueChanged={({ item }) => setEndIdx(item.value)}
+                onValueChanged={({ item }) => {
+                  if (item) setEndIdx(item.value);
+                }}
               />
             </View>
           </View>
@@ -1398,6 +1509,7 @@ const styles = StyleSheet.create({
   },
   hoursSection: {
     marginTop: 18,
+    marginBottom: 32,
     gap: 12,
   },
   dayHoursBlock: {
@@ -1451,7 +1563,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 10,
     gap: 12,
   },
   footerButton: {
@@ -1462,10 +1574,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cancelButton: {
-    backgroundColor: secondary[500],
+    backgroundColor: brand.secondary,
   },
   saveButton: {
-    backgroundColor: primary[300],
+    backgroundColor: brand.primary,
   },
   saveButtonDisabled: {
     opacity: 0.6,

@@ -136,8 +136,45 @@ export default function VerifyBusinessScreen() {
     Alert.alert("Upload Document", "Choose where to pick the file from.", [
       { text: "Choose from Files", onPress: () => pickFromFiles(docType) },
       { text: "Choose from Photos", onPress: () => pickFromPhotos(docType) },
+      { text: "Take Photo", onPress: () => pickFromCamera(docType) },
       { text: "Cancel", style: "cancel" },
     ]);
+  }
+
+  async function pickFromCamera(docType: DocType) {
+    const setError =
+      docType === "registration" ? setRegistrationError : setGovernmentIdError;
+    setError(null);
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      setError("Camera permission denied.");
+      return;
+    }
+
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.8,
+        exif: false,
+      });
+    } catch {
+      setError("Camera is not available on this device.");
+      return;
+    }
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    const mime = asset.mimeType ?? "image/jpeg";
+    const fallbackName = `photo-${Date.now()}.${mime === "image/png" ? "png" : "jpg"}`;
+    await uploadAsset(docType, {
+      uri: asset.uri,
+      name: asset.fileName ?? fallbackName,
+      mime,
+      size: asset.fileSize ?? null,
+    });
   }
 
   async function pickFromFiles(docType: DocType) {

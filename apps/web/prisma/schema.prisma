@@ -62,6 +62,19 @@ enum FieldType {
   textarea
 }
 
+enum SupportTicketStatus {
+  open
+  inProgress @map("in_progress")
+  resolved
+  closed
+}
+
+enum SupportTicketActor {
+  user
+  agent
+  system
+}
+
 model User {
   id                 Int               @id @default(autoincrement())
   email              String?           @unique
@@ -84,6 +97,8 @@ model User {
   availabilityEnabled      Boolean                   @default(true)
   weeklyAvailabilitySlots  WeeklyAvailabilitySlot[]
   availabilityOverrideDays AvailabilityOverrideDay[]
+
+  supportTickets SupportTicket[]
 
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @default(now()) @db.Timestamp(6)
@@ -345,7 +360,8 @@ model SupportTopic {
   label        String
   displayOrder Int    @default(0)
 
-  faqs SupportFaq[]
+  faqs    SupportFaq[]
+  tickets SupportTicket[]
 
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @default(now()) @db.Timestamp(6)
@@ -364,4 +380,42 @@ model SupportFaq {
   updatedAt DateTime @default(now()) @db.Timestamp(6)
 
   @@index([topicId, displayOrder])
+}
+
+// CUSTOMER SUPPORT — Ticket
+
+model SupportTicket {
+  id       Int    @id @default(autoincrement())
+  publicId String @unique
+  userId   Int
+  topicId  Int
+  subject  String
+
+  status SupportTicketStatus @default(open)
+
+  user   User                 @relation(fields: [userId], references: [id])
+  topic  SupportTopic         @relation(fields: [topicId], references: [id])
+  events SupportTicketEvent[]
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([userId, status, updatedAt])
+}
+
+model SupportTicketEvent {
+  id           Int                  @id @default(autoincrement())
+  ticketId     Int
+  
+  // user | agent | system
+  actor        SupportTicketActor 
+  body         String?              @db.Text
+  statusChange SupportTicketStatus?
+  readAt       DateTime?
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([ticketId, createdAt])
 }

@@ -1,5 +1,6 @@
 import earningHistoryData from "@/assets/data/earning-history.json";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -12,8 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, brand, neutral, text, background, border, secondary, status } =
-  Colors;
+const { primary, brand, neutral, text, background, border } = Colors;
 
 type WithdrawalStatus = "completed" | "pending" | "failed";
 
@@ -36,17 +36,6 @@ const STATUS_LABEL: Record<WithdrawalStatus, string> = {
   pending: "Pending",
   failed: "Failed",
 };
-
-function statusStyles(s: WithdrawalStatus) {
-  switch (s) {
-    case "completed":
-      return { bg: "#E4F2E4", fg: status.active };
-    case "pending":
-      return { bg: "#FBEEDB", fg: status.inactive };
-    case "failed":
-      return { bg: "#FCE0DF", fg: secondary[500] };
-  }
-}
 
 export default function WithdrawalHistoryScreen() {
   const router = useRouter();
@@ -102,32 +91,25 @@ export default function WithdrawalHistoryScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          sorted.map((item, i) => {
-            const s = statusStyles(item.status);
-            return (
-              <View key={item.id}>
-                <View style={styles.row}>
-                  <View style={styles.info}>
-                    <View style={styles.titleRow}>
-                      <Text style={styles.title} numberOfLines={1}>
-                        {formatAmount(item.amount)}
-                      </Text>
-                    </View>
-                    <Text style={styles.meta}>
-                      Payout Date: {item.payoutDate}
-                    </Text>
-                    <Text style={styles.meta}>{item.destination}</Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: s.bg }]}>
-                    <Text style={[styles.badgeText, { color: s.fg }]}>
-                      {STATUS_LABEL[item.status]}
+          sorted.map((item, i) => (
+            <View key={item.id}>
+              <View style={styles.row}>
+                <View style={styles.info}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.title} numberOfLines={1}>
+                      {formatAmount(item.amount)}
                     </Text>
                   </View>
+                  <Text style={styles.meta}>
+                    Payout Date: {item.payoutDate}
+                  </Text>
+                  <Text style={styles.meta}>{item.destination}</Text>
                 </View>
-                {i < sorted.length - 1 && <View style={styles.divider} />}
+                <StatusBadge label={STATUS_LABEL[item.status]} />
               </View>
-            );
-          })
+              {i < sorted.length - 1 && <View style={styles.divider} />}
+            </View>
+          ))
         )}
       </ScrollView>
     </SafeAreaView>
@@ -201,16 +183,6 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
     flexShrink: 1,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: -0.2,
   },
   meta: {
     fontSize: 13,

@@ -1,10 +1,11 @@
-import ticketsData from "@/assets/data/tickets.json";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +15,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
+
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const USER_ID = 1;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -34,45 +39,50 @@ interface TicketDetail {
   history: StatusEvent[];
 }
 
-// TODO: Replace dummy data with real ticket fetched from backend by id.
-const TICKETS_BY_ID: Record<string, TicketDetail> = Object.fromEntries(
-  (ticketsData.tickets as TicketDetail[]).map((t) => [t.id, t])
-);
-
-interface StatusVariant {
-  label: string;
-  backgroundColor: string;
-  color: string;
-}
-
-const STATUS_VARIANTS: Record<TicketStatus, StatusVariant> = {
-  open: { label: "Open", backgroundColor: "#FCE9B6", color: "#B07A1A" },
-  in_progress: {
-    label: "In Progress",
-    backgroundColor: "#C7EAE8",
-    color: "#1F9897",
-  },
-  resolved: {
-    label: "Resolved",
-    backgroundColor: "#CDEBD6",
-    color: "#1F7A3A",
-  },
-  closed: { label: "Closed", backgroundColor: "#DCDCDC", color: "#6E6E6E" },
+const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+  closed: "Closed",
 };
 
-function StatusBadge({ status }: { status: TicketStatus }) {
-  const v = STATUS_VARIANTS[status];
-  return (
-    <View style={[styles.badge, { backgroundColor: v.backgroundColor }]}>
-      <Text style={[styles.badgeText, { color: v.color }]}>{v.label}</Text>
-    </View>
-  );
-}
+const TICKET_STATUS_DOT_COLOR: Record<TicketStatus, string> = {
+  open: "#B07A1A",
+  in_progress: "#1F9897",
+  resolved: "#1F7A3A",
+  closed: "#6E6E6E",
+};
 
 export default function TicketDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const ticket = id ? TICKETS_BY_ID[id] : undefined;
+  const [ticket, setTicket] = useState<TicketDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    fetch(`${API_BASE_URL}/users/${USER_ID}/tickets/${id}`)
+      .then(async (r) => (r.ok ? ((await r.json()) as TicketDetail) : null))
+      .then((data) => {
+        setTicket(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScreenHeader title="Ticket" />
+        <View style={styles.missingWrap}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!ticket) {
     return (
@@ -116,7 +126,7 @@ export default function TicketDetailScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.topicLabel}>{ticket.topicLabel}</Text>
-            <StatusBadge status={ticket.status} />
+            <StatusBadge label={TICKET_STATUS_LABEL[ticket.status]} />
           </View>
           <Text style={styles.subject}>{ticket.subject}</Text>
           <View style={styles.metaRow}>
@@ -134,7 +144,7 @@ export default function TicketDetailScreen() {
         <Text style={styles.sectionTitle}>Status history</Text>
         <View style={styles.card}>
           {ticket.history.map((event, i) => {
-            const v = STATUS_VARIANTS[event.status];
+            const dotColor = TICKET_STATUS_DOT_COLOR[event.status];
             const isLast = i === ticket.history.length - 1;
             return (
               <View key={`${event.status}-${event.at}-${i}`} style={styles.timelineRow}>
@@ -142,14 +152,14 @@ export default function TicketDetailScreen() {
                   <View
                     style={[
                       styles.timelineDot,
-                      { backgroundColor: v.color },
+                      { backgroundColor: dotColor },
                     ]}
                   />
                   {!isLast && <View style={styles.timelineLine} />}
                 </View>
                 <View style={styles.timelineContent}>
                   <View style={styles.timelineHeaderRow}>
-                    <StatusBadge status={event.status} />
+                    <StatusBadge label={TICKET_STATUS_LABEL[event.status]} />
                     <Text style={styles.timelineDate}>{event.at}</Text>
                   </View>
                   {event.note && (
@@ -289,17 +299,6 @@ const styles = StyleSheet.create({
     color: neutral[500],
     letterSpacing: -0.408,
     lineHeight: 18,
-  },
-
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: -0.408,
   },
 
   footer: {

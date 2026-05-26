@@ -1,5 +1,5 @@
 import bookingsData from "@/assets/data/bookings.json";
-import { BookingStatusBadge } from "@/components/BookingStatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
@@ -117,6 +117,8 @@ function formatHHmm(v: TimeValue): string {
   return `${String(v.hour).padStart(2, "0")}:${String(v.minute).padStart(2, "0")}`;
 }
 
+type BookingStatus = "active" | "completed" | "pending" | "cancelled";
+
 type Booking = {
   id: string;
   date: string;
@@ -124,10 +126,17 @@ type Booking = {
   end: string;
   title: string;
   clientName: string;
-  status: "active" | "completed" | "pending" | "cancelled";
+  status: BookingStatus;
 };
 
 const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
+
+const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
+  active: "Active",
+  completed: "Completed",
+  pending: "Pending",
+  cancelled: "Cancelled",
+};
 
 const BOOKING_DOT_COLORS = [
   "#22C55E",
@@ -1233,7 +1242,7 @@ export default function ScheduleScreen() {
                                 {formatBookingTime(b.start)} -{" "}
                                 {formatBookingTime(b.end)}
                               </Text>
-                              <BookingStatusBadge status={b.status} />
+                              <StatusBadge label={BOOKING_STATUS_LABEL[b.status]} />
                             </View>
                             <View style={styles.bookingMiddleRow}>
                               <Text

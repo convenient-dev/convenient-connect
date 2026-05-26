@@ -1,0 +1,119 @@
+{
+  "tickets": [
+    {
+      "publicId": "T-10324",
+      "userEmail": "alice@example.com",
+      "topicKey": "payments",
+      "subject": "Refund not received for cancelled booking",
+      "status": "in_progress",
+      "createdAt": "2026-05-20",
+      "updatedAt": "2026-05-24",
+      "events": [
+        {
+          "actor": "user",
+          "body": "I cancelled a booking on May 18 and was told a refund would be issued in 3-5 business days, but I haven't received anything yet.",
+          "statusChange": "open",
+          "at": "2026-05-20"
+        },
+        {
+          "actor": "agent",
+          "body": "Thanks for the details — our payments team is reviewing your transaction.",
+          "statusChange": "in_progress",
+          "at": "2026-05-24"
+        }
+      ]
+    },
+    {
+      "publicId": "T-10298",
+      "userEmail": "alice@example.com",
+      "topicKey": "background-check",
+      "subject": "Background check stuck on processing",
+      "status": "open",
+      "createdAt": "2026-05-22",
+      "updatedAt": "2026-05-22",
+      "events": [
+        {
+          "actor": "user",
+          "body": "My background check has been processing for over a week. Could you check the status?",
+          "statusChange": "open",
+          "at": "2026-05-22"
+        },
+        {
+          "actor": "agent",
+          "body": "We've received your request and assigned it to our verification team.",
+          "at": "2026-05-22",
+          "readAt": "2026-05-22"
+        }
+      ]
+    },
+    {
+      "publicId": "T-10211",
+      "userEmail": "alice@example.com",
+      "topicKey": "account",
+      "subject": "Can't update phone number",
+      "status": "resolved",
+      "createdAt": "2026-05-15",
+      "updatedAt": "2026-05-18",
+      "events": [
+        {
+          "actor": "user",
+          "body": "When I try to update my phone number from settings, the save button does nothing.",
+          "statusChange": "open",
+          "at": "2026-05-15"
+        },
+        {
+          "actor": "agent",
+          "body": "Reproduced on iOS 18.",
+          "statusChange": "in_progress",
+          "at": "2026-05-16",
+          "readAt": "2026-05-16"
+        },
+        {
+          "actor": "agent",
+          "body": "Glad we could help. Marking this as resolved.",
+          "statusChange": "resolved",
+          "at": "2026-05-18",
+          "readAt": "2026-05-18"
+        }
+      ]
+    },
+    {
+      "publicId": "T-10097",
+      "userEmail": "alice@example.com",
+      "topicKey": "bookings",
+      "subject": "Provider didn't show up",
+      "status": "closed",
+      "createdAt": "2026-04-26",
+      "updatedAt": "2026-04-30",
+      "events": [
+        {
+          "actor": "user",
+          "body": "Booked a cleaner for April 26 and the provider never arrived. Requesting a full refund.",
+          "statusChange": "open",
+          "at": "2026-04-26"
+        },
+        {
+          "actor": "agent",
+          "body": "Contacted provider.",
+          "statusChange": "in_progress",
+          "at": "2026-04-27",
+          "readAt": "2026-04-27"
+        },
+        {
+          "actor": "agent",
+          "body": "Refund issued.",
+          "statusChange": "resolved",
+          "at": "2026-04-29",
+          "readAt": "2026-04-29"
+        },
+        {
+          "actor": "agent",
+          "body": "Ticket closed after refund issued.",
+          "statusChange": "closed",
+          "at": "2026-04-30",
+          "readAt": "2026-04-30"
+        }
+      ]
+    }
+  ]
+}

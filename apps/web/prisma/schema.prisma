@@ -336,3 +336,32 @@ model AvailabilityOverrideSlot {
 
   @@index([overrideDayId])
 }
+
+// CUSTOMER SUPPORT — FAQ
+
+model SupportTopic {
+  id           Int    @id @default(autoincrement())
+  key          String @unique
+  label        String
+  displayOrder Int    @default(0)
+
+  faqs SupportFaq[]
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+}
+
+model SupportFaq {
+  id           Int    @id @default(autoincrement())
+  topicId      Int
+  question     String
+  answer       String @db.Text
+  displayOrder Int    @default(0)
+
+  topic SupportTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([topicId, displayOrder])
+}

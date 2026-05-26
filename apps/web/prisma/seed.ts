@@ -1,6 +1,7 @@
 // prisma/seed.ts
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
+import frequentQuestions from "../../mobile/assets/data/frequent-questions.json";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -546,6 +547,32 @@ async function main() {
   ]);
 
   console.log("Seeded service and service image");
+
+  // Seed Customer Support FAQ — topics + questions from mobile's frequent-questions.json
+  for (const [topicIndex, topic] of frequentQuestions.topics.entries()) {
+    const seededTopic = await prisma.supportTopic.upsert({
+      where: { key: topic.key },
+      update: { label: topic.label, displayOrder: topicIndex },
+      create: {
+        key: topic.key,
+        label: topic.label,
+        displayOrder: topicIndex,
+      },
+    });
+
+    // Replace this topic's FAQs to keep seed idempotent without leaking stale rows.
+    await prisma.supportFaq.deleteMany({ where: { topicId: seededTopic.id } });
+    await prisma.supportFaq.createMany({
+      data: topic.questions.map((q, i) => ({
+        topicId: seededTopic.id,
+        question: q.question,
+        answer: q.answer,
+        displayOrder: i,
+      })),
+    });
+  }
+
+  console.log(`Seeded ${frequentQuestions.topics.length} support topics`);
 }
 
 main()

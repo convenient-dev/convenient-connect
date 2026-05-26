@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../../"),
   outputFileTracingIncludes: {
-    "/api/**/*": ["./apps/web/lib/generated/prisma/**/*"],
+    "/api/**/*": ["./lib/generated/prisma/**/*"],
   },
 };
 

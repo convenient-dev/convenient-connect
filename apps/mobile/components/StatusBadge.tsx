@@ -1,3 +1,4 @@
+import { Colors } from "@/constants/theme";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -6,10 +7,12 @@ interface Tone {
   color: string;
 }
 
-const YELLOW: Tone = { backgroundColor: "#FCE9B6", color: "#B07A1A" };
-const TEAL: Tone = { backgroundColor: "#C7EAE8", color: "#1F9897" };
-const GREEN: Tone = { backgroundColor: "#CDEBD6", color: "#1F7A3A" };
-const GRAY: Tone = { backgroundColor: "#DCDCDC", color: "#6E6E6E" };
+const { brand, neutral, status } = Colors;
+
+const YELLOW: Tone = { backgroundColor: "#FCE9B6", color: status.inactive };
+const TEAL: Tone = { backgroundColor: "#C7EAE8", color: brand.primary };
+const GREEN: Tone = { backgroundColor: "#CDEBD6", color: status.active };
+const GRAY: Tone = { backgroundColor: "#DCDCDC", color: neutral[400] };
 
 const TONE_BY_LABEL: Record<string, Tone> = {
   open: YELLOW,

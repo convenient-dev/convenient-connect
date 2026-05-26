@@ -1,0 +1,74 @@
+{
+  "topics": [
+    {
+      "key": "account",
+      "label": "Account & App Usages",
+      "questions": [
+        {
+          "question": "How do I reset my password?",
+          "answer": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+        },
+        {
+          "question": "Why am I being asked to verify my identity?",
+          "answer": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo."
+        },
+        {
+          "question": "How do I delete my account?",
+          "answer": "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet."
+        }
+      ]
+    },
+    {
+      "key": "bookings",
+      "label": "Bookings",
+      "questions": [
+        {
+          "question": "Can I reschedule or cancel a booking?",
+          "answer": "Cras ultricies ligula sed magna dictum porta. Donec sollicitudin molestie malesuada. Mauris blandit aliquet elit, eget tincidunt nibh pulvinar a. Pellentesque in ipsum id orci porta dapibus."
+        },
+        {
+          "question": "What happens if a provider is late or no-shows?",
+          "answer": "Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Donec velit neque, auctor sit amet aliquam vel, ullamcorper sit amet ligula. Proin eget tortor risus."
+        }
+      ]
+    },
+    {
+      "key": "payments",
+      "label": "Payments & Refunds",
+      "questions": [
+        {
+          "question": "When am I charged for a booking?",
+          "answer": "Donec rutrum congue leo eget malesuada. Cras ultricies ligula sed magna dictum porta. Curabitur arcu erat, accumsan id imperdiet et, porttitor at sem. Nulla quis lorem ut libero malesuada feugiat."
+        },
+        {
+          "question": "How do I request a refund?",
+          "answer": "Pellentesque in ipsum id orci porta dapibus. Vivamus magna justo, lacinia eget consectetur sed, convallis at tellus. Donec sollicitudin molestie malesuada. Sed porttitor lectus nibh. Curabitur non nulla sit amet nisl tempus."
+        }
+      ]
+    },
+    {
+      "key": "membership",
+      "label": "Membership",
+      "questions": [
+        {
+          "question": "What's included in each membership tier?",
+          "answer": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent sapien massa, convallis a pellentesque nec, egestas non nisi. Donec rutrum congue leo eget malesuada. Vestibulum ac diam sit amet quam vehicula elementum."
+        },
+        {
+          "question": "Can I cancel my membership at any time?",
+          "answer": "Donec sollicitudin molestie malesuada. Sed porttitor lectus nibh. Pellentesque in ipsum id orci porta dapibus. Vivamus suscipit tortor eget felis porttitor volutpat. Proin eget tortor risus."
+        }
+      ]
+    },
+    {
+      "key": "background-check",
+      "label": "Background Check",
+      "questions": [
+        {
+          "question": "Why do I need a background check?",
+          "answer": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur non nulla sit amet nisl tempus convallis quis ac lectus. Mauris blandit aliquet elit, eget tincidunt nibh pulvinar a. Pellentesque in ipsum id orci porta dapibus."
+        }
+      ]
+    }
+  ]
+}

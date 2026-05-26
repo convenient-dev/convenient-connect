@@ -67,6 +67,18 @@ export default function RootLayout() {
               name="customer-support"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="submit-ticket"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="my-tickets"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ticket-detail/[id]"
+              options={{ headerShown: false }}
+            />
             <Stack.Screen name="earnings" options={{ headerShown: false }} />
             <Stack.Screen name="schedule" options={{ headerShown: false }} />
             <Stack.Screen

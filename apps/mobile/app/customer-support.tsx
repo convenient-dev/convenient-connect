@@ -1,3 +1,4 @@
+import frequentQuestionsData from "@/assets/data/frequent-questions.json";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -14,76 +15,35 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
 interface Topic {
   key: string;
   label: string;
-  questions: string[];
+  questions: FaqItem[];
 }
 
-const TOPICS: Topic[] = [
-  {
-    key: "account",
-    label: "Account & App Usages",
-    questions: [
-      "How do I reset my password?",
-      "How can I update my email or phone number?",
-      "Why am I being asked to verify my identity?",
-      "How do I delete my account?",
-      "Why is the app not loading on my device?",
-    ],
-  },
-  {
-    key: "bookings",
-    label: "Bookings",
-    questions: [
-      "How do I book a service?",
-      "Can I reschedule or cancel a booking?",
-      "What happens if a provider is late or no-shows?",
-      "How do I leave a review after a booking?",
-      "Where do I find my upcoming bookings?",
-    ],
-  },
-  {
-    key: "payments",
-    label: "Payments & Refunds",
-    questions: [
-      "What payment methods are accepted?",
-      "When am I charged for a booking?",
-      "How do I request a refund?",
-      "Why was my card declined?",
-      "How long do refunds take to process?",
-    ],
-  },
-  {
-    key: "membership",
-    label: "Membership",
-    questions: [
-      "What's included in each membership tier?",
-      "How do I upgrade or downgrade my plan?",
-      "Can I cancel my membership at any time?",
-      "Do unused benefits roll over?",
-      "How are membership perks applied at checkout?",
-    ],
-  },
-  {
-    key: "background-check",
-    label: "Background Check",
-    questions: [
-      "Why do I need a background check?",
-      "How long does the background check take?",
-      "What information is reviewed?",
-      "Is the background-check fee refundable?",
-      "What happens if my check is flagged?",
-    ],
-  },
-];
+const TOPICS: Topic[] = frequentQuestionsData.topics as Topic[];
 
 export default function CustomerSupportScreen() {
   const router = useRouter();
   const [activeKey, setActiveKey] = useState<string>(TOPICS[0].key);
+  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const tabsRef = useRef<ScrollView>(null);
 
   const activeTopic = TOPICS.find((t) => t.key === activeKey) ?? TOPICS[0];
+
+  function handleSelectTopic(key: string) {
+    setActiveKey(key);
+    setExpandedQuestion(null);
+  }
+
+  function toggleQuestion(question: string) {
+    setExpandedQuestion((prev) => (prev === question ? null : question));
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -115,12 +75,7 @@ export default function CustomerSupportScreen() {
           <TouchableOpacity
             style={styles.selfServiceCard}
             activeOpacity={0.85}
-            onPress={() =>
-              router.push({
-                pathname: "/customer-support",
-                params: { view: "tickets" },
-              })
-            }
+            onPress={() => router.push("/my-tickets")}
           >
             <View style={styles.selfServiceIconTile}>
               <MaterialIcons
@@ -136,12 +91,7 @@ export default function CustomerSupportScreen() {
           <TouchableOpacity
             style={styles.selfServiceCard}
             activeOpacity={0.85}
-            onPress={() =>
-              router.push({
-                pathname: "/customer-support",
-                params: { action: "new-ticket" },
-              })
-            }
+            onPress={() => router.push("/submit-ticket")}
           >
             <View
               style={[
@@ -177,7 +127,7 @@ export default function CustomerSupportScreen() {
                 key={t.key}
                 style={[styles.tabPill, active && styles.tabPillActive]}
                 activeOpacity={0.8}
-                onPress={() => setActiveKey(t.key)}
+                onPress={() => handleSelectTopic(t.key)}
               >
                 <Text
                   style={[
@@ -193,32 +143,38 @@ export default function CustomerSupportScreen() {
         </ScrollView>
 
         <View style={styles.questionsList}>
-          {activeTopic.questions.map((q, i) => (
-            <React.Fragment key={q}>
-              <TouchableOpacity
-                style={styles.questionRow}
-                activeOpacity={0.7}
-                onPress={() =>
-                  router.push({
-                    pathname: "/customer-support",
-                    params: { topic: activeTopic.key, question: q },
-                  })
-                }
-              >
-                <Text style={styles.questionText} numberOfLines={2}>
-                  {q}
-                </Text>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={22}
-                  color={neutral[300]}
-                />
-              </TouchableOpacity>
-              {i < activeTopic.questions.length - 1 && (
-                <View style={styles.divider} />
-              )}
-            </React.Fragment>
-          ))}
+          {activeTopic.questions.map((q, i) => {
+            const expanded = expandedQuestion === q.question;
+            return (
+              <React.Fragment key={q.question}>
+                <View>
+                  <TouchableOpacity
+                    style={styles.questionRow}
+                    activeOpacity={0.7}
+                    onPress={() => toggleQuestion(q.question)}
+                  >
+                    <Text
+                      style={styles.questionText}
+                      numberOfLines={expanded ? undefined : 2}
+                    >
+                      {q.question}
+                    </Text>
+                    <MaterialIcons
+                      name={expanded ? "expand-less" : "expand-more"}
+                      size={22}
+                      color={neutral[400]}
+                    />
+                  </TouchableOpacity>
+                  {expanded && (
+                    <Text style={styles.answerText}>{q.answer}</Text>
+                  )}
+                </View>
+                {i < activeTopic.questions.length - 1 && (
+                  <View style={styles.divider} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -336,6 +292,14 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
     lineHeight: 20,
+  },
+  answerText: {
+    fontSize: 13,
+    color: neutral[500],
+    letterSpacing: -0.408,
+    lineHeight: 19,
+    paddingBottom: 14,
+    paddingRight: 32,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

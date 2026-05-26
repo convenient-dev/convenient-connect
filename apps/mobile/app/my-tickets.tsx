@@ -1,10 +1,11 @@
-import ticketsData from "@/assets/data/tickets.json";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +15,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
+
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const USER_ID = 1;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -27,9 +32,6 @@ interface Ticket {
   unread: boolean;
 }
 
-// TODO: Replace dummy data with real tickets fetched from backend.
-const TICKETS: Ticket[] = (ticketsData.tickets as Ticket[]);
-
 type FilterKey = "all" | TicketStatus;
 
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -40,52 +42,33 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "closed", label: "Closed" },
 ];
 
-interface StatusVariant {
-  label: string;
-  backgroundColor: string;
-  color: string;
-}
-
-const STATUS_VARIANTS: Record<TicketStatus, StatusVariant> = {
-  open: {
-    label: "Open",
-    backgroundColor: "#FCE9B6",
-    color: "#B07A1A",
-  },
-  in_progress: {
-    label: "In Progress",
-    backgroundColor: "#C7EAE8",
-    color: "#1F9897",
-  },
-  resolved: {
-    label: "Resolved",
-    backgroundColor: "#CDEBD6",
-    color: "#1F7A3A",
-  },
-  closed: {
-    label: "Closed",
-    backgroundColor: "#DCDCDC",
-    color: "#6E6E6E",
-  },
+const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  resolved: "Resolved",
+  closed: "Closed",
 };
-
-function StatusBadge({ status }: { status: TicketStatus }) {
-  const v = STATUS_VARIANTS[status];
-  return (
-    <View style={[styles.badge, { backgroundColor: v.backgroundColor }]}>
-      <Text style={[styles.badgeText, { color: v.color }]}>{v.label}</Text>
-    </View>
-  );
-}
 
 export default function MyTicketsScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/users/${USER_ID}/tickets`)
+      .then((r) => r.json())
+      .then((data: Ticket[]) => {
+        setAllTickets(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const tickets =
     filter === "all"
-      ? TICKETS
-      : TICKETS.filter((t) => t.status === filter);
+      ? allTickets
+      : allTickets.filter((t) => t.status === filter);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -131,7 +114,11 @@ export default function MyTicketsScreen() {
         })}
       </ScrollView>
 
-      {tickets.length === 0 ? (
+      {loading ? (
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      ) : tickets.length === 0 ? (
         <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
             <MaterialIcons
@@ -173,7 +160,7 @@ export default function MyTicketsScreen() {
             >
               <View style={styles.ticketHeaderRow}>
                 <Text style={styles.ticketId}>{t.id}</Text>
-                <StatusBadge status={t.status} />
+                <StatusBadge label={TICKET_STATUS_LABEL[t.status]} />
               </View>
 
               <View style={styles.ticketSubjectRow}>
@@ -316,17 +303,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
 
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 6,
+  loaderWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: -0.408,
-  },
-
   emptyWrap: {
     flex: 1,
     paddingHorizontal: 28,

@@ -2,6 +2,15 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import frequentQuestions from "./frequent-questions.json";
+import ticketsData from "./tickets.json";
+
+type JsonTicketStatus = "open" | "in_progress" | "resolved" | "closed";
+type PrismaTicketStatus = "open" | "inProgress" | "resolved" | "closed";
+
+function mapStatus(s: JsonTicketStatus): PrismaTicketStatus {
+  return s === "in_progress" ? "inProgress" : s;
+}
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -140,7 +149,12 @@ async function main() {
 
   // Seed BusinessAddress join record
   await prisma.businessAddress.upsert({
-    where: { businessId_addressId: { businessId: hiddenGemPetLodge.id, addressId: businessAddr.id } },
+    where: {
+      businessId_addressId: {
+        businessId: hiddenGemPetLodge.id,
+        addressId: businessAddr.id,
+      },
+    },
     update: {},
     create: { businessId: hiddenGemPetLodge.id, addressId: businessAddr.id },
   });
@@ -379,7 +393,7 @@ async function main() {
   );
 
   // Seed Service — Alice's dog walking service at her default address (addr1)
-  const aliceDefaultAddress = addr1;;
+  const aliceDefaultAddress = addr1;
   const aliceService = await prisma.service.upsert({
     where: { title: "Alice's Dog Walking" },
     update: {},
@@ -546,6 +560,76 @@ async function main() {
   ]);
 
   console.log("Seeded service and service image");
+
+  // Seed Customer Support FAQ — topics + questions from mobile's frequent-questions.json
+  for (const [topicIndex, topic] of frequentQuestions.topics.entries()) {
+    const seededTopic = await prisma.supportTopic.upsert({
+      where: { key: topic.key },
+      update: { label: topic.label, displayOrder: topicIndex },
+      create: {
+        key: topic.key,
+        label: topic.label,
+        displayOrder: topicIndex,
+      },
+    });
+
+    // Replace this topic's FAQs to keep seed idempotent without leaking stale rows.
+    await prisma.supportFaq.deleteMany({ where: { topicId: seededTopic.id } });
+    await prisma.supportFaq.createMany({
+      data: topic.questions.map((q, i) => ({
+        topicId: seededTopic.id,
+        question: q.question,
+        answer: q.answer,
+        displayOrder: i,
+      })),
+    });
+  }
+
+  console.log(`Seeded ${frequentQuestions.topics.length} support topics`);
+
+  // Seed Customer Support Tickets — load each ticket + its event log from tickets.json
+  for (const t of ticketsData.tickets) {
+    const ticketUser = await prisma.user.findUniqueOrThrow({
+      where: { email: t.userEmail },
+    });
+    const ticketTopic = await prisma.supportTopic.findUniqueOrThrow({
+      where: { key: t.topicKey },
+    });
+
+    const ticketFields = {
+      userId: ticketUser.id,
+      topicId: ticketTopic.id,
+      subject: t.subject,
+      status: mapStatus(t.status as JsonTicketStatus),
+      createdAt: new Date(t.createdAt),
+      updatedAt: new Date(t.updatedAt),
+    };
+
+    const ticket = await prisma.supportTicket.upsert({
+      where: { publicId: t.publicId },
+      update: ticketFields,
+      create: { publicId: t.publicId, ...ticketFields },
+    });
+
+    // Replace events to keep seed idempotent.
+    await prisma.supportTicketEvent.deleteMany({
+      where: { ticketId: ticket.id },
+    });
+    await prisma.supportTicketEvent.createMany({
+      data: t.events.map((e) => ({
+        ticketId: ticket.id,
+        actor: e.actor as "user" | "agent" | "system",
+        body: e.body ?? null,
+        statusChange: e.statusChange
+          ? mapStatus(e.statusChange as JsonTicketStatus)
+          : null,
+        readAt: e.readAt ? new Date(e.readAt) : null,
+        createdAt: new Date(e.at),
+      })),
+    });
+  }
+
+  console.log(`Seeded ${ticketsData.tickets.length} support tickets`);
 }
 
 main()

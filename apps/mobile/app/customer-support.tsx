@@ -1,10 +1,10 @@
-import frequentQuestionsData from "@/assets/data/frequent-questions.json";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +14,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
+
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 interface FaqItem {
   question: string;
@@ -26,15 +29,27 @@ interface Topic {
   questions: FaqItem[];
 }
 
-const TOPICS: Topic[] = frequentQuestionsData.topics as Topic[];
-
 export default function CustomerSupportScreen() {
   const router = useRouter();
-  const [activeKey, setActiveKey] = useState<string>(TOPICS[0].key);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const tabsRef = useRef<ScrollView>(null);
 
-  const activeTopic = TOPICS.find((t) => t.key === activeKey) ?? TOPICS[0];
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/frequent-questions`)
+      .then((r) => r.json())
+      .then((data: { topics: Topic[] }) => {
+        setTopics(data.topics);
+        setActiveKey(data.topics[0]?.key ?? null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const activeTopic =
+    topics.find((t) => t.key === activeKey) ?? topics[0] ?? null;
 
   function handleSelectTopic(key: string) {
     setActiveKey(key);
@@ -114,68 +129,76 @@ export default function CustomerSupportScreen() {
 
         <Text style={styles.sectionTitle}>Frequent Questions</Text>
 
-        <ScrollView
-          ref={tabsRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsContent}
-        >
-          {TOPICS.map((t) => {
-            const active = t.key === activeKey;
-            return (
-              <TouchableOpacity
-                key={t.key}
-                style={[styles.tabPill, active && styles.tabPillActive]}
-                activeOpacity={0.8}
-                onPress={() => handleSelectTopic(t.key)}
-              >
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    active && styles.tabPillTextActive,
-                  ]}
-                >
-                  {t.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.questionsList}>
-          {activeTopic.questions.map((q, i) => {
-            const expanded = expandedQuestion === q.question;
-            return (
-              <React.Fragment key={q.question}>
-                <View>
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="small" color={primary[400]} />
+          </View>
+        ) : activeTopic ? (
+          <>
+            <ScrollView
+              ref={tabsRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabsContent}
+            >
+              {topics.map((t) => {
+                const active = t.key === activeKey;
+                return (
                   <TouchableOpacity
-                    style={styles.questionRow}
-                    activeOpacity={0.7}
-                    onPress={() => toggleQuestion(q.question)}
+                    key={t.key}
+                    style={[styles.tabPill, active && styles.tabPillActive]}
+                    activeOpacity={0.8}
+                    onPress={() => handleSelectTopic(t.key)}
                   >
                     <Text
-                      style={styles.questionText}
-                      numberOfLines={expanded ? undefined : 2}
+                      style={[
+                        styles.tabPillText,
+                        active && styles.tabPillTextActive,
+                      ]}
                     >
-                      {q.question}
+                      {t.label}
                     </Text>
-                    <MaterialIcons
-                      name={expanded ? "expand-less" : "expand-more"}
-                      size={22}
-                      color={neutral[400]}
-                    />
                   </TouchableOpacity>
-                  {expanded && (
-                    <Text style={styles.answerText}>{q.answer}</Text>
-                  )}
-                </View>
-                {i < activeTopic.questions.length - 1 && (
-                  <View style={styles.divider} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </View>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.questionsList}>
+              {activeTopic.questions.map((q, i) => {
+                const expanded = expandedQuestion === q.question;
+                return (
+                  <React.Fragment key={q.question}>
+                    <View>
+                      <TouchableOpacity
+                        style={styles.questionRow}
+                        activeOpacity={0.7}
+                        onPress={() => toggleQuestion(q.question)}
+                      >
+                        <Text
+                          style={styles.questionText}
+                          numberOfLines={expanded ? undefined : 2}
+                        >
+                          {q.question}
+                        </Text>
+                        <MaterialIcons
+                          name={expanded ? "expand-less" : "expand-more"}
+                          size={22}
+                          color={neutral[400]}
+                        />
+                      </TouchableOpacity>
+                      {expanded && (
+                        <Text style={styles.answerText}>{q.answer}</Text>
+                      )}
+                    </View>
+                    {i < activeTopic.questions.length - 1 && (
+                      <View style={styles.divider} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -272,6 +295,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  loader: {
+    paddingVertical: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   questionsList: {
     marginTop: 14,
     borderRadius: 12,

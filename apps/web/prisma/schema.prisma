@@ -100,6 +100,11 @@ model User {
 
   supportTickets SupportTicket[]
 
+  // Stripe Connect: the ID of this user's connected account
+  // (e.g. "acct_..."), created via stripeClient.v2.core.accounts.create.
+  // Null until the user starts onboarding from /stripe/onboard.
+  stripeAccountId String? @unique
+
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @default(now()) @db.Timestamp(6)
 }

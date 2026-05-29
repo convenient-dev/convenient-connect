@@ -2,12 +2,13 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -35,7 +36,10 @@ export default function CustomerSupportScreen() {
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [searchActive, setSearchActive] = useState(false);
+  const [query, setQuery] = useState("");
   const tabsRef = useRef<ScrollView>(null);
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/frequent-questions`)
@@ -60,6 +64,35 @@ export default function CustomerSupportScreen() {
     setExpandedQuestion((prev) => (prev === question ? null : question));
   }
 
+  function openSearch() {
+    setSearchActive(true);
+    setExpandedQuestion(null);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  }
+
+  function closeSearch() {
+    setSearchActive(false);
+    setQuery("");
+    setExpandedQuestion(null);
+  }
+
+  const trimmedQuery = query.trim().toLowerCase();
+  const searchResults = useMemo(() => {
+    if (!trimmedQuery) return [];
+    const matches: { topicLabel: string; faq: FaqItem }[] = [];
+    for (const topic of topics) {
+      for (const faq of topic.questions) {
+        if (
+          faq.question.toLowerCase().includes(trimmedQuery) ||
+          faq.answer.toLowerCase().includes(trimmedQuery)
+        ) {
+          matches.push({ topicLabel: topic.label, faq });
+        }
+      }
+    }
+    return matches;
+  }, [topics, trimmedQuery]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScreenHeader
@@ -69,23 +102,98 @@ export default function CustomerSupportScreen() {
             style={styles.headerSearchButton}
             activeOpacity={0.7}
             hitSlop={8}
-            onPress={() =>
-              router.push({
-                pathname: "/customer-support",
-                params: { action: "search" },
-              })
-            }
+            onPress={openSearch}
           >
             <MaterialIcons name="search" size={22} color={text.primary} />
           </TouchableOpacity>
         }
       />
 
+      {searchActive && (
+        <View style={styles.searchBarWrap}>
+          <View style={styles.searchBar}>
+            <MaterialIcons name="search" size={18} color={neutral[400]} />
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Search help articles"
+              placeholderTextColor={neutral[400]}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setQuery("")}
+                hitSlop={8}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="cancel"
+                  size={18}
+                  color={neutral[400]}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={closeSearch}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <Text style={styles.searchCancel}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {searchActive && trimmedQuery ? (
+          <View style={styles.questionsList}>
+            {searchResults.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No results for &ldquo;{query.trim()}&rdquo;
+              </Text>
+            ) : (
+              searchResults.map((m, i) => (
+                <React.Fragment key={`${m.topicLabel}:${m.faq.question}`}>
+                  <TouchableOpacity
+                    style={styles.questionRow}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/faq-detail",
+                        params: {
+                          question: m.faq.question,
+                          answer: m.faq.answer,
+                          topic: m.topicLabel,
+                        },
+                      })
+                    }
+                  >
+                    <Text style={styles.questionText} numberOfLines={2}>
+                      {m.faq.question}
+                    </Text>
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={22}
+                      color={neutral[400]}
+                    />
+                  </TouchableOpacity>
+                  {i < searchResults.length - 1 && (
+                    <View style={styles.divider} />
+                  )}
+                </React.Fragment>
+              ))
+            )}
+          </View>
+        ) : (
+          <>
         <View style={styles.selfServiceRow}>
           <TouchableOpacity
             style={styles.selfServiceCard}
@@ -199,6 +307,8 @@ export default function CustomerSupportScreen() {
             </View>
           </>
         ) : null}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -221,6 +331,46 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  searchBarWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: border.default,
+    backgroundColor: background.card,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: text.primary,
+    letterSpacing: -0.408,
+    padding: 0,
+  },
+  searchCancel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: primary[500],
+    letterSpacing: -0.408,
+  },
+  emptyText: {
+    paddingVertical: 18,
+    fontSize: 14,
+    color: neutral[400],
+    textAlign: "center",
+    letterSpacing: -0.408,
   },
 
   sectionTitle: {

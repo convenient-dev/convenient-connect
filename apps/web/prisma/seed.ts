@@ -585,6 +585,17 @@ async function main() {
     });
   }
 
+  // "Other" is a catch-all ticket topic with no FAQs.
+  await prisma.supportTopic.upsert({
+    where: { key: "other" },
+    update: { label: "Other", displayOrder: frequentQuestions.topics.length },
+    create: {
+      key: "other",
+      label: "Other",
+      displayOrder: frequentQuestions.topics.length,
+    },
+  });
+
   console.log(`Seeded ${frequentQuestions.topics.length} support topics`);
 
   // Seed Customer Support Tickets — load each ticket + its event log from tickets.json

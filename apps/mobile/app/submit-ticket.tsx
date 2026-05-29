@@ -1,3 +1,4 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -18,6 +19,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const USER_ID = 1;
+
 const TOPIC_OPTIONS: { key: string; label: string }[] = [
   { key: "account", label: "Account & App Usages" },
   { key: "bookings", label: "Bookings" },
@@ -37,60 +42,47 @@ export default function SubmitTicketScreen() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedTicketId, setSubmittedTicketId] = useState<string | null>(
+    null,
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const trimmedSubject = subject.trim();
   const trimmedDescription = description.trim();
   const canSubmit =
     trimmedSubject.length > 0 &&
-    trimmedDescription.length >= 10 &&
+    trimmedDescription.length > 0 &&
     !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
-    // TODO: Replace with real support ticket API call.
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    setSubmitted(true);
-  }
-
-  if (submitted) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader title="Submit a Ticket" />
-        <View style={styles.successWrap}>
-          <View style={styles.successIcon}>
-            <MaterialIcons
-              name="check-circle"
-              size={56}
-              color={primary[500]}
-            />
-          </View>
-          <Text style={styles.successTitle}>Ticket submitted</Text>
-          <Text style={styles.successSub}>
-            We&apos;ve received your request and will get back to you shortly.
-            You can track its status in My Tickets.
-          </Text>
-
-          <View style={styles.successActions}>
-            <TouchableOpacity
-              style={[styles.primaryButton]}
-              activeOpacity={0.85}
-              onPress={() => router.replace("/my-tickets")}
-            >
-              <Text style={styles.primaryButtonText}>View My Tickets</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.ghostButton}
-              activeOpacity={0.7}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.ghostButtonText}>Back to Support</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/tickets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicKey,
+          subject: trimmedSubject,
+          description: trimmedDescription,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setErrorMessage(data?.error ?? "Couldn't submit your ticket. Please try again.");
+        return;
+      }
+      const data = (await res.json()) as { id: string };
+      setSubmittedTicketId(data.id);
+      setSubmitted(true);
+    } catch {
+      setErrorMessage("Network error. Please check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -187,6 +179,9 @@ export default function SubmitTicketScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
+          {errorMessage && (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          )}
           <TouchableOpacity
             style={[
               styles.primaryButton,
@@ -204,6 +199,21 @@ export default function SubmitTicketScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={submitted}
+        icon="success"
+        title="Ticket submitted"
+        message={
+          submittedTicketId
+            ? `Your ticket ${submittedTicketId} has been received. You can track its status in My Tickets.`
+            : "We've received your request and will get back to you shortly. You can track its status in My Tickets."
+        }
+        confirmLabel="View My Tickets"
+        cancelLabel="Back to Support"
+        onConfirm={() => router.replace("/my-tickets")}
+        onCancel={() => router.back()}
+      />
     </SafeAreaView>
   );
 }
@@ -313,6 +323,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     paddingTop: 8,
+    gap: 10,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#C0392B",
+    textAlign: "center",
+    letterSpacing: -0.408,
   },
   primaryButton: {
     height: 48,
@@ -331,50 +348,4 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
 
-  successWrap: {
-    flex: 1,
-    paddingHorizontal: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  successIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: primary[50],
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  successSub: {
-    fontSize: 14,
-    color: neutral[400],
-    textAlign: "center",
-    lineHeight: 20,
-    letterSpacing: -0.408,
-  },
-  successActions: {
-    alignSelf: "stretch",
-    marginTop: 24,
-    gap: 10,
-  },
-  ghostButton: {
-    height: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ghostButtonText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
 });

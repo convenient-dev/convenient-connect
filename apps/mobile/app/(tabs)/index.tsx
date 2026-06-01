@@ -101,15 +101,32 @@ export default function HomeScreen() {
         {/* Header row */}
         <View style={styles.header}>
           {/* Avatar */}
-          <ExpoImage
-            source={
-              user?.avatarUrl
-                ? { uri: user.avatarUrl }
-                : require("@/assets/default-avatar-square.svg")
-            }
-            style={styles.avatar}
-            contentFit="cover"
-          />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push("/profile")}
+          >
+            <View style={styles.avatarWrap}>
+              <ExpoImage
+                source={
+                  user?.avatarUrl
+                    ? { uri: user.avatarUrl }
+                    : require("@/assets/default-avatar-square.svg")
+                }
+                style={styles.avatar}
+                contentFit="cover"
+              />
+              {((user?.accountType === "individual" &&
+                user?.isPersonVerified) ||
+                (user?.accountType === "business" &&
+                  user?.isBusinessVerified)) && (
+                <ExpoImage
+                  source={require("@/assets/global-icons/verified.svg")}
+                  style={styles.avatarBadge}
+                  contentFit="contain"
+                />
+              )}
+            </View>
+          </TouchableOpacity>
 
           {/* Address + Menu */}
           <View style={styles.headerRight}>
@@ -292,11 +309,22 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: 12,
   },
+  avatarWrap: {
+    width: 50,
+    height: 50,
+  },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 16,
     overflow: "hidden",
+  },
+  avatarBadge: {
+    position: "absolute",
+    right: -3,
+    bottom: -3,
+    width: 18,
+    height: 18,
   },
   locationRow: {
     flex: 1,

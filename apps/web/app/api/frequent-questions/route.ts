@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
   const topics = await prisma.supportTopic.findMany({
+    where: { faqs: { some: {} } },
     orderBy: { displayOrder: "asc" },
     include: {
       faqs: {

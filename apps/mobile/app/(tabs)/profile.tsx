@@ -1,5 +1,6 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -17,8 +18,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+// The Stripe status endpoint lives at /api/stripe/... (no /api prefix on
+// API_BASE_URL's path), so derive the host root once.
+const WEB_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 interface UserProfile {
   firstName: string | null;
@@ -33,6 +35,17 @@ interface UserProfile {
   profileTypeStatus?: "active" | "pending" | string;
   backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
   aboutMe?: string | null;
+  // Set after the user starts the background-check flow. The Stripe Connect
+  // account is the source of truth for "background check complete" — if
+  // present, we fetch its live status below instead of trusting any cached
+  // field on the user row.
+  stripeAccountId?: string | null;
+}
+
+interface StripeAccountStatus {
+  readyToReceivePayments: boolean;
+  onboardingComplete: boolean;
+  requirementsStatus: string | null;
 }
 
 interface UserCategory {
@@ -105,9 +118,13 @@ function ProfileRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
+  const [stripeStatus, setStripeStatus] = useState<StripeAccountStatus | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   function handleBack() {
@@ -125,17 +142,35 @@ export default function ProfileScreen() {
     useCallback(() => {
       setLoading(true);
       Promise.all([
-        fetch(`${API_BASE_URL}/users/1`).then((res) => res.json()),
-        fetch(`${API_BASE_URL}/users/1/categories`)
+        fetch(`${API_BASE_URL}/users/${userId}`).then((res) => res.json()),
+        fetch(`${API_BASE_URL}/users/${userId}/categories`)
           .then((res) => res.json())
           .catch(() => [] as UserCategory[]),
       ])
-        .then(([userData, cats]: [UserProfile, UserCategory[]]) => {
+        .then(async ([userData, cats]: [UserProfile, UserCategory[]]) => {
           setUser(userData);
           setCategories((cats ?? []).map((c) => c.name));
+
+          // If the user has a Stripe Connect account, pull live onboarding
+          // status. The screen re-runs on focus (useFocusEffect) so coming
+          // back from the background-check flow always reflects the truth
+          // from Stripe — no manual refresh needed.
+          if (userData.stripeAccountId) {
+            try {
+              const res = await fetch(
+                `${WEB_BASE_URL}/api/stripe/accounts/${userData.stripeAccountId}/status`,
+              );
+              if (res.ok) setStripeStatus(await res.json());
+              else setStripeStatus(null);
+            } catch {
+              setStripeStatus(null);
+            }
+          } else {
+            setStripeStatus(null);
+          }
         })
         .finally(() => setLoading(false));
-    }, []),
+    }, [userId]),
   );
 
   const fullName = useMemo(() => {
@@ -157,7 +192,25 @@ export default function ProfileScreen() {
 
   const profileTypeLabel =
     user?.accountType === "business" ? "Business" : "Individual";
-  const backgroundComplete = user?.backgroundCheckStatus === "complete";
+
+  // Background-check completion is derived from the Stripe Connect account:
+  //   - complete: onboarding finished AND the recipient capability is active
+  //   - pending:  account exists but Stripe is still waiting on info
+  //   - none:     user never started the flow
+  // We fall back to the legacy backgroundCheckStatus field if Stripe info
+  // isn't available (e.g. account ID missing or status fetch failed).
+  const hasStripeAccount = !!user?.stripeAccountId;
+  const backgroundComplete = stripeStatus
+    ? stripeStatus.onboardingComplete && stripeStatus.readyToReceivePayments
+    : user?.backgroundCheckStatus === "complete";
+  const backgroundPending =
+    hasStripeAccount && stripeStatus != null && !backgroundComplete;
+
+  const backgroundLabel = backgroundComplete
+    ? "Background check complete"
+    : backgroundPending
+      ? "Verification in progress"
+      : "Please complete your background check";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -285,14 +338,22 @@ export default function ProfileScreen() {
 
           <ProfileRow
             label="Background Check"
-            value={
-              backgroundComplete
-                ? "Background check complete"
-                : "Please complete your background check"
-            }
+            value={backgroundLabel}
             valueMuted
             trailingIcon={backgroundComplete ? "verified" : "warning"}
-            onPress={() => router.push("/background-check-1")}
+            onPress={() => {
+              // If onboarding is mid-flight, jump straight to the status
+              // screen (it can refresh against Stripe). Otherwise start
+              // the flow from the beginning.
+              if (backgroundPending && user?.stripeAccountId) {
+                router.push({
+                  pathname: "/background-check-4",
+                  params: { accountId: user.stripeAccountId },
+                });
+              } else {
+                router.push("/background-check-1");
+              }
+            }}
           />
           <View style={styles.rowDivider} />
 

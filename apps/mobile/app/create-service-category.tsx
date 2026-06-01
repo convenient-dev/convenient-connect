@@ -1,4 +1,5 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { API_BASE_URL } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,9 +14,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, background } = Colors;
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
@@ -60,11 +58,12 @@ function CategoryItem({
 
 export default function CreateServiceCategoryScreen() {
   const router = useRouter();
-  const { serviceMode, businessAffiliationId, businessName } = useLocalSearchParams<{
-    serviceMode: string;
-    businessAffiliationId: string;
-    businessName: string;
-  }>();
+  const { serviceMode, businessAffiliationId, businessName } =
+    useLocalSearchParams<{
+      serviceMode: string;
+      businessAffiliationId: string;
+      businessName: string;
+    }>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);

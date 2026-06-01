@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -22,8 +23,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, background, border, status, overlay } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const RATE_UNITS = ["booking", "hour"] as const;
 type RateUnit = (typeof RATE_UNITS)[number];
@@ -56,6 +55,7 @@ interface ServicePricing {
 export default function EditServicePricingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +75,7 @@ export default function EditServicePricingScreen() {
   const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/1/services/${id}`)
+    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
       .then((r) => r.json())
       .then(async (service: ServicePricing) => {
         setBaseRate(parseFloat(service.baseRate).toFixed(2));
@@ -107,7 +107,7 @@ export default function EditServicePricingScreen() {
         }
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   function openRateUnitPicker(field: "base" | number) {
     setActiveRateField(field);
@@ -173,7 +173,7 @@ export default function EditServicePricingScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -16,9 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-const USER_ID = 1;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -56,6 +54,7 @@ const TICKET_STATUS_DOT_COLOR: Record<TicketStatus, string> = {
 export default function TicketDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { userId } = useCurrentUser();
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,14 +63,14 @@ export default function TicketDetailScreen() {
       setLoading(false);
       return;
     }
-    fetch(`${API_BASE_URL}/users/${USER_ID}/tickets/${id}`)
+    fetch(`${API_BASE_URL}/users/${userId}/tickets/${id}`)
       .then(async (r) => (r.ok ? ((await r.json()) as TicketDetail) : null))
       .then((data) => {
         setTicket(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   if (loading) {
     return (

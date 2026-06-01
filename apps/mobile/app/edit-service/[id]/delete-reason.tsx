@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -16,8 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { neutral, secondary, brand, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const REASONS = [
   "I'm no longer offering this service.",
@@ -31,6 +30,7 @@ type Reason = (typeof REASONS)[number];
 export default function DeleteServiceReasonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [selected, setSelected] = useState<Reason | null>(null);
   const [otherText, setOtherText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -45,7 +45,7 @@ export default function DeleteServiceReasonScreen() {
     setError(null);
     try {
       const reason = selected === "Other" ? otherText.trim() : selected;
-      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),

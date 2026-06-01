@@ -1,3 +1,4 @@
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -16,9 +17,6 @@ const { primary, secondary, neutral, background } = Colors;
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
 const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
-
-// TODO: replace with real auth user id
-const USER_ID = 1;
 
 interface Option {
   id: string;
@@ -54,12 +52,13 @@ function RadioOption({
 
 export default function CreateServiceScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [selected, setSelected] = useState<string | null>(null);
   const [businessOptions, setBusinessOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/affiliations`)
+    fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
       .then((res) => res.json())
       .then((businesses: { id: number; name: string }[]) => {
         setBusinessOptions(
@@ -67,7 +66,7 @@ export default function CreateServiceScreen() {
         );
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   const canProceed = selected !== null;
 

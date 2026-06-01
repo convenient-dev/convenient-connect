@@ -1,13 +1,65 @@
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
-import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { background, text, neutral, primary } = Colors;
 
+const WEB_BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api"
+).replace(/\/api\/?$/, "");
+
+type AccountStatus = {
+  readyToReceivePayments: boolean;
+  onboardingComplete: boolean;
+  requirementsStatus: string | null;
+};
+
 export default function BackgroundCheck4Screen() {
   const router = useRouter();
+  // accountId is forwarded from background-check-3 after the user creates
+  // their connected account. The webhook keeps Stripe state authoritative —
+  // this screen just pulls the latest snapshot on mount / on refresh.
+  const { accountId } = useLocalSearchParams<{ accountId?: string }>();
+
+  const [status, setStatus] = useState<AccountStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    if (!accountId) {
+      // No account id (e.g. screen opened directly) — nothing to check.
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${WEB_BASE_URL}/api/stripe/accounts/${accountId}/status`,
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to load status");
+      setStatus(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
   function handleDone() {
     // Pop the whole background-check stack so it can't be surfaced later,
     // then switch to the profile tab. The `from` param drives the custom
@@ -16,23 +68,62 @@ export default function BackgroundCheck4Screen() {
     router.navigate("/profile?from=background-check");
   }
 
+  const verified =
+    !!status?.onboardingComplete && !!status?.readyToReceivePayments;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.body}>
         <ExpoImage
-          source={require("@/assets/global-icons/verified-success.png")}
-          style={styles.illustration}
+          source={
+            verified
+              ? require("@/assets/global-icons/verified-success.png")
+              : require("@/assets/global-icons/verified-success.png")
+          }
+          style={[styles.illustration, !verified && styles.illustrationMuted]}
           contentFit="contain"
         />
-        <Text style={styles.title}>Verified</Text>
-        <Text style={styles.message}>Your background check is complete.</Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.85}
-          onPress={handleDone}
-        >
-          <Text style={styles.primaryButtonText}>Done</Text>
-        </TouchableOpacity>
+
+        {loading ? (
+          <>
+            <ActivityIndicator color={primary[300]} style={{ marginTop: 12 }} />
+            <Text style={styles.message}>Checking verification status…</Text>
+          </>
+        ) : verified ? (
+          <>
+            <Text style={styles.title}>Verified</Text>
+            <Text style={styles.message}>
+              Your background check is complete.
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Verification in progress</Text>
+            <Text style={styles.message}>
+              We&apos;re still waiting on Stripe to finish verifying your
+              account. This usually takes just a few minutes — tap Refresh
+              once you&apos;ve finished the steps in your browser.
+            </Text>
+            {error && <Text style={styles.error}>{error}</Text>}
+            <TouchableOpacity
+              style={[styles.primaryButton, styles.secondaryButton]}
+              activeOpacity={0.85}
+              onPress={fetchStatus}
+            >
+              <Text style={styles.secondaryButtonText}>Refresh</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {!loading && (
+          <TouchableOpacity
+            style={styles.primaryButton}
+            activeOpacity={0.85}
+            onPress={handleDone}
+          >
+            <Text style={styles.primaryButtonText}>Done</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -54,6 +145,9 @@ const styles = StyleSheet.create({
     height: 200,
     marginTop: 56,
   },
+  illustrationMuted: {
+    opacity: 0.5,
+  },
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -70,6 +164,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
     marginBottom: 14,
   },
+  error: {
+    fontSize: 13,
+    color: "#c00",
+    textAlign: "center",
+    marginBottom: 12,
+  },
   primaryButton: {
     height: 56,
     paddingHorizontal: 60,
@@ -78,11 +178,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
+    marginTop: 12,
   },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: neutral[0],
+    letterSpacing: -0.408,
+  },
+  secondaryButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: primary[300],
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: primary[300],
     letterSpacing: -0.408,
   },
 });

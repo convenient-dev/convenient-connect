@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -13,8 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, brand, background } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const BULLETS = [
   "This action cannot be undone",
@@ -25,12 +24,13 @@ const BULLETS = [
 export default function DeleteServiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [pausing, setPausing] = useState(false);
 
   async function handlePause() {
     setPausing(true);
     try {
-      await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
+      await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "inactive" }),

@@ -1,6 +1,7 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -20,8 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const SECTION_ICONS: Record<string, number> = {
   OVERVIEW: require("@/assets/global-icons/provider-type.svg"),
@@ -60,6 +59,7 @@ function InlineRow({ label, value }: { label: string; value: string }) {
 export default function EditServiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [service, setService] = useState<ServiceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchActive, setSearchActive] = useState(false);
@@ -107,7 +107,7 @@ export default function EditServiceScreen() {
         const newStatus = newValue ? "active" : "inactive";
         setSearchActive(newValue);
         setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
-        await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
+        await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ searchActive: newValue }),
@@ -132,14 +132,14 @@ export default function EditServiceScreen() {
   }
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/1/services/${id}`)
+    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
       .then((res) => res.json())
       .then((data: ServiceSummary) => {
         setService(data);
         setSearchActive(data.searchActive ?? false);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   if (loading) {
     return (

@@ -1,4 +1,5 @@
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -28,8 +29,6 @@ const { primary, secondary, neutral, background, border, status, overlay } =
 
 const TOTAL_STEPS = 5;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const RADIUS_UNITS = ["mile", "km"] as const;
 type RadiusUnit = (typeof RADIUS_UNITS)[number];
@@ -141,6 +140,7 @@ function ReviewPricingRow({ label, value }: { label: string; value: string }) {
 
 export default function CreateServiceFormScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const {
     subcategoryId,
     subcategoryName,
@@ -306,7 +306,7 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (serviceMode === "business") return;
-    fetch(`${API_BASE_URL}/users/1`)
+    fetch(`${API_BASE_URL}/users/${userId}`)
       .then((r) => r.json())
       .then((user) => {
         const addresses: Address[] = user?.address ?? [];
@@ -318,11 +318,11 @@ export default function CreateServiceFormScreen() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (serviceMode !== "business" || !businessAffiliationId) return;
-    fetch(`${API_BASE_URL}/users/1/affiliations`)
+    fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
       .then((r) => r.json())
       .then(
         (
@@ -341,7 +341,7 @@ export default function CreateServiceFormScreen() {
         },
       )
       .catch(() => {});
-  }, []);
+  }, [userId]);
 
   const [aboutYou, setAboutYou] = useState("");
   const [slogan, setSlogan] = useState("");
@@ -550,7 +550,7 @@ export default function CreateServiceFormScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/1/services`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

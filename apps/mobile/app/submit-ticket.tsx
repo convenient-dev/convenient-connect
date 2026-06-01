@@ -1,5 +1,6 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -19,10 +20,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-const USER_ID = 1;
-
 const TOPIC_OPTIONS: { key: string; label: string }[] = [
   { key: "account", label: "Account & App Usages" },
   { key: "bookings", label: "Bookings" },
@@ -37,6 +34,7 @@ const DESCRIPTION_MAX = 1000;
 
 export default function SubmitTicketScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [topicKey, setTopicKey] = useState<string>(TOPIC_OPTIONS[0].key);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -59,7 +57,7 @@ export default function SubmitTicketScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/tickets`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/tickets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,11 +1,12 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // The agreement page is served by the Next.js web app at /agreement, so
@@ -19,16 +20,64 @@ const { primary, neutral, text, background } = Colors;
 
 export default function BackgroundCheck3Screen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [accepted, setAccepted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function handleOpenAgreement() {
     WebBrowser.openBrowserAsync(AGREEMENT_URL);
   }
 
-  function handleAcceptAndProceed() {
-    if (!accepted) return;
-    // TODO: Submit the agreement acceptance to the backend
-    router.push("/background-check-4");
+  async function handleAcceptAndProceed() {
+    if (!accepted || submitting) return;
+    setSubmitting(true);
+    try {
+      // TODO: Submit the agreement acceptance to the backend
+
+      // 1. Create (or reuse) the user's Stripe connected account. The web
+      //    API returns the same acct_... on subsequent calls thanks to the
+      //    `stripeAccountId` mapping on the User row.
+      const acctRes = await fetch(`${WEB_BASE_URL}/api/stripe/accounts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const acctJson = await acctRes.json();
+      if (!acctRes.ok) {
+        throw new Error(acctJson.error ?? "Failed to create Stripe account");
+      }
+      const accountId: string = acctJson.accountId;
+
+      // 2. Mint a short-lived Account Link — this is the Stripe-hosted URL
+      //    that walks the user through identity verification, bank info, etc.
+      const linkRes = await fetch(
+        `${WEB_BASE_URL}/api/stripe/accounts/${accountId}/link`,
+        { method: "POST" },
+      );
+      const linkJson = await linkRes.json();
+      if (!linkRes.ok || !linkJson.url) {
+        throw new Error(linkJson.error ?? "Failed to create onboarding link");
+      }
+
+      // 3. Hand off to the phone's default browser. Unlike
+      //    WebBrowser.openBrowserAsync, Linking.openURL does NOT block —
+      //    control returns immediately, and the user will see Safari /
+      //    Chrome in the foreground while our app stays in the background.
+      await Linking.openURL(linkJson.url);
+
+      // 4. Continue to the success screen now (rather than waiting for the
+      //    browser to close, which we can't observe). Pass the accountId
+      //    so the next screen can fetch live onboarding status from Stripe.
+      router.push({
+        pathname: "/background-check-4",
+        params: { accountId },
+      });
+    } catch (err) {
+      console.warn("[stripe onboarding]", err);
+      // TODO: surface a user-facing error toast/banner.
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -70,13 +119,15 @@ export default function BackgroundCheck3Screen() {
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            !accepted && styles.primaryButtonDisabled,
+            (!accepted || submitting) && styles.primaryButtonDisabled,
           ]}
           activeOpacity={0.85}
-          disabled={!accepted}
+          disabled={!accepted || submitting}
           onPress={handleAcceptAndProceed}
         >
-          <Text style={styles.primaryButtonText}>Accept and Proceed</Text>
+          <Text style={styles.primaryButtonText}>
+            {submitting ? "Opening Stripe…" : "Accept and Proceed"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

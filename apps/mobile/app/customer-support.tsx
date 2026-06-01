@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -15,9 +16,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 interface FaqItem {
   question: string;
@@ -130,11 +128,7 @@ export default function CustomerSupportScreen() {
                 hitSlop={8}
                 activeOpacity={0.7}
               >
-                <MaterialIcons
-                  name="cancel"
-                  size={18}
-                  color={neutral[400]}
-                />
+                <MaterialIcons name="cancel" size={18} color={neutral[400]} />
               </TouchableOpacity>
             )}
           </View>
@@ -194,119 +188,119 @@ export default function CustomerSupportScreen() {
           </View>
         ) : (
           <>
-        <View style={styles.selfServiceRow}>
-          <TouchableOpacity
-            style={styles.selfServiceCard}
-            activeOpacity={0.85}
-            onPress={() => router.push("/my-tickets")}
-          >
-            <View style={styles.selfServiceIconTile}>
-              <MaterialIcons
-                name="support-agent"
-                size={22}
-                color={primary[500]}
-              />
+            <View style={styles.selfServiceRow}>
+              <TouchableOpacity
+                style={styles.selfServiceCard}
+                activeOpacity={0.85}
+                onPress={() => router.push("/my-tickets")}
+              >
+                <View style={styles.selfServiceIconTile}>
+                  <MaterialIcons
+                    name="support-agent"
+                    size={22}
+                    color={primary[500]}
+                  />
+                </View>
+                <Text style={styles.selfServiceLabel}>My Tickets</Text>
+                <Text style={styles.selfServiceSub}>View status & replies</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.selfServiceCard}
+                activeOpacity={0.85}
+                onPress={() => router.push("/submit-ticket")}
+              >
+                <View
+                  style={[
+                    styles.selfServiceIconTile,
+                    styles.selfServiceIconTileAccent,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="add-comment"
+                    size={22}
+                    color={secondary[500]}
+                  />
+                </View>
+                <Text style={styles.selfServiceLabel}>Submit a Ticket</Text>
+                <Text style={styles.selfServiceSub}>
+                  We&apos;ll get back to you
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.selfServiceLabel}>My Tickets</Text>
-            <Text style={styles.selfServiceSub}>View status & replies</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.selfServiceCard}
-            activeOpacity={0.85}
-            onPress={() => router.push("/submit-ticket")}
-          >
-            <View
-              style={[
-                styles.selfServiceIconTile,
-                styles.selfServiceIconTileAccent,
-              ]}
-            >
-              <MaterialIcons
-                name="add-comment"
-                size={22}
-                color={secondary[500]}
-              />
-            </View>
-            <Text style={styles.selfServiceLabel}>Submit a Ticket</Text>
-            <Text style={styles.selfServiceSub}>
-              We&apos;ll get back to you
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.sectionTitle}>Frequent Questions</Text>
 
-        <Text style={styles.sectionTitle}>Frequent Questions</Text>
-
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="small" color={primary[400]} />
-          </View>
-        ) : activeTopic ? (
-          <>
-            <ScrollView
-              ref={tabsRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tabsContent}
-            >
-              {topics.map((t) => {
-                const active = t.key === activeKey;
-                return (
-                  <TouchableOpacity
-                    key={t.key}
-                    style={[styles.tabPill, active && styles.tabPillActive]}
-                    activeOpacity={0.8}
-                    onPress={() => handleSelectTopic(t.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.tabPillText,
-                        active && styles.tabPillTextActive,
-                      ]}
-                    >
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <View style={styles.questionsList}>
-              {activeTopic.questions.map((q, i) => {
-                const expanded = expandedQuestion === q.question;
-                return (
-                  <React.Fragment key={q.question}>
-                    <View>
+            {loading ? (
+              <View style={styles.loader}>
+                <ActivityIndicator size="small" color={primary[400]} />
+              </View>
+            ) : activeTopic ? (
+              <>
+                <ScrollView
+                  ref={tabsRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.tabsContent}
+                >
+                  {topics.map((t) => {
+                    const active = t.key === activeKey;
+                    return (
                       <TouchableOpacity
-                        style={styles.questionRow}
-                        activeOpacity={0.7}
-                        onPress={() => toggleQuestion(q.question)}
+                        key={t.key}
+                        style={[styles.tabPill, active && styles.tabPillActive]}
+                        activeOpacity={0.8}
+                        onPress={() => handleSelectTopic(t.key)}
                       >
                         <Text
-                          style={styles.questionText}
-                          numberOfLines={expanded ? undefined : 2}
+                          style={[
+                            styles.tabPillText,
+                            active && styles.tabPillTextActive,
+                          ]}
                         >
-                          {q.question}
+                          {t.label}
                         </Text>
-                        <MaterialIcons
-                          name={expanded ? "expand-less" : "expand-more"}
-                          size={22}
-                          color={neutral[400]}
-                        />
                       </TouchableOpacity>
-                      {expanded && (
-                        <Text style={styles.answerText}>{q.answer}</Text>
-                      )}
-                    </View>
-                    {i < activeTopic.questions.length - 1 && (
-                      <View style={styles.divider} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </View>
-          </>
-        ) : null}
+                    );
+                  })}
+                </ScrollView>
+
+                <View style={styles.questionsList}>
+                  {activeTopic.questions.map((q, i) => {
+                    const expanded = expandedQuestion === q.question;
+                    return (
+                      <React.Fragment key={q.question}>
+                        <View>
+                          <TouchableOpacity
+                            style={styles.questionRow}
+                            activeOpacity={0.7}
+                            onPress={() => toggleQuestion(q.question)}
+                          >
+                            <Text
+                              style={styles.questionText}
+                              numberOfLines={expanded ? undefined : 2}
+                            >
+                              {q.question}
+                            </Text>
+                            <MaterialIcons
+                              name={expanded ? "expand-less" : "expand-more"}
+                              size={22}
+                              color={neutral[400]}
+                            />
+                          </TouchableOpacity>
+                          {expanded && (
+                            <Text style={styles.answerText}>{q.answer}</Text>
+                          )}
+                        </View>
+                        {i < activeTopic.questions.length - 1 && (
+                          <View style={styles.divider} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
           </>
         )}
       </ScrollView>

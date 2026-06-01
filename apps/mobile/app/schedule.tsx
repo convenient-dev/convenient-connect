@@ -2,6 +2,7 @@ import bookingsData from "@/assets/data/bookings.json";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -68,10 +69,6 @@ function timeToSlotIndex(v: TimeValue): number {
 function formatRange(start: TimeValue, end: TimeValue): string {
   return `${TIME_SLOTS[timeToSlotIndex(start)].label} - ${TIME_SLOTS[timeToSlotIndex(end)].label}`;
 }
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-const USER_ID = 1;
 
 type DayKey = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 const DAYS: DayKey[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -193,6 +190,7 @@ function parseAnyTime(s: string): TimeValue {
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
 
   const [available, setAvailable] = useState(true);
   const [tab, setTab] = useState<Tab>("days");
@@ -238,7 +236,7 @@ export default function ScheduleScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/${USER_ID}/availability`)
+      fetch(`${API_BASE_URL}/users/${userId}/availability`)
         .then((res) => res.json())
         .then((data: AvailabilityResponse) => {
           setAvailable(data.availabilityEnabled);
@@ -318,7 +316,7 @@ export default function ScheduleScreen() {
           setOverrideRangesByDate({});
         })
         .finally(() => setLoading(false));
-    }, []),
+    }, [userId]),
   );
 
   function hasOverrides(): boolean {
@@ -544,7 +542,7 @@ export default function ScheduleScreen() {
     setSaving(true);
     try {
       const weeklyRes = await fetch(
-        `${API_BASE_URL}/users/${USER_ID}/availability/weekly`,
+        `${API_BASE_URL}/users/${userId}/availability/weekly`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -561,7 +559,7 @@ export default function ScheduleScreen() {
       }
 
       const overrideRes = await fetch(
-        `${API_BASE_URL}/users/${USER_ID}/availability/overrides`,
+        `${API_BASE_URL}/users/${userId}/availability/overrides`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -613,7 +611,7 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOn() {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/availability`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/availability`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ availabilityEnabled: true }),
@@ -640,7 +638,7 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOff() {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${USER_ID}/availability`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/availability`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ availabilityEnabled: false }),

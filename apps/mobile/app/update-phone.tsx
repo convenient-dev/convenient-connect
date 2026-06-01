@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -20,8 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border, overlay } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 interface Country {
   code: string;
@@ -74,6 +73,7 @@ export default function UpdatePhoneScreen() {
   const { phoneNumber: initial } = useLocalSearchParams<{
     phoneNumber?: string;
   }>();
+  const { userId } = useCurrentUser();
 
   const initialParsed = useMemo(() => parseInitial(initial), [initial]);
 
@@ -117,7 +117,7 @@ export default function UpdatePhoneScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/1`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber: fullNumber }),

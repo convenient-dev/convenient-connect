@@ -1,5 +1,6 @@
 import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -28,11 +29,10 @@ const bannerAssets: Record<string, ImageSource> = {
   "2": require("@/assets/banners/home-banner-2.png"),
 };
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const { openMenu } = useLocalSearchParams<{ openMenu?: string }>();
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
@@ -64,7 +64,7 @@ export default function HomeScreen() {
   }, [openMenu, router]);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/1`)
+    fetch(`${API_BASE_URL}/users/${userId}`)
       .then((res) => res.json())
       .then((data) =>
         setUser({
@@ -79,11 +79,11 @@ export default function HomeScreen() {
       )
       .catch(() => {});
 
-    fetch(`${API_BASE_URL}/users/1/services?deleted=false`)
+    fetch(`${API_BASE_URL}/users/${userId}/services?deleted=false`)
       .then((res) => res.json())
       .then((data: MyServiceCardData[]) => setServices(data ?? []))
       .catch(() => {});
-  }, []);
+  }, [userId]);
 
   const handleBannerScroll = (event: any) => {
     const index = Math.round(

@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -16,9 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-const USER_ID = 1;
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
 
@@ -51,19 +49,20 @@ const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
 
 export default function MyTicketsScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${USER_ID}/tickets`)
+    fetch(`${API_BASE_URL}/users/${userId}/tickets`)
       .then((r) => r.json())
       .then((data: Ticket[]) => {
         setAllTickets(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [userId]);
 
   const tickets =
     filter === "all"

@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -16,8 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVALID_EMAIL_MESSAGE = "Please enter a valid email address.";
@@ -25,6 +24,7 @@ const INVALID_EMAIL_MESSAGE = "Please enter a valid email address.";
 export default function UpdateEmailScreen() {
   const router = useRouter();
   const { email: initial } = useLocalSearchParams<{ email?: string }>();
+  const { userId } = useCurrentUser();
 
   const [email, setEmail] = useState<string>(initial ?? "");
   const [saving, setSaving] = useState(false);
@@ -43,7 +43,7 @@ export default function UpdateEmailScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/1`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),

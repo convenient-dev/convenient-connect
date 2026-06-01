@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -25,8 +26,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
@@ -112,6 +111,7 @@ function UploadCard({
 
 export default function VerifyBusinessScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const { data, update } = useBusinessSignup();
   const { registrationDoc, governmentId, ein } = data;
 
@@ -248,7 +248,7 @@ export default function VerifyBusinessScreen() {
     setUploadingDoc(docType);
     try {
       const formData = new FormData();
-      formData.append("userId", "1"); // TODO: read from auth/session
+      formData.append("userId", String(userId));
       formData.append("docType", docType);
 
       if (Platform.OS === "web") {

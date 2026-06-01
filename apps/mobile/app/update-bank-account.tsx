@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -17,13 +18,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { brand, primary, secondary, neutral, text, background, status } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const { data, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +39,7 @@ export default function UpdateBankAccountScreen() {
     setSubmitError(null);
     try {
       const res = await fetch(
-        `${API_BASE_URL}/users/1/profile-type-change`,
+        `${API_BASE_URL}/users/${userId}/profile-type-change`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

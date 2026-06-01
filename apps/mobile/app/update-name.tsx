@@ -1,5 +1,6 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -17,13 +18,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function UpdateNameScreen() {
   const router = useRouter();
   const { firstName: initialFirst, lastName: initialLast } =
     useLocalSearchParams<{ firstName?: string; lastName?: string }>();
+  const { userId } = useCurrentUser();
 
   const [firstName, setFirstName] = useState<string>(initialFirst ?? "");
   const [lastName, setLastName] = useState<string>(initialLast ?? "");
@@ -60,7 +60,7 @@ export default function UpdateNameScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/1`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

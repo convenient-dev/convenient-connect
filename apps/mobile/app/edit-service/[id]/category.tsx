@@ -1,3 +1,4 @@
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { BackButton } from "@/components/BackButton";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,8 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 interface ServiceCategory {
   subcategory: {
@@ -26,19 +25,20 @@ interface ServiceCategory {
 export default function EditServiceCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [loading, setLoading] = useState(true);
   const [subcategoryName, setSubcategoryName] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/1/services/${id}`)
+    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
       .then((r) => r.json())
       .then((data: ServiceCategory) => {
         setSubcategoryName(data.subcategory?.name ?? null);
         setCategoryName(data.subcategory?.category.name ?? null);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   return (
     <SafeAreaView style={styles.container}>

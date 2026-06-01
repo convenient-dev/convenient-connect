@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -149,9 +150,6 @@ function getSubcategoryIcon(
   return SUBCATEGORY_SVG_ICONS[`${categorySlug}/${subSlug}`];
 }
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 2;
 const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
@@ -201,15 +199,21 @@ function SubcategoryItem({
 
 export default function CreateServiceSubcategoryScreen() {
   const router = useRouter();
-  const { categoryId, categorySlug, categoryName, serviceMode, businessAffiliationId, businessName } =
-    useLocalSearchParams<{
-      categoryId: string;
-      categorySlug: string;
-      categoryName: string;
-      serviceMode: string;
-      businessAffiliationId: string;
-      businessName: string;
-    }>();
+  const {
+    categoryId,
+    categorySlug,
+    categoryName,
+    serviceMode,
+    businessAffiliationId,
+    businessName,
+  } = useLocalSearchParams<{
+    categoryId: string;
+    categorySlug: string;
+    categoryName: string;
+    serviceMode: string;
+    businessAffiliationId: string;
+    businessName: string;
+  }>();
 
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);

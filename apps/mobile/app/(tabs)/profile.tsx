@@ -1,5 +1,6 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -16,9 +17,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 // The Stripe status endpoint lives at /api/stripe/... (no /api prefix on
 // API_BASE_URL's path), so derive the host root once.
@@ -120,6 +118,7 @@ function ProfileRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -143,8 +142,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       setLoading(true);
       Promise.all([
-        fetch(`${API_BASE_URL}/users/1`).then((res) => res.json()),
-        fetch(`${API_BASE_URL}/users/1/categories`)
+        fetch(`${API_BASE_URL}/users/${userId}`).then((res) => res.json()),
+        fetch(`${API_BASE_URL}/users/${userId}/categories`)
           .then((res) => res.json())
           .catch(() => [] as UserCategory[]),
       ])
@@ -171,7 +170,7 @@ export default function ProfileScreen() {
           }
         })
         .finally(() => setLoading(false));
-    }, []),
+    }, [userId]),
   );
 
   const fullName = useMemo(() => {

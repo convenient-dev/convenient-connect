@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -17,14 +18,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function EditAvatarScreen() {
   const router = useRouter();
   const { currentAvatarUrl } = useLocalSearchParams<{
     currentAvatarUrl?: string;
   }>();
+  const { userId } = useCurrentUser();
 
   const [pickedUri, setPickedUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -82,7 +82,7 @@ export default function EditAvatarScreen() {
         } as unknown as Blob);
       }
 
-      const res = await fetch(`${API_BASE_URL}/users/1/avatar`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
         method: "POST",
         body: formData,
       });

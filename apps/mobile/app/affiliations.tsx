@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -14,8 +15,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 interface Affiliation {
   id: number;
@@ -42,18 +41,19 @@ function titleCase(s: string): string {
 
 export default function AffiliationsScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [affiliations, setAffiliations] = useState<Affiliation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/1/affiliations`)
+      fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
         .then((res) => res.json())
         .then((data: Affiliation[]) => setAffiliations(data ?? []))
         .catch(() => setAffiliations([]))
         .finally(() => setLoading(false));
-    }, []),
+    }, [userId]),
   );
 
   return (

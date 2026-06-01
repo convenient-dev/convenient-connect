@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -16,12 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export default function AboutMeScreen() {
   const router = useRouter();
   const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
+  const { userId } = useCurrentUser();
 
   const [value, setValue] = useState<string>(initial ?? "");
   const [saving, setSaving] = useState(false);
@@ -31,7 +31,7 @@ export default function AboutMeScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/1`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ aboutMe: value.trim() }),

@@ -1,6 +1,7 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -28,8 +29,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, background, border, status, overlay } = Colors;
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 const RADIUS_UNITS = ["mile", "km"] as const;
 type RadiusUnit = (typeof RADIUS_UNITS)[number];
@@ -78,6 +77,7 @@ interface ServiceDetail {
 export default function EditServiceInformationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -131,10 +131,10 @@ export default function EditServiceInformationScreen() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_BASE_URL}/users/1/services/${id}`).then((r) =>
+      fetch(`${API_BASE_URL}/users/${userId}/services/${id}`).then((r) =>
         r.json(),
       ) as Promise<ServiceDetail>,
-      fetch(`${API_BASE_URL}/users/1`).then((r) => r.json()),
+      fetch(`${API_BASE_URL}/users/${userId}`).then((r) => r.json()),
     ])
       .then(([service, user]) => {
         setTitle(service.title);
@@ -210,7 +210,7 @@ export default function EditServiceInformationScreen() {
         }
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   function openAddressPicker() {
     setAddressSearch("");
@@ -361,7 +361,7 @@ export default function EditServiceInformationScreen() {
         ),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/1/services/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

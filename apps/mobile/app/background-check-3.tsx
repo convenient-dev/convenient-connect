@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -19,6 +20,7 @@ const { primary, neutral, text, background } = Colors;
 
 export default function BackgroundCheck3Screen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,8 +37,6 @@ export default function BackgroundCheck3Screen() {
       // 1. Create (or reuse) the user's Stripe connected account. The web
       //    API returns the same acct_... on subsequent calls thanks to the
       //    `stripeAccountId` mapping on the User row.
-      // TODO: read userId from auth/session instead of hardcoding.
-      const userId = 1;
       const acctRes = await fetch(`${WEB_BASE_URL}/api/stripe/accounts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

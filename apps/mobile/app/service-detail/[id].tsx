@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -151,16 +152,17 @@ function ImageViewerModal({
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/1/services/${id}`)
+    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
       .then((res) => res.json())
       .then((data: ServiceDetail) => setService(data))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, userId]);
 
   if (loading) {
     return (

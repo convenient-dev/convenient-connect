@@ -5,6 +5,7 @@ import {
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
 import Divider from "@/components/ui/divider";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -25,9 +26,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background, brand, text } = Colors;
-
-// TODO: replace with real auth user id
-const USER_ID = 1;
 
 interface Service {
   id: number;
@@ -195,6 +193,7 @@ function ServiceCard({
 
 export default function ServicesScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<Tab>("All");
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,13 +202,11 @@ export default function ServicesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/users/${USER_ID}/services?deleted=false`,
-      )
+      fetch(`${API_BASE_URL}/users/${userId}/services?deleted=false`)
         .then((res) => res.json())
         .then((data: Service[]) => setServices(data))
         .finally(() => setLoading(false));
-    }, []),
+    }, [userId]),
   );
 
   const visibleServices =

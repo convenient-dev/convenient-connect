@@ -1,10 +1,17 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
@@ -17,9 +24,69 @@ const BENEFITS = [
 
 export default function OnboardingBackgroundCheckScreen() {
   const router = useRouter();
+  const { userId } = useCurrentUser();
+  const [verified, setVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/users/${userId}`)
+      .then((res) => res.json())
+      .then((data) =>
+        setVerified(
+          Boolean(data.isPersonVerified) || Boolean(data.isBusinessVerified),
+        ),
+      )
+      .catch(() => setVerified(false));
+  }, [userId]);
 
   function handleAccept() {
     router.push("/background-check-2");
+  }
+
+  function handleDone() {
+    // Pop the background-check stack so it can't be surfaced later, then
+    // return to the profile tab (mirrors background-check-4's Done flow).
+    router.dismissAll();
+    router.navigate("/profile?from=background-check");
+  }
+
+  // Wait for the verification check before deciding which screen to show,
+  // so the onboarding intro never flashes for an already-verified user.
+  if (verified === null) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScreenHeader title="Complete Background Check" />
+        <View style={styles.loadingBody}>
+          <ActivityIndicator color={primary[300]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (verified) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScreenHeader title="Background Check" />
+        <View style={styles.successBody}>
+          <ExpoImage
+            source={require("@/assets/global-icons/verified-success.png")}
+            style={styles.successIllustration}
+            contentFit="contain"
+          />
+          <Text style={styles.successTitle}>Verified</Text>
+          <Text style={styles.successMessage}>
+            Your background check is complete. You&apos;re all set to publish
+            your services.
+          </Text>
+          <TouchableOpacity
+            style={styles.successButton}
+            activeOpacity={0.85}
+            onPress={handleDone}
+          >
+            <Text style={styles.successButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -79,6 +146,53 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 12,
+  },
+  loadingBody: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  successBody: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    alignItems: "center",
+  },
+  successIllustration: {
+    width: 200,
+    height: 200,
+    marginTop: 56,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: text.primary,
+    textAlign: "center",
+    letterSpacing: -0.408,
+    marginBottom: 18,
+  },
+  successMessage: {
+    fontSize: 14,
+    color: neutral[500],
+    textAlign: "center",
+    lineHeight: 20,
+    letterSpacing: -0.408,
+    marginBottom: 14,
+  },
+  successButton: {
+    height: 56,
+    paddingHorizontal: 60,
+    borderRadius: 999,
+    backgroundColor: primary[300],
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  successButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: neutral[0],
+    letterSpacing: -0.408,
   },
   description: {
     fontSize: 15,

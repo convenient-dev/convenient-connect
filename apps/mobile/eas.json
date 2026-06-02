@@ -10,7 +10,11 @@
       "ios": {
         "simulator": true
       },
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://convenient-connect-web.vercel.app/api",
+        "EXPO_PUBLIC_USER_ID": "1"
+      }
     },
     "preview": {
       "distribution": "internal",

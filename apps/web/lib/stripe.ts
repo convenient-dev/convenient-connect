@@ -4,14 +4,6 @@
 // this file. Re-using a single client lets the underlying SDK pool HTTP
 // connections and ensures every request uses the same API version (pinned by
 // the SDK — currently 2026-04-22.dahlia).
-//
-// REQUIRED ENV VARS (set in apps/web/.env or your shell):
-//   STRIPE_SECRET_KEY        — your platform's secret key, e.g. "sk_test_..."
-//                              Get it from https://dashboard.stripe.com/apikeys
-//   STRIPE_WEBHOOK_SECRET    — the signing secret for the webhook endpoint
-//                              (used in app/api/stripe/webhook/route.ts).
-//                              From `stripe listen` output, or the dashboard
-//                              webhook destination's "Signing secret".
 
 import Stripe from "stripe";
 
@@ -21,11 +13,7 @@ import Stripe from "stripe";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
 if (!STRIPE_SECRET_KEY) {
-  throw new Error(
-    "[stripe] STRIPE_SECRET_KEY is not set. " +
-      "Add it to apps/web/.env (e.g. STRIPE_SECRET_KEY=sk_test_...). " +
-      "Find your key at https://dashboard.stripe.com/apikeys.",
-  );
+  throw new Error("[stripe] STRIPE_SECRET_KEY is not set. ");
 }
 
 // Avoid re-instantiating the client across hot reloads in dev.

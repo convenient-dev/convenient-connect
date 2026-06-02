@@ -219,17 +219,6 @@ export default function OnboardPage() {
       {error && (
         <p style={{ marginTop: 16, color: "#c00", fontSize: 14 }}>{error}</p>
       )}
-
-      <p style={{ marginTop: 32, fontSize: 13, color: "#666" }}>
-        Next: <a href="/stripe/products" style={{ color: "#635bff" }}>
-          create a product
-        </a>{" "}
-        or{" "}
-        <a href="/stripe/storefront" style={{ color: "#635bff" }}>
-          visit the storefront
-        </a>
-        .
-      </p>
     </main>
   );
 }

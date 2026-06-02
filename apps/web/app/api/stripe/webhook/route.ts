@@ -17,67 +17,7 @@
 
 import { NextRequest } from "next/server";
 import { stripeClient, getWebhookSecret } from "@/lib/stripe";
-import prisma from "@/lib/prisma";
-
-// Pulls live status for a connected account and reconciles the matching
-// User row's verification flags. Called from both webhook handlers because
-// either event (requirements clearing or capability flipping to active) can
-// be the one that completes onboarding. Idempotent — safe to call multiple
-// times for the same account; we only write if the flag actually changes.
-async function syncUserVerification(accountId: string | undefined) {
-  if (!accountId) return;
-
-  const user = await prisma.user.findUnique({
-    where: { stripeAccountId: accountId },
-    select: {
-      id: true,
-      accountType: true,
-      isPersonVerified: true,
-      isBusinessVerified: true,
-    },
-  });
-  if (!user) {
-    console.warn(
-      "[stripe webhook] no user mapped to account:",
-      accountId,
-    );
-    return;
-  }
-
-  // Same completeness check the status endpoint uses: capability active AND
-  // no outstanding requirements. Either alone isn't enough — Stripe can
-  // mark the capability "active" with future requirements still pending.
-  const account = await stripeClient.v2.core.accounts.retrieve(accountId, {
-    include: ["configuration.recipient", "requirements"],
-  });
-  const capabilityActive =
-    account.configuration?.recipient?.capabilities?.stripe_balance
-      ?.stripe_transfers?.status === "active";
-  const requirementsStatus =
-    account.requirements?.summary?.minimum_deadline?.status;
-  const verified =
-    capabilityActive &&
-    requirementsStatus !== "currently_due" &&
-    requirementsStatus !== "past_due";
-
-  // Which flag flips depends on the user's account type. A business user
-  // verifies via the business path; individuals via the person path.
-  const isBusiness = user.accountType === "business";
-  const current = isBusiness ? user.isBusinessVerified : user.isPersonVerified;
-  if (current === verified) return; // no-op, avoid pointless writes
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: isBusiness
-      ? { isBusinessVerified: verified }
-      : { isPersonVerified: verified },
-  });
-  console.log(
-    `[stripe webhook] user ${user.id} ${
-      isBusiness ? "isBusinessVerified" : "isPersonVerified"
-    } -> ${verified}`,
-  );
-}
+import { syncUserVerification } from "@/lib/stripe-verification";
 
 export async function POST(req: NextRequest) {
   // Stripe signs the raw request body — we MUST read it as text, not parse

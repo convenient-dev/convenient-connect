@@ -18,7 +18,11 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://convenient-connect-web.vercel.app/api",
+        "EXPO_PUBLIC_USER_ID": "1"
+      }
     },
     "production": {
       "autoIncrement": true,

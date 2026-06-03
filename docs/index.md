@@ -52,7 +52,7 @@ User ──┬── UserAddress ──── Address ──── BusinessAddre
 
 ### Schema
 
-![Database Schema](./supabase-schema.png)
+![Database Schema](./supabase-schema-2.png)
 
 ### Models
 
@@ -279,11 +279,14 @@ Body:
 
 ```jsonc
 {
-  "businessName": "Acme LLC",     // required
-  "ein": "12-3456789",            // optional
+  "businessName": "Acme LLC", // required
+  "ein": "12-3456789", // optional
   "registrationDoc": "https://…", // optional, → Business.registerDoc
-  "governmentId": "https://…",    // optional, → Business.ownerIdDoc
-  "businessAddress": "…", "city": "…", "state": "…", "zipCode": "…" // accepted, not yet persisted
+  "governmentId": "https://…", // optional, → Business.ownerIdDoc
+  "businessAddress": "…",
+  "city": "…",
+  "state": "…",
+  "zipCode": "…", // accepted, not yet persisted
 }
 ```
 

@@ -1,3 +1,4 @@
+import { setCurrentUserId } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage, type ImageSource } from "expo-image";
 import { useRouter } from "expo-router";
@@ -75,8 +76,10 @@ export default function SelectProviderTypeScreen() {
           disabled={!selected}
           onPress={() => {
             if (selected === "business") {
+              setCurrentUserId(2);
               router.push("/enter-business-details");
             } else {
+              setCurrentUserId(1);
               router.push("/enter-personal-details");
             }
           }}

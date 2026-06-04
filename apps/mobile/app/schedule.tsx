@@ -1,5 +1,5 @@
 import bookingsData from "@/assets/data/bookings.json";
-import { StatusBadge } from "@/components/StatusBadge";
+import { BookingCard } from "@/components/BookingCard";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { API_BASE_URL, useCurrentUser } from "@/constants/session";
@@ -128,13 +128,6 @@ type Booking = {
 
 const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
 
-const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
-  active: "Active",
-  completed: "Completed",
-  pending: "Pending",
-  cancelled: "Cancelled",
-};
-
 const BOOKING_DOT_COLORS = [
   "#22C55E",
   "#3B82F6",
@@ -146,16 +139,6 @@ const BOOKING_DOT_COLORS = [
   "#F97316",
 ];
 
-function formatBookingTime(hhmm: string): string {
-  const [hStr, mStr] = hhmm.split(":");
-  const h = Number(hStr);
-  const m = Number(mStr);
-  const period = h >= 12 ? "PM" : "AM";
-  const display = h % 12 === 0 ? 12 : h % 12;
-  return m === 0
-    ? `${display}:${String(m).padStart(2, "0")} ${period}`
-    : `${display}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function formatOverrideDate(iso: string): string {
   const localIso = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00` : iso;
@@ -1224,49 +1207,15 @@ export default function ScheduleScreen() {
                       </Text>
                     </View>
                     {selectedDateBookings.length > 0 ? (
-                      selectedDateBookings.map((b, idx) => {
-                        const dotColor =
-                          BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length];
-                        return (
-                          <View key={b.id} style={styles.bookingCard}>
-                            <View style={styles.bookingTopRow}>
-                              <View
-                                style={[
-                                  styles.bookingDotRing,
-                                  { borderColor: dotColor },
-                                ]}
-                              ></View>
-                              <Text style={styles.bookingTimeRange}>
-                                {formatBookingTime(b.start)} -{" "}
-                                {formatBookingTime(b.end)}
-                              </Text>
-                              <StatusBadge label={BOOKING_STATUS_LABEL[b.status]} />
-                            </View>
-                            <View style={styles.bookingMiddleRow}>
-                              <Text
-                                style={styles.bookingTitle}
-                                numberOfLines={2}
-                              >
-                                {b.title}
-                              </Text>
-                              <TouchableOpacity
-                                style={styles.bookingViewButton}
-                                activeOpacity={0.85}
-                              >
-                                <Text style={styles.bookingViewButtonText}>
-                                  View
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                            <Text
-                              style={styles.bookingClient}
-                              numberOfLines={1}
-                            >
-                              By {b.clientName}
-                            </Text>
-                          </View>
-                        );
-                      })
+                      selectedDateBookings.map((b, idx) => (
+                        <BookingCard
+                          key={b.id}
+                          booking={b}
+                          dotColor={
+                            BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
+                          }
+                        />
+                      ))
                     ) : (
                       <View style={styles.bookingEmpty}>
                         <ExpoImage
@@ -1797,65 +1746,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
   scheduleSectionCount: {
-    fontSize: 13,
-    color: neutral[400],
-    letterSpacing: -0.408,
-  },
-  bookingCard: {
-    borderWidth: 1,
-    borderColor: border.default,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: background.card,
-    gap: 8,
-  },
-  bookingTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  bookingDotRing: {
-    width: 10,
-    height: 10,
-    borderRadius: 7,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bookingTimeRange: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: neutral[500],
-    letterSpacing: -0.408,
-  },
-  bookingMiddleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginTop: 2,
-  },
-  bookingTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  bookingViewButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-  },
-  bookingViewButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  bookingClient: {
     fontSize: 13,
     color: neutral[400],
     letterSpacing: -0.408,

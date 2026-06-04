@@ -1,10 +1,10 @@
 {
   "expo": {
     "name": "ConvenientConnect",
-    "slug": "my-app",
+    "slug": "ConvenientConnect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo-1.png",
+    "icon": "./assets/cc_logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/logo-1.png",
+        "foregroundImage": "./assets/cc_logo.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -32,7 +32,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/cc_logo.svg"
     },
     "plugins": [
       "expo-router",
@@ -61,12 +61,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logo-1.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
+          "image": "./assets/splash_screen.png",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
-            "image": "./assets/logo-1.png",
+            "image": "./assets/splash_screen.png",
             "backgroundColor": "#000000"
           }
         }

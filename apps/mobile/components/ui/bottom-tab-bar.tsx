@@ -18,7 +18,7 @@ const TAB_CONFIG: Record<
   string,
   { label: string; icon: ImageSource; badge?: number }
 > = {
-  index: {
+  home: {
     label: "Home",
     icon: icons.home,
     badge: 0,

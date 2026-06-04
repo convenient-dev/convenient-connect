@@ -16,28 +16,32 @@ const icons = {
 
 const TAB_CONFIG: Record<
   string,
-  { label: string; icon: ImageSource; badge?: string }
+  { label: string; icon: ImageSource; badge?: number }
 > = {
   index: {
     label: "Home",
     icon: icons.home,
+    badge: 0,
   },
   services: {
     label: "Services",
     icon: icons.services,
+    badge: 0,
   },
   calendar: {
     label: "Calendar",
     icon: icons.calendar,
+    badge: 0,
   },
   chats: {
     label: "Chats",
     icon: icons.chats,
-    badge: "2",
+    badge: 0,
   },
   share: {
     label: "Share",
     icon: icons.share,
+    badge: 0,
   },
 };
 
@@ -75,11 +79,11 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
           >
             <View style={styles.iconWrapper}>
               <ExpoImage source={tab.icon} style={styles.icon} />
-              {tab.badge && (
+              {tab.badge !== 0 ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{tab.badge}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
             <Text
               style={[

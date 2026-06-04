@@ -2,48 +2,94 @@
   "bookings": [
     {
       "id": "b1",
-      "date": "2026-05-22",
+      "date": "2026-05-20",
       "start": "09:00",
       "end": "10:30",
       "title": "House Cleaning",
       "clientName": "Sarah Mitchell",
-      "status": "active"
+      "status": "cancelled",
+      "bookingId": "5120",
+      "category": "sanitation",
+      "location": "Somerville, MA 02143",
+      "clientType": "new"
     },
     {
       "id": "b2",
-      "date": "2026-05-22",
+      "date": "2026-06-01",
       "start": "13:00",
       "end": "14:00",
       "title": "Dog Walking",
       "clientName": "Daniel Choi",
-      "status": "active"
+      "status": "completed",
+      "bookingId": "5221",
+      "category": "pet-care",
+      "location": "Allston, MA 02134",
+      "clientType": "new"
     },
     {
       "id": "b3",
-      "date": "2026-05-22",
+      "date": "2026-06-01",
       "start": "16:30",
       "end": "18:00",
       "title": "Yoga Session",
       "clientName": "Priya Raman",
-      "status": "active"
+      "status": "completed",
+      "bookingId": "5222",
+      "category": "fitness",
+      "location": "Cambridge, MA 02139",
+      "clientType": "repeat"
     },
     {
       "id": "b4",
-      "date": "2026-05-26",
+      "date": "2026-06-05",
       "start": "10:00",
       "end": "11:30",
       "title": "Lawn Care",
       "clientName": "Marcus Bell",
-      "status": "active"
+      "status": "active",
+      "bookingId": "6110",
+      "category": "maintenance",
+      "location": "Medford, MA 02155",
+      "clientType": "new"
     },
     {
       "id": "b7",
-      "date": "2026-05-25",
+      "date": "2026-06-25",
       "start": "14:00",
       "end": "15:30",
       "title": "Photography Session",
       "clientName": "Noah Williams",
-      "status": "pending"
+      "status": "pending",
+      "bookingId": "7421",
+      "category": "media",
+      "location": "Brookline, MA 02446",
+      "clientType": "new"
+    },
+    {
+      "id": "b8",
+      "date": "2026-06-25",
+      "start": "17:00",
+      "end": "18:00",
+      "title": "Dog Walking",
+      "clientName": "Daniel Choi",
+      "status": "active",
+      "bookingId": "5221",
+      "category": "pet-care",
+      "location": "Allston, MA 02134",
+      "clientType": "repeat"
+    },
+    {
+      "id": "b9",
+      "date": "2026-06-24",
+      "start": "16:30",
+      "end": "18:00",
+      "title": "Yoga Session",
+      "clientName": "Priya Raman",
+      "status": "pending",
+      "bookingId": "5222",
+      "category": "fitness",
+      "location": "Cambridge, MA 02139",
+      "clientType": "repeat"
     }
   ]
 }

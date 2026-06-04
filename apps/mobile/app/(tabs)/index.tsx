@@ -1,3 +1,8 @@
+import bookingsData from "@/assets/data/bookings.json";
+import {
+  BookingRequestCard,
+  type BookingRequest,
+} from "@/components/BookingRequestCard";
 import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
 import { API_BASE_URL, useCurrentUser } from "@/constants/session";
@@ -29,6 +34,40 @@ const bannerAssets: Record<string, ImageSource> = {
   "2": require("@/assets/banners/home-banner-2.png"),
 };
 
+type BookingStatus = "active" | "completed" | "pending" | "cancelled";
+
+type Booking = {
+  id: string;
+  date: string;
+  start: string;
+  end: string;
+  title: string;
+  clientName: string;
+  status: BookingStatus;
+  bookingId?: string;
+  category?: string;
+  location?: string;
+  clientType?: "repeat" | "new";
+};
+
+const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
+
+function toBookingRequest(b: Booking): BookingRequest {
+  return {
+    id: b.id,
+    bookingId: b.bookingId ?? b.id,
+    serviceId: b.category ?? "",
+    service: b.title,
+    date: b.date,
+    start: b.start,
+    end: b.end,
+    client: {
+      name: b.clientName,
+      location: b.location ?? "",
+      type: b.clientType ?? "new",
+    },
+  };
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -54,6 +93,18 @@ export default function HomeScreen() {
   } | null>(null);
   const [services, setServices] = useState<MyServiceCardData[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const newRequests = BOOKINGS.filter(
+    (b) => b.status === "pending" && !acceptedRequests.has(b.id),
+  );
+
+  function acceptRequest(id: string) {
+    // setAcceptedRequests((prev) => new Set(prev).add(id));
+    // TODO: Call API to accept the request, then update state based on response.
+  }
 
   useEffect(() => {
     if (openMenu === "1") {
@@ -255,14 +306,24 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>New Requests</Text>
           </View>
-          {/* Empty state */}
-          <View style={styles.emptyState}>
-            <ExpoImage
-              source={require("@/assets/home/empty-state-requests.png")}
-              style={styles.emptyStateImage}
-              contentFit="cover"
-            />
-          </View>
+          {newRequests.length > 0 ? (
+            newRequests.map((b) => (
+              <BookingRequestCard
+                key={b.id}
+                request={toBookingRequest(b)}
+                onAccept={() => acceptRequest(b.id)}
+              />
+            ))
+          ) : (
+            // Empty state
+            <View style={styles.emptyState}>
+              <ExpoImage
+                source={require("@/assets/home/empty-state-requests.png")}
+                style={styles.emptyStateImage}
+                contentFit="cover"
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
       <SideMenu

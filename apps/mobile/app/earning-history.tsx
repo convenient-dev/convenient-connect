@@ -7,6 +7,7 @@ import {
   type FilterSection,
   type FilterValues,
 } from "@/components/FilterBottomSheet";
+import { FilterButton } from "@/components/FilterButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { Colors } from "@/constants/theme";
@@ -57,6 +58,9 @@ export default function EarningHistoryScreen() {
     time: [],
     category: [],
   });
+  const hasActiveFilters = Object.values(filterValues).some(
+    (v) => v.length > 0,
+  );
 
   // TODO: Implement actual filtering logic based on selected filter values.
   // TODO: category filter would be retrived from backend based on listing categories.
@@ -161,15 +165,10 @@ export default function EarningHistoryScreen() {
         <>
           <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
 
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={styles.filterButton}
-              activeOpacity={0.7}
-              onPress={() => setFilterVisible(true)}
-            >
-              <Feather name="filter" size={16} color={secondary[500]} />
-            </TouchableOpacity>
-          </View>
+          <FilterButton
+            onPress={() => setFilterVisible(true)}
+            active={hasActiveFilters}
+          />
 
           <ScrollView
             style={styles.scroll}
@@ -236,27 +235,6 @@ const styles = StyleSheet.create({
   },
   viewToggleButtonActive: {
     backgroundColor: brand.primary,
-  },
-
-  filterRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 6,
-  },
-  filterButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: neutral[0],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
   },
 
   scroll: { flex: 1 },

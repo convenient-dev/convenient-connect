@@ -15,7 +15,7 @@
     },
     {
       "id": "b2",
-      "date": "2026-05-22",
+      "date": "2026-06-01",
       "start": "13:00",
       "end": "14:00",
       "title": "Dog Walking",
@@ -28,7 +28,7 @@
     },
     {
       "id": "b3",
-      "date": "2026-05-22",
+      "date": "2026-06-01",
       "start": "16:30",
       "end": "18:00",
       "title": "Yoga Session",
@@ -41,7 +41,7 @@
     },
     {
       "id": "b4",
-      "date": "2026-06-10",
+      "date": "2026-06-05",
       "start": "10:00",
       "end": "11:30",
       "title": "Lawn Care",
@@ -76,6 +76,19 @@
       "bookingId": "5221",
       "category": "pet-care",
       "location": "Allston, MA 02134",
+      "clientType": "repeat"
+    },
+    {
+      "id": "b9",
+      "date": "2026-06-24",
+      "start": "16:30",
+      "end": "18:00",
+      "title": "Yoga Session",
+      "clientName": "Priya Raman",
+      "status": "pending",
+      "bookingId": "5222",
+      "category": "fitness",
+      "location": "Cambridge, MA 02139",
       "clientType": "repeat"
     }
   ]

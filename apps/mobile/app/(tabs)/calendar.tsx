@@ -4,7 +4,14 @@ import {
   BookingRequestCard,
   type BookingRequest,
 } from "@/components/BookingRequestCard";
+import {
+  FilterBottomSheet,
+  type FilterSection,
+  type FilterValues,
+} from "@/components/FilterBottomSheet";
+import { FilterButton } from "@/components/FilterButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TabBar } from "@/components/TabBar";
 import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -116,6 +123,53 @@ function todayKey(): string {
   return toDateKey(new Date().toISOString());
 }
 
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Sunday–Saturday range containing today, as inclusive date keys.
+function currentWeekRange(): { start: string; end: string } {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: localDateKey(start), end: localDateKey(end) };
+}
+
+type ListTab = "new" | "today" | "thisWeek" | "all";
+
+const LIST_TABS: { key: ListTab; label: string }[] = [
+  { key: "new", label: "New" },
+  { key: "today", label: "Today" },
+  { key: "thisWeek", label: "This Week" },
+  { key: "all", label: "All" },
+];
+
+const LIST_EMPTY_TEXT: Record<ListTab, string> = {
+  new: "No new requests right now.",
+  today: "Nothing scheduled for today.",
+  thisWeek: "Nothing scheduled this week.",
+  all: "No bookings yet.",
+};
+
+// Status filter for the "All" tab. Pending lives under "New", so it's omitted.
+const STATUS_FILTER_SECTIONS: FilterSection[] = [
+  {
+    key: "status",
+    title: "Status",
+    multiSelect: true,
+    options: [
+      { key: "active", label: "Active" },
+      { key: "completed", label: "Completed" },
+      { key: "cancelled", label: "Cancelled" },
+    ],
+  },
+];
+
 export default function CalendarScreen() {
   const { userId } = useCurrentUser();
 
@@ -127,6 +181,11 @@ export default function CalendarScreen() {
     new Set(),
   );
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
+  const [listTab, setListTab] = useState<ListTab>("new");
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<FilterValues>({
+    status: [],
+  });
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
   const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
     new Set(),
@@ -221,16 +280,48 @@ export default function CalendarScreen() {
   );
 
   // Calendar view scopes to the tapped day; list view shows everything.
-  const visibleBookings =
-    viewMode === "calendar"
-      ? (bookingsByDate[selectedDate] ?? [])
-      : allBookingsSorted;
-  const newRequests = visibleBookings.filter(
+  // Calendar view: scoped to the tapped day.
+  const selectedDateBookings = bookingsByDate[selectedDate] ?? [];
+  const newRequests = selectedDateBookings.filter(
     (b) => b.status === "pending" && !acceptedRequests.has(b.id),
   );
-  const confirmedBookings = visibleBookings.filter(
+  const confirmedBookings = selectedDateBookings.filter(
     (b) => b.status !== "pending",
   );
+
+  // List view: filtered by the active tab. "New" holds pending requests; the
+  // date-scoped tabs show confirmed bookings.
+  const weekRange = useMemo(() => currentWeekRange(), []);
+  const listBookings = useMemo(() => {
+    switch (listTab) {
+      case "new":
+        return allBookingsSorted.filter(
+          (b) => b.status === "pending" && !acceptedRequests.has(b.id),
+        );
+      case "today":
+        return allBookingsSorted.filter(
+          (b) => b.status !== "pending" && b.date === todayKey(),
+        );
+      case "thisWeek":
+        return allBookingsSorted.filter(
+          (b) =>
+            b.status !== "pending" &&
+            b.date >= weekRange.start &&
+            b.date <= weekRange.end,
+        );
+      case "all": {
+        const selectedStatuses = statusFilter.status ?? [];
+        return allBookingsSorted.filter(
+          (b) =>
+            b.status !== "pending" &&
+            (selectedStatuses.length === 0 ||
+              selectedStatuses.includes(b.status)),
+        );
+      }
+    }
+  }, [listTab, allBookingsSorted, acceptedRequests, weekRange, statusFilter]);
+
+  const activeStatusCount = statusFilter.status?.length ?? 0;
 
   function acceptRequest(id: string) {
     // TODO: API call to accept the request
@@ -280,108 +371,106 @@ export default function CalendarScreen() {
           color={primary[400]}
           style={styles.loader}
         />
-      ) : (
+      ) : viewMode === "calendar" ? (
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-          {viewMode === "calendar" && (
-            <Calendar
-              initialDate={selectedDate}
-              current={selectedDate}
-              onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-              onMonthChange={(m: DateData) =>
-                setVisibleMonth(m.dateString.slice(0, 7))
-              }
-              markedDates={markedDates}
-              markingType="multi-dot"
-              enableSwipeMonths
-              hideExtraDays
-              firstDay={0}
-              renderArrow={(direction: "left" | "right") => (
-                <MaterialIcons
-                  name={direction === "left" ? "chevron-left" : "chevron-right"}
-                  size={24}
-                  color={text.primary}
-                />
-              )}
-              theme={{
-                backgroundColor: "transparent",
-                calendarBackground: "transparent",
-                textSectionTitleColor: neutral[400],
-                dayTextColor: text.primary,
-                textDisabledColor: neutral[200],
-                monthTextColor: text.primary,
-                textMonthFontWeight: "700",
-                textDayHeaderFontSize: 12,
-                selectedDayBackgroundColor: primary[300],
-                selectedDayTextColor: neutral[0],
-                todayTextColor: primary[400],
-                arrowColor: text.primary,
-              }}
-              dayComponent={(props) => {
-                const date = props.date as DateData | undefined;
-                const state = props.state as
-                  | ""
-                  | "selected"
-                  | "disabled"
-                  | "today"
-                  | "inactive"
-                  | undefined;
-                const marking = props.marking as
-                  | { dots?: { key: string; color: string }[] }
-                  | undefined;
-                if (!date) return null;
-                const dateString = date.dateString;
-                const available = isDateAvailable(dateString);
-                const isSelected = dateString === selectedDate;
-                const isToday = state === "today";
-                const isDisabled = state === "disabled";
-                const dots = marking?.dots ?? [];
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setSelectedDate(dateString)}
-                    disabled={isDisabled}
-                    style={styles.dayOuter}
+          <Calendar
+            initialDate={selectedDate}
+            current={selectedDate}
+            onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+            onMonthChange={(m: DateData) =>
+              setVisibleMonth(m.dateString.slice(0, 7))
+            }
+            markedDates={markedDates}
+            markingType="multi-dot"
+            enableSwipeMonths
+            hideExtraDays
+            firstDay={0}
+            renderArrow={(direction: "left" | "right") => (
+              <MaterialIcons
+                name={direction === "left" ? "chevron-left" : "chevron-right"}
+                size={24}
+                color={text.primary}
+              />
+            )}
+            theme={{
+              backgroundColor: "transparent",
+              calendarBackground: "transparent",
+              textSectionTitleColor: neutral[400],
+              dayTextColor: text.primary,
+              textDisabledColor: neutral[200],
+              monthTextColor: text.primary,
+              textMonthFontWeight: "700",
+              textDayHeaderFontSize: 12,
+              selectedDayBackgroundColor: primary[300],
+              selectedDayTextColor: neutral[0],
+              todayTextColor: primary[400],
+              arrowColor: text.primary,
+            }}
+            dayComponent={(props) => {
+              const date = props.date as DateData | undefined;
+              const state = props.state as
+                | ""
+                | "selected"
+                | "disabled"
+                | "today"
+                | "inactive"
+                | undefined;
+              const marking = props.marking as
+                | { dots?: { key: string; color: string }[] }
+                | undefined;
+              if (!date) return null;
+              const dateString = date.dateString;
+              const available = isDateAvailable(dateString);
+              const isSelected = dateString === selectedDate;
+              const isToday = state === "today";
+              const isDisabled = state === "disabled";
+              const dots = marking?.dots ?? [];
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedDate(dateString)}
+                  disabled={isDisabled}
+                  style={styles.dayOuter}
+                >
+                  <View
+                    style={[
+                      styles.dayBox,
+                      available && !isSelected && styles.dayBoxActive,
+                      isSelected && styles.dayBoxSelected,
+                      isToday && !isSelected && styles.dayBoxToday,
+                    ]}
                   >
-                    <View
+                    <Text
                       style={[
-                        styles.dayBox,
-                        available && !isSelected && styles.dayBoxActive,
-                        isSelected && styles.dayBoxSelected,
-                        isToday && !isSelected && styles.dayBoxToday,
+                        styles.dayNumber,
+                        isDisabled && styles.dayNumberDisabled,
+                        isSelected && styles.dayNumberSelected,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.dayNumber,
-                          isDisabled && styles.dayNumberDisabled,
-                          isSelected && styles.dayNumberSelected,
-                        ]}
-                      >
-                        {date.day}
-                      </Text>
-                      {dots.length > 0 ? (
-                        <View style={styles.dayDots}>
-                          {dots.slice(0, 4).map((d) => (
-                            <View
-                              key={d.key}
-                              style={[
-                                styles.dayDot,
-                                {
-                                  backgroundColor: isSelected
-                                    ? neutral[0]
-                                    : d.color,
-                                },
-                              ]}
-                            />
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          )}
+                      {date.day}
+                    </Text>
+                    {dots.length > 0 ? (
+                      <View style={styles.dayDots}>
+                        {dots.slice(0, 4).map((d) => (
+                          <View
+                            key={d.key}
+                            style={[
+                              styles.dayDot,
+                              {
+                                backgroundColor: isSelected
+                                  ? neutral[0]
+                                  : d.color,
+                              },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+          />
 
           {newRequests.length > 0 && (
             <View style={styles.scheduleSection}>
@@ -428,7 +517,65 @@ export default function CalendarScreen() {
             )}
           </View>
         </ScrollView>
+      ) : (
+        <>
+          <TabBar tabs={LIST_TABS} activeKey={listTab} onChange={setListTab} />
+          {listTab === "all" && (
+            <FilterButton
+              onPress={() => setFilterVisible(true)}
+              active={activeStatusCount > 0}
+              accessibilityLabel="Filter bookings by status"
+            />
+          )}
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {listBookings.length > 0 ? (
+              listTab === "new" ? (
+                listBookings.map((b) => (
+                  <BookingRequestCard
+                    key={b.id}
+                    request={toBookingRequest(b)}
+                    onAccept={() => acceptRequest(b.id)}
+                  />
+                ))
+              ) : (
+                listBookings.map((b, idx) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    dotColor={
+                      BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
+                    }
+                  />
+                ))
+              )
+            ) : (
+              <View style={styles.bookingEmpty}>
+                <ExpoImage
+                  source={require("@/assets/global-icons/coffee-cup.png")}
+                  style={styles.bookingEmptyIcon}
+                  contentFit="contain"
+                />
+                <Text style={styles.bookingEmptyText}>
+                  {LIST_EMPTY_TEXT[listTab]}
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </>
       )}
+
+      <FilterBottomSheet
+        visible={filterVisible}
+        title="Filter bookings"
+        sections={STATUS_FILTER_SECTIONS}
+        initialValue={statusFilter}
+        onClose={() => setFilterVisible(false)}
+        onApply={setStatusFilter}
+      />
     </SafeAreaView>
   );
 }
@@ -442,6 +589,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+  listContent: {
+    gap: 12,
+    paddingBottom: 24,
   },
   loader: {
     flex: 1,

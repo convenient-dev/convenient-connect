@@ -10,6 +10,8 @@ const { primary, neutral, text, background, border } = Colors;
 export type BookingStatus = "active" | "completed" | "pending" | "cancelled";
 
 export interface BookingCardData {
+  /** ISO date, e.g. "2026-06-25". */
+  date: string;
   start: string;
   end: string;
   title: string;
@@ -31,6 +33,14 @@ export function formatBookingTime(hhmm: string): string {
   const period = h >= 12 ? "PM" : "AM";
   const display = h % 12 === 0 ? 12 : h % 12;
   return `${display}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+// "2026-06-25" -> "Jun 25"
+export function formatBookingDate(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 interface BookingCardProps {
@@ -59,8 +69,9 @@ export function BookingCard({
     <View style={styles.bookingCard}>
       <View style={styles.bookingTopRow}>
         <View style={[styles.bookingDotRing, { borderColor: dotColor }]} />
-        <Text style={styles.bookingTimeRange}>
-          {formatBookingTime(booking.start)} - {formatBookingTime(booking.end)}
+        <Text style={styles.bookingTimeRange} numberOfLines={1}>
+          {formatBookingDate(booking.date)} · {formatBookingTime(booking.start)}{" "}
+          - {formatBookingTime(booking.end)}
         </Text>
         <StatusBadge label={BOOKING_STATUS_LABEL[booking.status]} />
         {isActive && (
@@ -121,6 +132,7 @@ const styles = StyleSheet.create({
   bookingTopRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-start",
     gap: 10,
   },
   bookingDotRing: {
@@ -132,6 +144,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bookingTimeRange: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: "600",
     color: neutral[500],

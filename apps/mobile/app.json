@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ConvenientConnect",
-    "slug": "ConvenientConnect",
+    "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/cc_logo.png",

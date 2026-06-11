@@ -29,6 +29,36 @@ Install dependencies from the repo root:
 npm install
 ```
 
+## Environment Variables
+
+Each app ships a `.env.example` template. Copy it to `.env` and fill in your values before running anything:
+
+```bash
+cp apps/web/.env.example    apps/web/.env
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+### `apps/web/.env`
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | Supabase pooled connection string (used at runtime via PgBouncer) |
+| `DIRECT_URL` | Supabase direct connection string (used by Prisma migrations) |
+| `NEXT_PUBLIC_APP_URL` | Public base URL of the web app (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public JWT |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT (server-side only — never expose to the client) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_test_…` for dev, `sk_live_…` for prod) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (safe to expose to the browser) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) from the Stripe dashboard |
+
+### `apps/mobile/.env`
+
+| Variable | Description |
+| --- | --- |
+| `EXPO_PUBLIC_API_URL` | Full URL of the Next.js API the app calls (see the table below for platform-specific values) |
+| `EXPO_PUBLIC_USER_ID` | Hardcoded user ID used during development |
+
 ### Mobile (Expo)
 
 > **Run the backend first.** The mobile app talks to the Next.js API in `apps/web`

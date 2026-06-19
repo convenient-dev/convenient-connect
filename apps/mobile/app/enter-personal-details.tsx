@@ -1,9 +1,14 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
+import { completeProfile } from "@/api/profile";
+import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -52,11 +57,14 @@ function Field({
 
 export default function EnterPersonalDetailsScreen() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
 
-  const [firstName, setFirstName] = useState("Alice");
-  const [lastName, setLastName] = useState("Smith");
-  const [email, setEmail] = useState("alice@example.com");
+  const [firstName, setFirstName] = useState(authUser?.user.user_fname ?? "");
+  const [lastName, setLastName] = useState(authUser?.user.user_lname ?? "");
+  const [email, setEmail] = useState(authUser?.user.user_email ?? "");
+  const [loading, setLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -101,11 +109,36 @@ export default function EnterPersonalDetailsScreen() {
             <Text style={styles.buttonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, styles.nextButton]}
+            style={[styles.button, styles.nextButton, loading && { opacity: 0.6 }]}
             activeOpacity={0.85}
-            onPress={() => setSuccessVisible(true)}
+            disabled={loading}
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await completeProfile({
+                  providerType: "individual",
+                  firstName,
+                  lastName,
+                  email,
+                });
+                setSuccessMessage(
+                  "Verification email sent successfully\nPlease check your inbox",
+                );
+                setSuccessVisible(true);
+              } catch (e) {
+                const msg =
+                  e instanceof ApiError ? e.message : "Failed to save profile";
+                Alert.alert("Error", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
           >
-            <Text style={styles.buttonText}>Next</Text>
+            {loading ? (
+              <ActivityIndicator color={neutral[0]} />
+            ) : (
+              <Text style={styles.buttonText}>Next</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -114,9 +147,7 @@ export default function EnterPersonalDetailsScreen() {
         visible={successVisible}
         icon="success"
         title="Success"
-        message={
-          "Verification email sent successfully\nPlease check your inbox"
-        }
+        message={successMessage}
         confirmLabel="Okay"
         onConfirm={() => {
           setSuccessVisible(false);

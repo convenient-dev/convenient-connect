@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 
+import { AuthProvider } from "@/auth/AuthContext";
 import { BusinessSignupProvider } from "@/contexts/BusinessSignupContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -21,6 +22,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <AuthProvider>
         <BusinessSignupProvider>
           <Stack>
             <Stack.Screen
@@ -31,6 +33,14 @@ export default function RootLayout() {
             <Stack.Screen name="signup" options={{ headerShown: false }} />
             <Stack.Screen
               name="signup-by-phone"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="signup-by-email"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="confirm-email-otp"
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -175,6 +185,7 @@ export default function RootLayout() {
             />
           </Stack>
         </BusinessSignupProvider>
+        </AuthProvider>
 
         <StatusBar style="auto" />
       </ThemeProvider>

@@ -1,5 +1,7 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
+import { numberLogin } from "@/api/auth";
+import { ApiError } from "@/api/client";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -7,6 +9,8 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -81,9 +85,10 @@ export default function SignupScreen() {
   const router = useRouter();
 
   const [country, setCountry] = useState<Country>(COUNTRIES[0]);
-  const [phone, setPhone] = useState("222 333 444");
+  const [phone, setPhone] = useState("");
   const [pickerVisible, setPickerVisible] = useState(false);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const filteredCountries = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -146,16 +151,32 @@ export default function SignupScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.verifyButton}
+            style={[styles.verifyButton, loading && styles.verifyButtonDisabled]}
             activeOpacity={0.85}
-            onPress={() =>
-              router.push({
-                pathname: "/signup-by-phone",
-                params: { phone: `${country.dial} ${phone}`.trim() },
-              })
-            }
+            disabled={loading || !phone.trim()}
+            onPress={async () => {
+              const fullPhone = `${country.dial}${phone.replace(/\s+/g, "")}`;
+              setLoading(true);
+              try {
+                await numberLogin({ phone: fullPhone });
+                router.push({
+                  pathname: "/signup-by-phone",
+                  params: { phone: fullPhone },
+                });
+              } catch (e) {
+                const msg =
+                  e instanceof ApiError ? e.message : "Failed to send OTP";
+                Alert.alert("Error", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
           >
-            <Text style={styles.verifyText}>Verify</Text>
+            {loading ? (
+              <ActivityIndicator color={neutral[0]} />
+            ) : (
+              <Text style={styles.verifyText}>Verify</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.dividerRow}>
@@ -169,6 +190,12 @@ export default function SignupScreen() {
               key={option.key}
               style={styles.socialButton}
               activeOpacity={0.7}
+              onPress={() => {
+                if (option.key === "email") {
+                  router.push("/signup-by-email");
+                }
+                // TODO: Wire facebook, gmail, apple social auth SDKs
+              }}
             >
               <View style={styles.socialIcon}>{option.icon}</View>
               <Text style={styles.socialText}>{option.label}</Text>
@@ -349,6 +376,9 @@ const styles = StyleSheet.create({
     backgroundColor: secondary[400],
     alignItems: "center",
     justifyContent: "center",
+  },
+  verifyButtonDisabled: {
+    opacity: 0.6,
   },
   verifyText: {
     fontSize: 17,

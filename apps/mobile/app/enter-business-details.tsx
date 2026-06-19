@@ -1,9 +1,14 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
+import { completeProfile } from "@/api/profile";
+import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -52,16 +57,19 @@ function Field({
 
 export default function EnterBusinessDetailsScreen() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
 
-  const [firstName, setFirstName] = useState("Bob");
-  const [lastName, setLastName] = useState("Jones");
-  const [email, setEmail] = useState("bob@example.com");
-  const [businessName, setBusinessName] = useState("Hidden Gem Pet Lodge");
-  const [businessAddress, setBusinessAddress] = useState("789 Commerce Blvd");
-  const [city, setCity] = useState("Shelbyville");
+  const [firstName, setFirstName] = useState(authUser?.user.user_fname ?? "");
+  const [lastName, setLastName] = useState(authUser?.user.user_lname ?? "");
+  const [email, setEmail] = useState(authUser?.user.user_email ?? "");
+  const [businessName, setBusinessName] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
+  const [loading, setLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -129,11 +137,39 @@ export default function EnterBusinessDetailsScreen() {
             <Text style={styles.buttonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, styles.nextButton]}
+            style={[styles.button, styles.nextButton, loading && { opacity: 0.6 }]}
             activeOpacity={0.85}
-            onPress={() => setSuccessVisible(true)}
+            disabled={loading}
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await completeProfile({
+                  providerType: "business",
+                  firstName,
+                  lastName,
+                  email,
+                  businessName,
+                  businessAddress,
+                  zipcode: zip,
+                });
+                setSuccessMessage(
+                  "Verification email sent successfully\nPlease check your inbox",
+                );
+                setSuccessVisible(true);
+              } catch (e) {
+                const msg =
+                  e instanceof ApiError ? e.message : "Failed to save profile";
+                Alert.alert("Error", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
           >
-            <Text style={styles.buttonText}>Next</Text>
+            {loading ? (
+              <ActivityIndicator color={neutral[0]} />
+            ) : (
+              <Text style={styles.buttonText}>Next</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -142,9 +178,7 @@ export default function EnterBusinessDetailsScreen() {
         visible={successVisible}
         icon="success"
         title="Success"
-        message={
-          "Verification email sent successfully\nPlease check your inbox"
-        }
+        message={successMessage}
         confirmLabel="Okay"
         onConfirm={() => {
           setSuccessVisible(false);

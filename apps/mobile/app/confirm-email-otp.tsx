@@ -1,6 +1,6 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
-import { confirmNumber, resendOtpNumber } from "@/api/auth";
+import { confirmEmail, resendOtpEmail } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,16 +24,6 @@ const { primary, secondary, neutral, text, background } = Colors;
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
 
-function maskPhone(phone: string | undefined): string {
-  if (!phone) return "+1 222 *** 444";
-  const groups = phone.trim().split(/\s+/);
-  if (groups.length < 3) return phone;
-  const masked = groups.map((g, i) =>
-    i === 0 || i === groups.length - 1 ? g : "*".repeat(g.length),
-  );
-  return masked.join(" ");
-}
-
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60)
     .toString()
@@ -42,9 +32,9 @@ function formatTimer(seconds: number): string {
   return `${m}:${s}`;
 }
 
-export default function SignupByPhoneScreen() {
+export default function ConfirmEmailOtpScreen() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone?: string }>();
+  const { email } = useLocalSearchParams<{ email?: string }>();
   const { login } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
@@ -79,6 +69,12 @@ export default function SignupByPhoneScreen() {
 
   const isComplete = digits.every((d) => d.length === 1);
 
+  const maskedEmail = email
+    ? email.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) =>
+        a + "*".repeat(b.length) + c,
+      )
+    : "";
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
@@ -92,7 +88,7 @@ export default function SignupByPhoneScreen() {
 
         <View style={styles.body}>
           <Text style={styles.title}>
-            Enter the 4-digit code sent to your SMS at {maskPhone(phone)}
+            Enter the 4-digit code sent to {maskedEmail}
           </Text>
 
           <View style={styles.codeRow}>
@@ -121,10 +117,10 @@ export default function SignupByPhoneScreen() {
             activeOpacity={0.7}
             disabled={seconds > 0 || resending}
             onPress={async () => {
-              if (!phone) return;
+              if (!email) return;
               setResending(true);
               try {
-                await resendOtpNumber(phone);
+                await resendOtpEmail(email);
                 setSeconds(RESEND_SECONDS);
               } catch (e) {
                 const msg =
@@ -154,10 +150,10 @@ export default function SignupByPhoneScreen() {
             activeOpacity={0.85}
             disabled={!isComplete || loading}
             onPress={async () => {
-              if (!phone) return;
+              if (!email) return;
               setLoading(true);
               try {
-                const result = await confirmNumber(phone, digits.join(""));
+                const result = await confirmEmail(email, digits.join(""));
                 await login(result.accessToken, {
                   user: result.user,
                   providerType: result.providerType,

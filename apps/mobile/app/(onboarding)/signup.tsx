@@ -1,3 +1,5 @@
+import { numberLogin } from "@/api/auth";
+import { ApiError } from "@/api/client";
 import { BackButton } from "@/components/BackButton";
 import {
   buildFullPhone,
@@ -6,8 +8,6 @@ import {
   PhoneInput,
 } from "@/components/PhoneInput";
 import { Colors } from "@/constants/theme";
-import { numberLogin } from "@/api/auth";
-import { ApiError } from "@/api/client";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -94,7 +94,10 @@ export default function SignupScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.verifyButton, loading && styles.verifyButtonDisabled]}
+            style={[
+              styles.verifyButton,
+              loading && styles.verifyButtonDisabled,
+            ]}
             activeOpacity={0.85}
             disabled={loading || !phone.trim()}
             onPress={async () => {
@@ -145,26 +148,11 @@ export default function SignupScreen() {
             </TouchableOpacity>
           ))}
 
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.accountRow}
-            activeOpacity={0.7}
-            onPress={() => router.back()}
-          >
-            <MaterialIcons name="search" size={24} color={neutral[900]} />
-            <Text style={styles.accountText}>Already have an account?</Text>
-          </TouchableOpacity>
-
           <Text style={styles.consentText}>
             By proceeding, you consent to receiving phone calls, and messaging
-            via SMS, WhatsApp and alternate platforms including by automated
-            means from the Convenience App and its affiliates to the phone
-            number provided
+            via SMS, WhatsApp, and platforms, including by automated means, from
+            the CONVENIENT App and its affiliates to the phone number provided.
+            By continuing, you agree to our Terms of Service and Privacy Policy.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -265,8 +253,8 @@ const styles = StyleSheet.create({
   },
   consentText: {
     marginTop: 24,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 12,
+    lineHeight: 18,
     color: neutral[400],
     textAlign: "center",
     letterSpacing: -0.2,

@@ -1,7 +1,7 @@
+import { getUserCategories } from "@/api/legacy";
+import { useAuth } from "@/auth/AuthContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useAuth } from "@/auth/AuthContext";
-import { getUserCategories } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -141,7 +141,7 @@ export default function ProfileScreen() {
 
   function handleBack() {
     if (from === "background-check") {
-      router.replace({ pathname: "/(tabs)", params: { openMenu: "1" } });
+      router.replace({ pathname: "/home", params: { openMenu: "1" } });
       return;
     }
     router.back();
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
               onPress={() =>
                 router.push({
-                  pathname: "/edit-avatar",
+                  pathname: "/update-avatar",
                   params: user?.avatarUrl
                     ? { currentAvatarUrl: user.avatarUrl }
                     : {},
@@ -308,7 +308,7 @@ export default function ProfileScreen() {
               router.push({
                 pathname:
                   user?.profileTypeStatus === "pending"
-                    ? "/profile-type-pending"
+                    ? "/profile-type/profile-type-pending"
                     : "/profile-type",
                 params: { accountType: user?.accountType ?? "individual" },
               })
@@ -321,7 +321,7 @@ export default function ProfileScreen() {
             value={backgroundLabel}
             valueMuted
             trailingIcon={backgroundComplete ? "verified" : "warning"}
-            onPress={() => router.push("/background-check-1")}
+            onPress={() => router.push("/background-check/step-1")}
           />
           <View style={styles.rowDivider} />
 

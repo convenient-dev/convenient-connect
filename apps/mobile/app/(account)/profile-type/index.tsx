@@ -176,7 +176,7 @@ export default function ProfileTypeScreen() {
           onPress={() => {
             if (target === "business") {
               resetBusinessSignup();
-              router.push("/business-details");
+              router.push("/profile-type/business-details");
             }
           }}
         >

@@ -23,7 +23,7 @@ export default function OnboardingBackgroundCheckScreen() {
     authUser?.backgroundVerification || authUser?.businessVerification || false;
 
   function handleAccept() {
-    router.push("/background-check-2");
+    router.push("/background-check/step-2");
   }
 
   function handleDone() {

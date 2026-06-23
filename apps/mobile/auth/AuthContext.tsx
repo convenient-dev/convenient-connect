@@ -1,3 +1,6 @@
+import { setOnUnauthorized } from "@/api/client";
+import type { components } from "@/api/generated/api-types";
+import { useRouter, useSegments } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -6,10 +9,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useRouter, useSegments } from "expo-router";
-import { getToken, setToken as storeToken, clearToken } from "./token-store";
-import { setOnUnauthorized } from "@/api/client";
-import type { components } from "@/api/generated/api-types";
+import { clearToken, getToken, setToken as storeToken } from "./token-store";
 
 type AuthUser = components["schemas"]["AuthUser"];
 
@@ -80,30 +80,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
 
-    const PUBLIC_ROUTES = new Set([
-      "index",
-      "signup",
-      "signup-by-phone",
-      "signup-by-email",
-      "confirm-email-otp",
-      "select-provider-type",
-      "enter-personal-details",
-      "enter-business-details",
-    ]);
-
+    // Public routes are the welcome screen (index, no first segment) and the
+    // pre-account flow, which all live in the (onboarding) route group.
     const firstSegment = segments[0] as string | undefined;
-    const inAuthGroup = !firstSegment || PUBLIC_ROUTES.has(firstSegment);
+    const inAuthGroup = !firstSegment || firstSegment === "(onboarding)";
 
     if (!token && !inAuthGroup) {
       router.replace("/");
     }
   }, [token, segments, isLoading, router]);
 
-  const login = useCallback(async (newToken: string, profile: AuthUserProfile) => {
-    await storeToken(newToken);
-    setTokenState(newToken);
-    setUser(profile);
-  }, []);
+  const login = useCallback(
+    async (newToken: string, profile: AuthUserProfile) => {
+      await storeToken(newToken);
+      setTokenState(newToken);
+      setUser(profile);
+    },
+    [],
+  );
 
   const value = useMemo<AuthState>(
     () => ({

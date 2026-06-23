@@ -69,7 +69,7 @@ export default function BackgroundCheck3Screen() {
       //    browser to close, which we can't observe). Pass the accountId
       //    so the next screen can fetch live onboarding status from Stripe.
       router.push({
-        pathname: "/background-check-4",
+        pathname: "/background-check/step-4",
         params: { accountId },
       });
     } catch (err) {

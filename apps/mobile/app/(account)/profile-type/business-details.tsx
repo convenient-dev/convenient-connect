@@ -82,7 +82,7 @@ export default function BusinessDetailsScreen() {
   }
 
   function handleContinue() {
-    router.push("/verify-business");
+    router.push("/profile-type/verify-business");
   }
 
   return (

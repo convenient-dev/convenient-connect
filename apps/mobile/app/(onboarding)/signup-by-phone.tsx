@@ -192,7 +192,7 @@ export default function SignupByPhoneScreen() {
                   businessVerification: result.businessVerification,
                 });
                 if (result.providerType) {
-                  router.replace("/(tabs)");
+                  router.replace("/home");
                 } else {
                   router.replace({
                     pathname: "/select-provider-type",

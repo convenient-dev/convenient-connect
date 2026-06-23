@@ -103,7 +103,7 @@ export default function BackgroundCheck2Screen() {
     // (Apple Pay, Cash App, or a newly added card) and only navigate forward
     // once the charge succeeds. For now we just continue the flow.
     closePaymentSheet(() => {
-      router.push("/background-check-3");
+      router.push("/background-check/step-3");
     });
   }
 

@@ -1,6 +1,6 @@
+import { uploadBusinessDoc } from "@/api/legacy";
 import { BackButton } from "@/components/BackButton";
 import { useCurrentUser } from "@/constants/session";
-import { uploadBusinessDoc } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -26,7 +26,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
-
 
 const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
@@ -94,9 +93,7 @@ function UploadCard({
           />
         )}
         <Text style={styles.uploadText}>
-          {uploading
-            ? "Uploading…"
-            : (uploaded?.fileName ?? "Upload Document")}
+          {uploading ? "Uploading…" : (uploaded?.fileName ?? "Upload Document")}
         </Text>
       </TouchableOpacity>
 
@@ -281,7 +278,7 @@ export default function VerifyBusinessScreen() {
   }
 
   function handleContinue() {
-    router.push("/update-bank-account");
+    router.push("/profile-type/update-bank-account");
   }
 
   return (

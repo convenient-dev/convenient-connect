@@ -218,7 +218,7 @@ export default function ServicesScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <BackButton onPress={() => router.push("/(tabs)")} />
+        <BackButton onPress={() => router.push("/home")} />
         <Text style={styles.headerTitle}>My Services</Text>
         <TouchableOpacity
           style={styles.addButton}

@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
 import { confirmEmail, resendOtpEmail } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -8,7 +9,6 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -23,6 +23,14 @@ const { primary, secondary, neutral, text, background } = Colors;
 
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
+
+interface ModalState {
+  icon: "success" | "error";
+  title: string;
+  message: string;
+  /** When set, runs after the modal is dismissed (e.g. clear the OTP input). */
+  onConfirm?: () => void;
+}
 
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -41,6 +49,7 @@ export default function ConfirmEmailOtpScreen() {
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [modal, setModal] = useState<ModalState | null>(null);
   const inputs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
@@ -64,6 +73,31 @@ export default function ConfirmEmailOtpScreen() {
   function handleKeyPress(key: string, index: number) {
     if (key === "Backspace" && !digits[index] && index > 0) {
       inputs.current[index - 1]?.focus();
+    }
+  }
+
+  function clearOtp() {
+    setDigits(Array(CODE_LENGTH).fill(""));
+    inputs.current[0]?.focus();
+  }
+
+  async function handleResend() {
+    if (!email || seconds > 0 || resending) return;
+    setResending(true);
+    try {
+      await resendOtpEmail(email);
+      clearOtp();
+      setSeconds(RESEND_SECONDS);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to resend OTP";
+      setModal({
+        icon: "error",
+        title: "Error",
+        message: msg,
+        onConfirm: clearOtp,
+      });
+    } finally {
+      setResending(false);
     }
   }
 
@@ -113,32 +147,24 @@ export default function ConfirmEmailOtpScreen() {
             ))}
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            disabled={seconds > 0 || resending}
-            onPress={async () => {
-              if (!email) return;
-              setResending(true);
-              try {
-                await resendOtpEmail(email);
-                setSeconds(RESEND_SECONDS);
-              } catch (e) {
-                const msg =
-                  e instanceof ApiError ? e.message : "Failed to resend OTP";
-                Alert.alert("Error", msg);
-              } finally {
-                setResending(false);
-              }
-            }}
-          >
-            <Text style={styles.timer}>
-              {seconds > 0
-                ? formatTimer(seconds)
-                : resending
-                  ? "Sending..."
-                  : "Resend code"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.resendRow}>
+            {seconds > 0 ? (
+              <Text style={styles.timer}>
+                Resend code in {formatTimer(seconds)}
+              </Text>
+            ) : (
+              <TouchableOpacity
+                style={styles.resendButton}
+                activeOpacity={0.7}
+                disabled={resending}
+                onPress={handleResend}
+              >
+                <Text style={styles.resendText}>
+                  {resending ? "Sending..." : "Resend code"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.footer}>
@@ -172,7 +198,12 @@ export default function ConfirmEmailOtpScreen() {
               } catch (e) {
                 const msg =
                   e instanceof ApiError ? e.message : "Verification failed";
-                Alert.alert("Error", msg);
+                setModal({
+                  icon: "error",
+                  title: "Error",
+                  message: msg,
+                  onConfirm: clearOtp,
+                });
               } finally {
                 setLoading(false);
               }
@@ -186,6 +217,19 @@ export default function ConfirmEmailOtpScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={modal !== null}
+        icon={modal?.icon ?? "alert"}
+        title={modal?.title ?? ""}
+        message={modal?.message ?? ""}
+        confirmLabel="Okay"
+        onConfirm={() => {
+          const onConfirm = modal?.onConfirm;
+          setModal(null);
+          onConfirm?.();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -233,8 +277,21 @@ const styles = StyleSheet.create({
   codeBoxFilled: {
     borderColor: primary[300],
   },
+  resendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   timer: {
     fontSize: 16,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  resendButton: {
+    paddingVertical: 4,
+  },
+  resendText: {
+    fontSize: 16,
+    fontWeight: "600",
     color: primary[400],
     letterSpacing: -0.408,
   },

@@ -86,6 +86,31 @@ export default function VerifyPhoneOtpScreen() {
     }
   }
 
+  function clearOtp() {
+    setDigits(Array(CODE_LENGTH).fill(""));
+    inputs.current[0]?.focus();
+  }
+
+  async function handleResend() {
+    if (!phone || seconds > 0 || resending) return;
+    setResending(true);
+    try {
+      await resendPhoneOtp(phone);
+      clearOtp();
+      setSeconds(RESEND_SECONDS);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to resend OTP";
+      setModal({
+        icon: "error",
+        title: "Error",
+        message: msg,
+        onConfirm: clearOtp,
+      });
+    } finally {
+      setResending(false);
+    }
+  }
+
   const isComplete = digits.every((d) => d.length === 1);
 
   return (
@@ -126,32 +151,24 @@ export default function VerifyPhoneOtpScreen() {
             ))}
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            disabled={seconds > 0 || resending}
-            onPress={async () => {
-              if (!phone) return;
-              setResending(true);
-              try {
-                await resendPhoneOtp(phone);
-                setSeconds(RESEND_SECONDS);
-              } catch (e) {
-                const msg =
-                  e instanceof ApiError ? e.message : "Failed to resend OTP";
-                setModal({ icon: "error", title: "Error", message: msg });
-              } finally {
-                setResending(false);
-              }
-            }}
-          >
-            <Text style={styles.timer}>
-              {seconds > 0
-                ? formatTimer(seconds)
-                : resending
-                  ? "Sending..."
-                  : "Resend code"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.resendRow}>
+            {seconds > 0 ? (
+              <Text style={styles.timer}>
+                Resend code in {formatTimer(seconds)}
+              </Text>
+            ) : (
+              <TouchableOpacity
+                style={styles.resendButton}
+                activeOpacity={0.7}
+                disabled={resending}
+                onPress={handleResend}
+              >
+                <Text style={styles.resendText}>
+                  {resending ? "Sending..." : "Resend code"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.footer}>
@@ -179,7 +196,12 @@ export default function VerifyPhoneOtpScreen() {
               } catch (e) {
                 const msg =
                   e instanceof ApiError ? e.message : "Verification failed";
-                setModal({ icon: "error", title: "Error", message: msg });
+                setModal({
+                  icon: "error",
+                  title: "Error",
+                  message: msg,
+                  onConfirm: clearOtp,
+                });
               } finally {
                 setLoading(false);
               }
@@ -253,8 +275,21 @@ const styles = StyleSheet.create({
   codeBoxFilled: {
     borderColor: primary[300],
   },
+  resendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   timer: {
     fontSize: 16,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  resendButton: {
+    paddingVertical: 4,
+  },
+  resendText: {
+    fontSize: 16,
+    fontWeight: "600",
     color: primary[400],
     letterSpacing: -0.408,
   },

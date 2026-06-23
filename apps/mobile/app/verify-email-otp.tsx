@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/BackButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
 import { verifyEmailOtp, resendEmailOtp } from "@/api/profile";
 import { ApiError } from "@/api/client";
@@ -8,7 +9,6 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -23,6 +23,14 @@ const { primary, secondary, neutral, text, background } = Colors;
 
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
+
+interface ModalState {
+  icon: "success" | "error";
+  title: string;
+  message: string;
+  /** When set, runs after the modal is dismissed (e.g. navigate on success). */
+  onConfirm?: () => void;
+}
 
 function maskEmail(email: string | undefined): string {
   if (!email) return "***";
@@ -48,6 +56,7 @@ export default function VerifyEmailOtpScreen() {
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [modal, setModal] = useState<ModalState | null>(null);
   const inputs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
@@ -126,7 +135,7 @@ export default function VerifyEmailOtpScreen() {
               } catch (e) {
                 const msg =
                   e instanceof ApiError ? e.message : "Failed to resend OTP";
-                Alert.alert("Error", msg);
+                setModal({ icon: "error", title: "Error", message: msg });
               } finally {
                 setResending(false);
               }
@@ -158,12 +167,16 @@ export default function VerifyEmailOtpScreen() {
                 if (authUser) {
                   setUser({ ...authUser, user: updatedUser });
                 }
-                Alert.alert("Success", "Email updated successfully");
-                router.dismiss(2);
+                setModal({
+                  icon: "success",
+                  title: "Success",
+                  message: "Email updated successfully",
+                  onConfirm: () => router.dismiss(2),
+                });
               } catch (e) {
                 const msg =
                   e instanceof ApiError ? e.message : "Verification failed";
-                Alert.alert("Error", msg);
+                setModal({ icon: "error", title: "Error", message: msg });
               } finally {
                 setLoading(false);
               }
@@ -177,6 +190,19 @@ export default function VerifyEmailOtpScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={modal !== null}
+        icon={modal?.icon ?? "alert"}
+        title={modal?.title ?? ""}
+        message={modal?.message ?? ""}
+        confirmLabel="Okay"
+        onConfirm={() => {
+          const onConfirm = modal?.onConfirm;
+          setModal(null);
+          onConfirm?.();
+        }}
+      />
     </SafeAreaView>
   );
 }

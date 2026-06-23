@@ -71,7 +71,15 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="verify-phone-otp"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="update-email"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="verify-email-otp"
               options={{ headerShown: false }}
             />
             <Stack.Screen

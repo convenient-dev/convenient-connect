@@ -1,7 +1,9 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { legacyFetch } from "@/api/client";
+import { getService } from "@/api/legacy";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -107,10 +109,9 @@ export default function EditServiceScreen() {
         const newStatus = newValue ? "active" : "inactive";
         setSearchActive(newValue);
         setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
-        await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
+        await legacyFetch(`/users/${userId}/services/${id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ searchActive: newValue }),
+          body: { searchActive: newValue },
         });
       },
     });
@@ -132,8 +133,7 @@ export default function EditServiceScreen() {
   }
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
-      .then((res) => res.json())
+    getService(userId, id)
       .then((data: ServiceSummary) => {
         setService(data);
         setSearchActive(data.searchActive ?? false);

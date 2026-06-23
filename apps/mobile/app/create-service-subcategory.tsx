@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/constants/session";
+import { getSubcategories } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -221,8 +221,7 @@ export default function CreateServiceSubcategoryScreen() {
 
   useEffect(() => {
     if (!categoryId) return;
-    fetch(`${API_BASE_URL}/categories/${categoryId}/subcategories`)
-      .then((r) => r.json())
+    getSubcategories(categoryId)
       .then((data) => {
         setSubcategories(data);
         setLoading(false);

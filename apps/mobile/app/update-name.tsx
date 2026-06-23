@@ -1,6 +1,8 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { updateName, getAuthUser } from "@/api/profile";
+import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -23,7 +25,7 @@ export default function UpdateNameScreen() {
   const router = useRouter();
   const { firstName: initialFirst, lastName: initialLast } =
     useLocalSearchParams<{ firstName?: string; lastName?: string }>();
-  const { userId } = useCurrentUser();
+  const { setUser } = useAuth();
 
   const [firstName, setFirstName] = useState<string>(initialFirst ?? "");
   const [lastName, setLastName] = useState<string>(initialLast ?? "");
@@ -60,20 +62,13 @@ export default function UpdateNameScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
+      await updateName(firstName.trim(), lastName.trim());
       router.back();
+      getAuthUser().then(setUser).catch(() => {});
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Failed to save. Please try again.",
+      );
     } finally {
       setSaving(false);
     }

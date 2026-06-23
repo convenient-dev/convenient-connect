@@ -1,7 +1,9 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { legacyFetch } from "@/api/client";
+import { getService, getLegacyUser, getSubcategory, uploadImage, deleteImage, uploadPdf, deletePdf } from "@/api/legacy";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -131,10 +133,8 @@ export default function EditServiceInformationScreen() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_BASE_URL}/users/${userId}/services/${id}`).then((r) =>
-        r.json(),
-      ) as Promise<ServiceDetail>,
-      fetch(`${API_BASE_URL}/users/${userId}`).then((r) => r.json()),
+      getService(userId, id) as Promise<ServiceDetail>,
+      getLegacyUser(userId),
     ])
       .then(([service, user]) => {
         setTitle(service.title);
@@ -180,8 +180,7 @@ export default function EditServiceInformationScreen() {
 
         // Fetch custom fields from subcategory
         if (service.subcategory) {
-          fetch(`${API_BASE_URL}/subcategories/${service.subcategory.id}`)
-            .then((r) => r.json())
+          getSubcategory(service.subcategory.id)
             .then((subcatData) => {
               const fields: CustomField[] = [
                 ...(subcatData?.customFields ?? []),
@@ -361,28 +360,18 @@ export default function EditServiceInformationScreen() {
         ),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
+      const service = await legacyFetch<any>(`/users/${userId}/services/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setSaveError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
-
-      const service = await res.json();
 
       // Persist existing certification name changes
       if (existingCertifications.length > 0) {
         await Promise.allSettled(
           existingCertifications.map((cert) =>
-            fetch(`${API_BASE_URL}/uploads/pdfs/${cert.id}`, {
+            legacyFetch(`/uploads/pdfs/${cert.id}`, {
               method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: cert.name }),
+              body: { name: cert.name },
             }),
           ),
         );
@@ -415,10 +404,7 @@ export default function EditServiceInformationScreen() {
                 type: mimeType,
               } as unknown as Blob);
             }
-            await fetch(`${API_BASE_URL}/uploads/images`, {
-              method: "POST",
-              body: formData,
-            });
+            await uploadImage(formData);
           }),
         );
       }
@@ -454,17 +440,14 @@ export default function EditServiceInformationScreen() {
                 type: "application/pdf",
               } as unknown as Blob);
             }
-            await fetch(`${API_BASE_URL}/uploads/pdfs`, {
-              method: "POST",
-              body: formData,
-            });
+            await uploadPdf(formData);
           }),
         );
       }
 
       setSavedModalVisible(true);
-    } catch {
-      setSaveError("Network error. Please check your connection.");
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -732,14 +715,10 @@ export default function EditServiceInformationScreen() {
                   <TouchableOpacity
                     style={styles.imageThumbnailRemove}
                     onPress={() => {
-                      fetch(`${API_BASE_URL}/uploads/images/${img.id}`, {
-                        method: "DELETE",
-                      }).then((res) => {
-                        if (res.ok) {
-                          setExistingImages((prev) =>
-                            prev.filter((e) => e.id !== img.id),
-                          );
-                        }
+                      deleteImage(img.id).then(() => {
+                        setExistingImages((prev) =>
+                          prev.filter((e) => e.id !== img.id),
+                        );
                       });
                     }}
                     activeOpacity={0.7}
@@ -804,14 +783,10 @@ export default function EditServiceInformationScreen() {
                   <TouchableOpacity
                     style={styles.certRemoveBtn}
                     onPress={() => {
-                      fetch(`${API_BASE_URL}/uploads/pdfs/${cert.id}`, {
-                        method: "DELETE",
-                      }).then((res) => {
-                        if (res.ok) {
-                          setExistingCertifications((prev) =>
-                            prev.filter((c) => c.id !== cert.id),
-                          );
-                        }
+                      deletePdf(cert.id).then(() => {
+                        setExistingCertifications((prev) =>
+                          prev.filter((c) => c.id !== cert.id),
+                        );
                       });
                     }}
                     activeOpacity={0.7}

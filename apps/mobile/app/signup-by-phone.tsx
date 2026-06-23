@@ -168,7 +168,10 @@ export default function SignupByPhoneScreen() {
                 if (result.providerType) {
                   router.replace("/(tabs)");
                 } else {
-                  router.replace("/select-provider-type");
+                  router.replace({
+                    pathname: "/select-provider-type",
+                    params: { method: "phone" },
+                  });
                 }
               } catch (e) {
                 const msg =

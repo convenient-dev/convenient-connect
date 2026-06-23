@@ -1,17 +1,11 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
@@ -24,19 +18,9 @@ const BENEFITS = [
 
 export default function OnboardingBackgroundCheckScreen() {
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [verified, setVerified] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setVerified(
-          Boolean(data.isPersonVerified) || Boolean(data.isBusinessVerified),
-        ),
-      )
-      .catch(() => setVerified(false));
-  }, [userId]);
+  const { user: authUser } = useAuth();
+  const verified =
+    authUser?.backgroundVerification || authUser?.businessVerification || false;
 
   function handleAccept() {
     router.push("/background-check-2");
@@ -47,19 +31,6 @@ export default function OnboardingBackgroundCheckScreen() {
     // return to the profile tab (mirrors background-check-4's Done flow).
     router.dismissAll();
     router.navigate("/profile?from=background-check");
-  }
-
-  // Wait for the verification check before deciding which screen to show,
-  // so the onboarding intro never flashes for an already-verified user.
-  if (verified === null) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader title="Complete Background Check" />
-        <View style={styles.loadingBody}>
-          <ActivityIndicator color={primary[300]} />
-        </View>
-      </SafeAreaView>
-    );
   }
 
   if (verified) {

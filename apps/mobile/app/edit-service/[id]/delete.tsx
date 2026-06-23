@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { legacyFetch } from "@/api/client";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -30,10 +31,9 @@ export default function DeleteServiceScreen() {
   async function handlePause() {
     setPausing(true);
     try {
-      await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
+      await legacyFetch(`/users/${userId}/services/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "inactive" }),
+        body: { status: "inactive" },
       });
       router.back();
     } catch {

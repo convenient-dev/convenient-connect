@@ -1,6 +1,7 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { submitProfileTypeChange } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -38,29 +39,19 @@ export default function UpdateBankAccountScreen() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/users/${userId}/profile-type-change`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            businessName: data.businessName,
-            businessAddress: data.businessAddress,
-            city: data.city,
-            state: data.state,
-            zipCode: data.zipCode,
-            registrationDoc: data.registrationDoc?.url ?? "",
-            governmentId: data.governmentId?.url ?? "",
-            ein: data.ein,
-          }),
-        },
-      );
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setSubmitError(data?.error ?? "Failed to submit. Please try again.");
-        return;
-      }
+      await submitProfileTypeChange(userId, {
+        businessName: data.businessName,
+        businessAddress: data.businessAddress,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        registrationDoc: data.registrationDoc?.url ?? "",
+        governmentId: data.governmentId?.url ?? "",
+        ein: data.ein,
+      });
       setSuccessVisible(true);
+    } catch (e: any) {
+      setSubmitError(e?.message ?? "Failed to submit. Please try again.");
     } finally {
       setSubmitting(false);
     }

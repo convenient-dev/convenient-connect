@@ -1,5 +1,7 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { updateProfileImage, getAuthUser } from "@/api/profile";
+import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -24,7 +26,7 @@ export default function EditAvatarScreen() {
   const { currentAvatarUrl } = useLocalSearchParams<{
     currentAvatarUrl?: string;
   }>();
-  const { userId } = useCurrentUser();
+  const { setUser } = useAuth();
 
   const [pickedUri, setPickedUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -71,29 +73,24 @@ export default function EditAvatarScreen() {
         const blobRes = await fetch(pickedUri);
         const blob = await blobRes.blob();
         formData.append(
-          "file",
+          "profile_image",
           new File([blob], `avatar.${ext}`, { type: mimeType }),
         );
       } else {
-        formData.append("file", {
+        formData.append("profile_image", {
           uri: pickedUri,
           name: `avatar.${ext}`,
           type: mimeType,
         } as unknown as Blob);
       }
 
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to upload. Please try again.");
-        return;
-      }
-
+      await updateProfileImage(formData);
       router.back();
+      getAuthUser().then(setUser).catch(() => {});
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Failed to upload. Please try again.",
+      );
     } finally {
       setSaving(false);
     }

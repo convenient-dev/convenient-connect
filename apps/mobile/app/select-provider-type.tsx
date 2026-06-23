@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage, type ImageSource } from "expo-image";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -34,6 +34,7 @@ const OPTIONS: Option[] = [
 
 export default function SelectProviderTypeScreen() {
   const router = useRouter();
+  const { method } = useLocalSearchParams<{ method?: "phone" | "email" }>();
   const [selected, setSelected] = useState<ProviderType | null>(null);
 
   return (
@@ -74,10 +75,11 @@ export default function SelectProviderTypeScreen() {
           activeOpacity={0.85}
           disabled={!selected}
           onPress={() => {
+            const params = { method: method ?? "phone" };
             if (selected === "business") {
-              router.push("/enter-business-details");
+              router.push({ pathname: "/enter-business-details", params });
             } else {
-              router.push("/enter-personal-details");
+              router.push({ pathname: "/enter-personal-details", params });
             }
           }}
         >

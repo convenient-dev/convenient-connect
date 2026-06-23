@@ -1,4 +1,5 @@
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getUserAffiliations } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -58,8 +59,7 @@ export default function CreateServiceScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
-      .then((res) => res.json())
+    getUserAffiliations(userId)
       .then((businesses: { id: number; name: string }[]) => {
         setBusinessOptions(
           businesses.map((b) => ({ id: String(b.id), label: b.name })),

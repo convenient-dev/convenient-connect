@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getService } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -158,8 +159,7 @@ export default function ServiceDetailScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
-      .then((res) => res.json())
+    getService(userId, id!)
       .then((data: ServiceDetail) => setService(data))
       .finally(() => setLoading(false));
   }, [id, userId]);

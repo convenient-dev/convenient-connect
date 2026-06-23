@@ -1,5 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL } from "@/constants/session";
+import { getFaq } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -40,9 +40,8 @@ export default function CustomerSupportScreen() {
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/frequent-questions`)
-      .then((r) => r.json())
-      .then((data: { topics: Topic[] }) => {
+    getFaq()
+      .then((data: any) => {
         setTopics(data.topics);
         setActiveKey(data.topics[0]?.key ?? null);
         setLoading(false);

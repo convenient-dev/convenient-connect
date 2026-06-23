@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { requestPhoneOtp } from "@/api/profile";
+import { ApiError } from "@/api/client";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -73,7 +74,6 @@ export default function UpdatePhoneScreen() {
   const { phoneNumber: initial } = useLocalSearchParams<{
     phoneNumber?: string;
   }>();
-  const { userId } = useCurrentUser();
 
   const initialParsed = useMemo(() => parseInitial(initial), [initial]);
 
@@ -117,17 +117,16 @@ export default function UpdatePhoneScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: fullNumber }),
+      const cleanNumber = fullNumber.replace(/-/g, "");
+      await requestPhoneOtp(cleanNumber);
+      router.push({
+        pathname: "/verify-phone-otp",
+        params: { phone: cleanNumber },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
-      router.back();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Failed to send OTP. Please try again.",
+      );
     } finally {
       setSaving(false);
     }

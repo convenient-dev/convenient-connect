@@ -1,6 +1,8 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { legacyFetch } from "@/api/client";
+import { getService, getSubcategory } from "@/api/legacy";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -75,16 +77,13 @@ export default function EditServicePricingScreen() {
   const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
-      .then((r) => r.json())
+    getService(userId, id)
       .then(async (service: ServicePricing) => {
         setBaseRate(parseFloat(service.baseRate).toFixed(2));
         setBaseRateUnit(service.baseRateUnit);
 
         if (service.subcategory) {
-          const subcatData = await fetch(
-            `${API_BASE_URL}/subcategories/${service.subcategory.id}`,
-          ).then((r) => r.json());
+          const subcatData = await getSubcategory(service.subcategory.id);
 
           const templates: AddonTemplate[] = subcatData?.addonTemplates ?? [];
           setAddonTemplates(templates);
@@ -173,21 +172,14 @@ export default function EditServicePricingScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
+      await legacyFetch(`/users/${userId}/services/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body,
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        setSaveError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
-
       setSavedModalVisible(true);
-    } catch {
-      setSaveError("Network error. Please check your connection.");
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }

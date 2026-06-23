@@ -1,6 +1,6 @@
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/theme";
-import { confirmEmail, resendOtpEmail } from "@/api/auth";
+import { verifyEmailOtp, resendEmailOtp } from "@/api/profile";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,6 +24,13 @@ const { primary, secondary, neutral, text, background } = Colors;
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
 
+function maskEmail(email: string | undefined): string {
+  if (!email) return "***";
+  return email.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) =>
+    a + "*".repeat(b.length) + c,
+  );
+}
+
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60)
     .toString()
@@ -32,10 +39,10 @@ function formatTimer(seconds: number): string {
   return `${m}:${s}`;
 }
 
-export default function ConfirmEmailOtpScreen() {
+export default function VerifyEmailOtpScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email?: string }>();
-  const { login } = useAuth();
+  const { user: authUser, setUser } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
@@ -69,12 +76,6 @@ export default function ConfirmEmailOtpScreen() {
 
   const isComplete = digits.every((d) => d.length === 1);
 
-  const maskedEmail = email
-    ? email.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) =>
-        a + "*".repeat(b.length) + c,
-      )
-    : "";
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
@@ -88,7 +89,7 @@ export default function ConfirmEmailOtpScreen() {
 
         <View style={styles.body}>
           <Text style={styles.title}>
-            Enter the 4-digit code sent to {maskedEmail}
+            Enter the 4-digit code sent to {maskEmail(email)}
           </Text>
 
           <View style={styles.codeRow}>
@@ -120,7 +121,7 @@ export default function ConfirmEmailOtpScreen() {
               if (!email) return;
               setResending(true);
               try {
-                await resendOtpEmail(email);
+                await resendEmailOtp(email);
                 setSeconds(RESEND_SECONDS);
               } catch (e) {
                 const msg =
@@ -153,22 +154,12 @@ export default function ConfirmEmailOtpScreen() {
               if (!email) return;
               setLoading(true);
               try {
-                const result = await confirmEmail(email, digits.join(""));
-                await login(result.accessToken, {
-                  user: result.user,
-                  providerType: result.providerType,
-                  profileImage: result.profileImage,
-                  backgroundVerification: result.backgroundVerification,
-                  businessVerification: result.businessVerification,
-                });
-                if (result.providerType) {
-                  router.replace("/(tabs)");
-                } else {
-                  router.replace({
-                    pathname: "/select-provider-type",
-                    params: { method: "email" },
-                  });
+                const updatedUser = await verifyEmailOtp(email, digits.join(""));
+                if (authUser) {
+                  setUser({ ...authUser, user: updatedUser });
                 }
+                Alert.alert("Success", "Email updated successfully");
+                router.dismiss(2);
               } catch (e) {
                 const msg =
                   e instanceof ApiError ? e.message : "Verification failed";
@@ -181,7 +172,7 @@ export default function ConfirmEmailOtpScreen() {
             {loading ? (
               <ActivityIndicator color={neutral[0]} />
             ) : (
-              <Text style={styles.continueText}>Continue</Text>
+              <Text style={styles.continueText}>Verify</Text>
             )}
           </TouchableOpacity>
         </View>

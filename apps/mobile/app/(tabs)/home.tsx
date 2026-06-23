@@ -5,7 +5,8 @@ import {
 } from "@/components/BookingRequestCard";
 import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { getUserServices } from "@/api/legacy";
+import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -71,26 +72,22 @@ function toBookingRequest(b: Booking): BookingRequest {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userId } = useCurrentUser();
+  const { user: authUser } = useAuth();
   const { openMenu } = useLocalSearchParams<{ openMenu?: string }>();
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
-  const [user, setUser] = useState<{
-    firstName: string;
-    lastName: string;
-    addresses: {
-      id: number;
-      userId: number;
-      address: string;
-      latitude: string;
-      longitude: string;
-      isDefault: boolean;
-    }[];
-    avatarUrl: string | null;
-    accountType: "individual" | "business" | string;
-    isPersonVerified: boolean;
-    isBusinessVerified: boolean;
-  } | null>(null);
+
+  const user = authUser
+    ? {
+        firstName: authUser.user.user_fname ?? "",
+        lastName: authUser.user.user_lname ?? "",
+        avatarUrl: authUser.profileImage,
+        accountType: authUser.providerType ?? "",
+        isPersonVerified: authUser.backgroundVerification,
+        isBusinessVerified: authUser.businessVerification,
+      }
+    : null;
+
   const [services, setServices] = useState<MyServiceCardData[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
@@ -115,26 +112,11 @@ export default function HomeScreen() {
   }, [openMenu, router]);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}`)
-      .then((res) => res.json())
-      .then((data) =>
-        setUser({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          addresses: data.address ?? [],
-          avatarUrl: data.avatarUrl,
-          accountType: data.accountType,
-          isPersonVerified: data.isPersonVerified ?? false,
-          isBusinessVerified: data.isBusinessVerified ?? false,
-        }),
-      )
-      .catch(() => {});
-
-    fetch(`${API_BASE_URL}/users/${userId}/services?deleted=false`)
-      .then((res) => res.json())
+    if (!authUser?.user.user_id) return;
+    getUserServices(authUser.user.user_id, false)
       .then((data: MyServiceCardData[]) => setServices(data ?? []))
       .catch(() => {});
-  }, [userId]);
+  }, [authUser?.user.user_id]);
 
   const handleBannerScroll = (event: any) => {
     const index = Math.round(
@@ -188,9 +170,7 @@ export default function HomeScreen() {
                 color={primary[400]}
               />
               <Text style={styles.locationText} numberOfLines={1}>
-                {user?.addresses?.find((a) => a.isDefault)?.address ??
-                  user?.addresses?.[0]?.address ??
-                  "—"}
+                {authUser?.user.user_address ?? "—"}
               </Text>
               <MaterialIcons
                 name="keyboard-arrow-down"

@@ -1,5 +1,6 @@
+import { ApiError } from "@/api/client";
+import { requestEmailOtp } from "@/api/profile";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -17,14 +18,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
 
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVALID_EMAIL_MESSAGE = "Please enter a valid email address.";
 
 export default function UpdateEmailScreen() {
   const router = useRouter();
   const { email: initial } = useLocalSearchParams<{ email?: string }>();
-  const { userId } = useCurrentUser();
 
   const [email, setEmail] = useState<string>(initial ?? "");
   const [saving, setSaving] = useState(false);
@@ -43,17 +42,17 @@ export default function UpdateEmailScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+      await requestEmailOtp(trimmed);
+      router.push({
+        pathname: "/verify-email-otp",
+        params: { email: trimmed },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
-      router.back();
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Failed to send OTP. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -86,9 +85,8 @@ export default function UpdateEmailScreen() {
           </View>
           <Text style={styles.subtitle}>
             If you wish to update your email address or no longer have access to
-            the previous one, you can update it here. Make sure to provide a
-            valid email address to receive order updates, promotional and
-            account information.
+            the previous one, you can update it here. A verification code will
+            be sent to your new email address for confirmation.
           </Text>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -104,7 +102,7 @@ export default function UpdateEmailScreen() {
             {saving ? (
               <ActivityIndicator color={neutral[0]} />
             ) : (
-              <Text style={styles.saveButtonText}>Update</Text>
+              <Text style={styles.saveButtonText}>Verify</Text>
             )}
           </TouchableOpacity>
         </View>

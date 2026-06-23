@@ -1,9 +1,15 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
+import {
+  buildFullPhone,
+  Country,
+  DEFAULT_COUNTRY,
+  PhoneInput,
+} from "@/components/PhoneInput";
 import { Colors } from "@/constants/theme";
-import { completeProfile } from "@/api/profile";
+import { completeProfile, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
@@ -57,14 +63,55 @@ function Field({
 
 export default function EnterPersonalDetailsScreen() {
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { method = "phone" } = useLocalSearchParams<{
+    method?: "phone" | "email";
+  }>();
+  const { user: authUser, setUser } = useAuth();
+
+  // When the user signed up by phone we collect their email; when they signed
+  // up by email we collect their phone instead.
+  const collectEmail = method === "phone";
 
   const [firstName, setFirstName] = useState(authUser?.user.user_fname ?? "");
   const [lastName, setLastName] = useState(authUser?.user.user_lname ?? "");
   const [email, setEmail] = useState(authUser?.user.user_email ?? "");
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const phoneValid = phone.replace(/\D/g, "").length >= 7;
+  const canSubmit =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    (collectEmail ? emailValid : phoneValid);
+
+  async function handleSubmit() {
+    setLoading(true);
+    try {
+      await completeProfile({
+        providerType: "individual",
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
+        phoneNumber: collectEmail ? undefined : buildFullPhone(country, phone),
+      });
+      getAuthUser().then(setUser).catch(() => {});
+      setSuccessMessage(
+        collectEmail
+          ? "Verification email sent successfully\nPlease check your inbox"
+          : "Your details were saved successfully",
+      );
+      setSuccessVisible(true);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to save profile";
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -86,18 +133,29 @@ export default function EnterPersonalDetailsScreen() {
             value={firstName}
             onChangeText={setFirstName}
           />
-          <Field
-            label="Last Name"
-            value={lastName}
-            onChangeText={setLastName}
-          />
-          <Field
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <Field label="Last Name" value={lastName} onChangeText={setLastName} />
+
+          {collectEmail ? (
+            <Field
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          ) : (
+            <View style={styles.field}>
+              <Text style={styles.label}>
+                Phone Number <Text style={styles.required}>*</Text>
+              </Text>
+              <PhoneInput
+                country={country}
+                onCountryChange={setCountry}
+                phone={phone}
+                onPhoneChange={setPhone}
+              />
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -109,30 +167,14 @@ export default function EnterPersonalDetailsScreen() {
             <Text style={styles.buttonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, styles.nextButton, loading && { opacity: 0.6 }]}
+            style={[
+              styles.button,
+              styles.nextButton,
+              (!canSubmit || loading) && { opacity: 0.6 },
+            ]}
             activeOpacity={0.85}
-            disabled={loading}
-            onPress={async () => {
-              setLoading(true);
-              try {
-                await completeProfile({
-                  providerType: "individual",
-                  firstName,
-                  lastName,
-                  email,
-                });
-                setSuccessMessage(
-                  "Verification email sent successfully\nPlease check your inbox",
-                );
-                setSuccessVisible(true);
-              } catch (e) {
-                const msg =
-                  e instanceof ApiError ? e.message : "Failed to save profile";
-                Alert.alert("Error", msg);
-              } finally {
-                setLoading(false);
-              }
-            }}
+            disabled={!canSubmit || loading}
+            onPress={handleSubmit}
           >
             {loading ? (
               <ActivityIndicator color={neutral[0]} />

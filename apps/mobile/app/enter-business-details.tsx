@@ -1,11 +1,19 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
+import {
+  buildFullPhone,
+  Country,
+  DEFAULT_COUNTRY,
+  PhoneInput,
+} from "@/components/PhoneInput";
+import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { Colors } from "@/constants/theme";
-import { completeProfile } from "@/api/profile";
+import { completeProfile, getAuthUser } from "@/api/profile";
+import { getCities, getCountries, getStates } from "@/api/location";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +29,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, primary, neutral, text, background, border } = Colors;
+
+/**
+ * Users sometimes paste a full "STATE ZIP" string (e.g. "TN 38301" or
+ * "TN38301") into the zip field. Strip any leading state-code prefix and keep
+ * only the trailing digits so we submit a clean 5-digit ZIP.
+ */
+function sanitizeZip(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 5);
+}
 
 interface FieldProps {
   label: string;
@@ -57,19 +74,95 @@ function Field({
 
 export default function EnterBusinessDetailsScreen() {
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { method = "phone" } = useLocalSearchParams<{
+    method?: "phone" | "email";
+  }>();
+  const { user: authUser, setUser } = useAuth();
+
+  // When the user signed up by phone we collect their email; when they signed
+  // up by email we collect their phone instead.
+  const collectEmail = method === "phone";
 
   const [firstName, setFirstName] = useState(authUser?.user.user_fname ?? "");
   const [lastName, setLastName] = useState(authUser?.user.user_lname ?? "");
   const [email, setEmail] = useState(authUser?.user.user_email ?? "");
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [phone, setPhone] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
+    null,
+  );
+  const [selectedState, setSelectedState] = useState<SelectOption | null>(null);
+  const [selectedCity, setSelectedCity] = useState<SelectOption | null>(null);
   const [zip, setZip] = useState("");
   const [loading, setLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  const loadCountries = useCallback(
+    (search: string) => getCountries(search || undefined),
+    [],
+  );
+  const loadStates = useCallback(
+    (search: string) =>
+      selectedCountry
+        ? getStates(selectedCountry.id, search || undefined)
+        : Promise.resolve([]),
+    [selectedCountry],
+  );
+  const loadCities = useCallback(
+    (search: string) =>
+      selectedState
+        ? getCities(selectedState.id, search || undefined)
+        : Promise.resolve([]),
+    [selectedState],
+  );
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const phoneValid = phone.replace(/\D/g, "").length >= 7;
+  const canSubmit =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    (collectEmail ? emailValid : phoneValid) &&
+    businessName.trim().length > 0 &&
+    businessAddress.trim().length > 0 &&
+    !!selectedCountry &&
+    !!selectedState &&
+    !!selectedCity &&
+    zip.trim().length > 0;
+
+  async function handleSubmit() {
+    if (!selectedCountry || !selectedState || !selectedCity) return;
+    setLoading(true);
+    try {
+      await completeProfile({
+        providerType: "business",
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
+        phoneNumber: collectEmail ? undefined : buildFullPhone(country, phone),
+        businessName: businessName.trim(),
+        businessAddress: businessAddress.trim(),
+        countryId: selectedCountry.id,
+        stateId: selectedState.id,
+        cityId: selectedCity.id,
+        zipcode: zip.trim(),
+      });
+      getAuthUser().then(setUser).catch(() => {});
+      setSuccessMessage(
+        collectEmail
+          ? "Verification email sent successfully\nPlease check your inbox"
+          : "Your account is created successfully",
+      );
+      setSuccessVisible(true);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to save profile";
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -91,18 +184,30 @@ export default function EnterBusinessDetailsScreen() {
             value={firstName}
             onChangeText={setFirstName}
           />
-          <Field
-            label="Last Name"
-            value={lastName}
-            onChangeText={setLastName}
-          />
-          <Field
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <Field label="Last Name" value={lastName} onChangeText={setLastName} />
+
+          {collectEmail ? (
+            <Field
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          ) : (
+            <View style={styles.field}>
+              <Text style={styles.label}>
+                Phone Number <Text style={styles.required}>*</Text>
+              </Text>
+              <PhoneInput
+                country={country}
+                onCountryChange={setCountry}
+                phone={phone}
+                onPhoneChange={setPhone}
+              />
+            </View>
+          )}
+
           <Field
             label="Business Name"
             value={businessName}
@@ -113,17 +218,48 @@ export default function EnterBusinessDetailsScreen() {
             value={businessAddress}
             onChangeText={setBusinessAddress}
           />
-          <Field label="City" value={city} onChangeText={setCity} />
-          <Field
+
+          <SearchableSelect
+            label="Country"
+            required
+            placeholder="Select country"
+            value={selectedCountry}
+            loadOptions={loadCountries}
+            onSelect={(option) => {
+              setSelectedCountry(option);
+              setSelectedState(null);
+              setSelectedCity(null);
+            }}
+          />
+          <SearchableSelect
             label="State"
-            value={state}
-            onChangeText={setState}
-            autoCapitalize="characters"
+            required
+            placeholder="Select state"
+            value={selectedState}
+            loadOptions={loadStates}
+            reloadKey={selectedCountry?.id}
+            disabled={!selectedCountry}
+            disabledHint="Select a country first"
+            onSelect={(option) => {
+              setSelectedState(option);
+              setSelectedCity(null);
+            }}
+          />
+          <SearchableSelect
+            label="City"
+            required
+            placeholder="Select city"
+            value={selectedCity}
+            loadOptions={loadCities}
+            reloadKey={selectedState?.id}
+            disabled={!selectedState}
+            disabledHint="Select a state first"
+            onSelect={setSelectedCity}
           />
           <Field
             label="Zip code"
             value={zip}
-            onChangeText={setZip}
+            onChangeText={(value) => setZip(sanitizeZip(value))}
             keyboardType="number-pad"
           />
         </ScrollView>
@@ -137,33 +273,14 @@ export default function EnterBusinessDetailsScreen() {
             <Text style={styles.buttonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.button, styles.nextButton, loading && { opacity: 0.6 }]}
+            style={[
+              styles.button,
+              styles.nextButton,
+              (!canSubmit || loading) && { opacity: 0.6 },
+            ]}
             activeOpacity={0.85}
-            disabled={loading}
-            onPress={async () => {
-              setLoading(true);
-              try {
-                await completeProfile({
-                  providerType: "business",
-                  firstName,
-                  lastName,
-                  email,
-                  businessName,
-                  businessAddress,
-                  zipcode: zip,
-                });
-                setSuccessMessage(
-                  "Verification email sent successfully\nPlease check your inbox",
-                );
-                setSuccessVisible(true);
-              } catch (e) {
-                const msg =
-                  e instanceof ApiError ? e.message : "Failed to save profile";
-                Alert.alert("Error", msg);
-              } finally {
-                setLoading(false);
-              }
-            }}
+            disabled={!canSubmit || loading}
+            onPress={handleSubmit}
           >
             {loading ? (
               <ActivityIndicator color={neutral[0]} />

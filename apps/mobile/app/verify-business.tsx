@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/BackButton";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { uploadBusinessDoc } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -266,19 +267,7 @@ export default function VerifyBusinessScreen() {
         } as unknown as Blob);
       }
 
-      // upload doc to server and get back the hosted URL
-      const res = await fetch(`${API_BASE_URL}/uploads/business-docs`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error ?? "Upload failed. Please try again.");
-        return;
-      }
-
-      const json = (await res.json()) as UploadedDoc;
+      const json = (await uploadBusinessDoc(formData)) as UploadedDoc;
       if (docType === "registration") {
         update({ registrationDoc: json });
       } else {

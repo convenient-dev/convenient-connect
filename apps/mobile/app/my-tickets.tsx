@@ -1,6 +1,7 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getTickets } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -55,8 +56,7 @@ export default function MyTicketsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/tickets`)
-      .then((r) => r.json())
+    getTickets(userId)
       .then((data: Ticket[]) => {
         setAllTickets(data);
         setLoading(false);

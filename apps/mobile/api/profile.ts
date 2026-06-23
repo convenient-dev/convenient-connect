@@ -1,15 +1,24 @@
-import { laravelFetch } from "./client";
+import { laravelFetch, LARAVEL_API_BASE_URL } from "./client";
 import type { components } from "./generated/api-types";
 import type { AuthUserProfile } from "@/auth/AuthContext";
 
+type AuthUser = components["schemas"]["AuthUser"];
 type AuthUserProfileData = components["schemas"]["AuthUserProfileData"];
 type ProviderProfileData = components["schemas"]["ProviderProfileData"];
+
+const LARAVEL_HOST = LARAVEL_API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
+
+function toAbsoluteUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${LARAVEL_HOST}${path}`;
+}
 
 function mapAuthUserProfile(data: AuthUserProfileData): AuthUserProfile {
   return {
     user: data.user!,
     providerType: (data.provider_type as AuthUserProfile["providerType"]) ?? null,
-    profileImage: data.profile_image ?? null,
+    profileImage: toAbsoluteUrl(data.profile_image),
     backgroundVerification: data.background_verification ?? false,
     businessVerification: data.business_verification ?? false,
     business: data.business
@@ -67,4 +76,101 @@ export async function completeProfile(params: {
     user: data.user!,
     providerType: data.provider_type!,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Account Settings
+// ---------------------------------------------------------------------------
+
+const SETTINGS_PREFIX = "/service-provider/account-settings";
+
+export async function updateName(
+  firstName: string,
+  lastName: string,
+): Promise<AuthUser> {
+  return laravelFetch<AuthUser>(`${SETTINGS_PREFIX}/update-name`, {
+    method: "POST",
+    body: { first_name: firstName, last_name: lastName },
+  });
+}
+
+export async function getAboutMe(): Promise<string | null> {
+  const data = await laravelFetch<{ about_me?: string | null }>(
+    `${SETTINGS_PREFIX}/about-me`,
+  );
+  return data.about_me ?? null;
+}
+
+export async function updateAboutMe(aboutMe: string): Promise<string | null> {
+  const data = await laravelFetch<{ about_me?: string | null }>(
+    `${SETTINGS_PREFIX}/about-me`,
+    { method: "POST", body: { about_me: aboutMe } },
+  );
+  return data.about_me ?? null;
+}
+
+export async function updateProfileImage(
+  formData: FormData,
+): Promise<string | null> {
+  const data = await laravelFetch<{ profile_image?: string | null }>(
+    `${SETTINGS_PREFIX}/profile-image`,
+    { method: "POST", body: formData, isFormData: true },
+  );
+  return toAbsoluteUrl(data.profile_image);
+}
+
+export async function requestPhoneOtp(phone: string): Promise<void> {
+  await laravelFetch<unknown>(`${SETTINGS_PREFIX}/update-phone/request-otp`, {
+    method: "POST",
+    body: { phone_number: phone },
+  });
+}
+
+export async function verifyPhoneOtp(
+  phone: string,
+  otp: string,
+): Promise<AuthUser> {
+  return laravelFetch<AuthUser>(`${SETTINGS_PREFIX}/update-phone/verify-otp`, {
+    method: "POST",
+    body: { phone_number: phone, otp },
+  });
+}
+
+export async function resendPhoneOtp(phone: string): Promise<void> {
+  await laravelFetch<unknown>(`${SETTINGS_PREFIX}/update-phone/resend-otp`, {
+    method: "POST",
+    body: { phone_number: phone },
+  });
+}
+
+export async function requestEmailOtp(email: string): Promise<void> {
+  await laravelFetch<unknown>(`${SETTINGS_PREFIX}/update-email/request-otp`, {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function verifyEmailOtp(
+  email: string,
+  otp: string,
+): Promise<AuthUser> {
+  return laravelFetch<AuthUser>(`${SETTINGS_PREFIX}/update-email/verify-otp`, {
+    method: "POST",
+    body: { email, otp },
+  });
+}
+
+export async function resendEmailOtp(email: string): Promise<void> {
+  await laravelFetch<unknown>(`${SETTINGS_PREFIX}/update-email/resend-otp`, {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function submitBackgroundCheck(): Promise<boolean> {
+  const data = await laravelFetch<{ background_verification?: boolean }>(
+    `${SETTINGS_PREFIX}/background-check`,
+    { method: "POST" },
+  );
+  return data.background_verification ?? false;
 }

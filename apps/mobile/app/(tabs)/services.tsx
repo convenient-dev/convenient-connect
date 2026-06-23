@@ -5,7 +5,8 @@ import {
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
 import Divider from "@/components/ui/divider";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getUserServices } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -202,8 +203,7 @@ export default function ServicesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/${userId}/services?deleted=false`)
-        .then((res) => res.json())
+      getUserServices(userId, false)
         .then((data: Service[]) => setServices(data))
         .finally(() => setLoading(false));
     }, [userId]),

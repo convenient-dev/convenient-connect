@@ -1,5 +1,5 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { API_BASE_URL } from "@/constants/session";
+import { getCategories } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -69,8 +69,7 @@ export default function CreateServiceCategoryScreen() {
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/categories`)
-      .then((r) => r.json())
+    getCategories()
       .then((data) => {
         setCategories(data);
         setLoading(false);

@@ -1,6 +1,7 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getTicket } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -63,9 +64,8 @@ export default function TicketDetailScreen() {
       setLoading(false);
       return;
     }
-    fetch(`${API_BASE_URL}/users/${userId}/tickets/${id}`)
-      .then(async (r) => (r.ok ? ((await r.json()) as TicketDetail) : null))
-      .then((data) => {
+    getTicket(userId, id)
+      .then((data: TicketDetail) => {
         setTicket(data);
         setLoading(false);
       })

@@ -1,6 +1,7 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useAuth } from "@/auth/AuthContext";
+import { getUserCategories } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -17,10 +18,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
-
-// The Stripe status endpoint lives at /api/stripe/... (no /api prefix on
-// API_BASE_URL's path), so derive the host root once.
-const WEB_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 interface UserProfile {
   firstName: string | null;
@@ -118,19 +115,31 @@ function ProfileRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userId } = useCurrentUser();
+  const { user: authUser } = useAuth();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [stripeStatus, setStripeStatus] = useState<StripeAccountStatus | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
 
+  const user: UserProfile | null = authUser
+    ? {
+        firstName: authUser.user.user_fname ?? null,
+        lastName: authUser.user.user_lname ?? null,
+        email: authUser.user.user_email ?? null,
+        phoneNumber: authUser.user.user_contact ?? null,
+        isPersonVerified: authUser.backgroundVerification,
+        emailVerified: authUser.user.email_verified,
+        phoneVerified: authUser.user.phone_verified,
+        avatarUrl: authUser.profileImage,
+        accountType: authUser.providerType ?? "individual",
+        aboutMe: null,
+        stripeAccountId: null,
+      }
+    : null;
+
   function handleBack() {
-    // When we arrive from the background-check flow, we want the back button
-    // to land on the home tab with the side menu open instead of unwinding
-    // the (already-replaced) background-check stack.
     if (from === "background-check") {
       router.replace({ pathname: "/(tabs)", params: { openMenu: "1" } });
       return;
@@ -140,37 +149,21 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!authUser?.user.user_id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      Promise.all([
-        fetch(`${API_BASE_URL}/users/${userId}`).then((res) => res.json()),
-        fetch(`${API_BASE_URL}/users/${userId}/categories`)
-          .then((res) => res.json())
-          .catch(() => [] as UserCategory[]),
-      ])
-        .then(async ([userData, cats]: [UserProfile, UserCategory[]]) => {
-          setUser(userData);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 5000),
+      );
+      Promise.race([getUserCategories(authUser.user.user_id), timeout])
+        .then((cats: UserCategory[]) => {
           setCategories((cats ?? []).map((c) => c.name));
-
-          // If the user has a Stripe Connect account, pull live onboarding
-          // status. The screen re-runs on focus (useFocusEffect) so coming
-          // back from the background-check flow always reflects the truth
-          // from Stripe — no manual refresh needed.
-          if (userData.stripeAccountId) {
-            try {
-              const res = await fetch(
-                `${WEB_BASE_URL}/api/stripe/accounts/${userData.stripeAccountId}/status`,
-              );
-              if (res.ok) setStripeStatus(await res.json());
-              else setStripeStatus(null);
-            } catch {
-              setStripeStatus(null);
-            }
-          } else {
-            setStripeStatus(null);
-          }
         })
+        .catch(() => setCategories([]))
         .finally(() => setLoading(false));
-    }, [userId]),
+    }, [authUser?.user.user_id]),
   );
 
   const fullName = useMemo(() => {
@@ -193,24 +186,11 @@ export default function ProfileScreen() {
   const profileTypeLabel =
     user?.accountType === "business" ? "Business" : "Individual";
 
-  // Background-check completion is derived from the Stripe Connect account:
-  //   - complete: onboarding finished AND the recipient capability is active
-  //   - pending:  account exists but Stripe is still waiting on info
-  //   - none:     user never started the flow
-  // We fall back to the legacy backgroundCheckStatus field if Stripe info
-  // isn't available (e.g. account ID missing or status fetch failed).
-  const hasStripeAccount = !!user?.stripeAccountId;
-  const backgroundComplete = stripeStatus
-    ? stripeStatus.onboardingComplete && stripeStatus.readyToReceivePayments
-    : user?.backgroundCheckStatus === "complete";
-  const backgroundPending =
-    hasStripeAccount && stripeStatus != null && !backgroundComplete;
+  const backgroundComplete = authUser?.backgroundVerification ?? false;
 
   const backgroundLabel = backgroundComplete
     ? "Background check complete"
-    : backgroundPending
-      ? "Verification in progress"
-      : "Please complete your background check";
+    : "Please complete your background check";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -293,7 +273,7 @@ export default function ProfileScreen() {
             label="Phone Number"
             value={user?.phoneNumber ?? "—"}
             valueMuted
-            trailingIcon="verified"
+            trailingIcon={user?.phoneVerified ? "verified" : undefined}
             onPress={() =>
               router.push({
                 pathname: "/update-phone",
@@ -307,7 +287,7 @@ export default function ProfileScreen() {
             label="Email"
             value={user?.email ?? "—"}
             valueMuted
-            trailingIcon="verified"
+            trailingIcon={user?.emailVerified ? "verified" : undefined}
             onPress={() =>
               router.push({
                 pathname: "/update-email",
@@ -341,19 +321,7 @@ export default function ProfileScreen() {
             value={backgroundLabel}
             valueMuted
             trailingIcon={backgroundComplete ? "verified" : "warning"}
-            onPress={() => {
-              // If onboarding is mid-flight, jump straight to the status
-              // screen (it can refresh against Stripe). Otherwise start
-              // the flow from the beginning.
-              if (backgroundPending && user?.stripeAccountId) {
-                router.push({
-                  pathname: "/background-check-4",
-                  params: { accountId: user.stripeAccountId },
-                });
-              } else {
-                router.push("/background-check-1");
-              }
-            }}
+            onPress={() => router.push("/background-check-1")}
           />
           <View style={styles.rowDivider} />
 

@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { legacyFetch } from "@/api/client";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -45,19 +46,13 @@ export default function DeleteServiceReasonScreen() {
     setError(null);
     try {
       const reason = selected === "Other" ? otherText.trim() : selected;
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/services/${id}`, {
+      await legacyFetch(`/users/${userId}/services/${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: { reason },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to delete. Please try again.");
-        return;
-      }
       router.replace("/(tabs)/services");
-    } catch {
-      setError("Network error. Please check your connection.");
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to delete. Please try again.");
     } finally {
       setDeleting(false);
     }

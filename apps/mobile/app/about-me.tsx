@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { updateAboutMe } from "@/api/profile";
+import { ApiError } from "@/api/client";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -21,7 +22,6 @@ const { secondary, neutral, text, background, border } = Colors;
 export default function AboutMeScreen() {
   const router = useRouter();
   const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
-  const { userId } = useCurrentUser();
 
   const [value, setValue] = useState<string>(initial ?? "");
   const [saving, setSaving] = useState(false);
@@ -31,17 +31,12 @@ export default function AboutMeScreen() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aboutMe: value.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Failed to save. Please try again.");
-        return;
-      }
+      await updateAboutMe(value.trim());
       router.back();
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Failed to save. Please try again.",
+      );
     } finally {
       setSaving(false);
     }

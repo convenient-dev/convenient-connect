@@ -1,4 +1,5 @@
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { getService } from "@/api/legacy";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { BackButton } from "@/components/BackButton";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -31,8 +32,7 @@ export default function EditServiceCategoryScreen() {
   const [categoryName, setCategoryName] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/users/${userId}/services/${id}`)
-      .then((r) => r.json())
+    getService(userId, id)
       .then((data: ServiceCategory) => {
         setSubcategoryName(data.subcategory?.name ?? null);
         setCategoryName(data.subcategory?.category.name ?? null);

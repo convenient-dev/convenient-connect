@@ -1,5 +1,6 @@
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getSubcategory, getLegacyUser, getUserAffiliations, createService, uploadImage, uploadPdf } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -165,8 +166,7 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (!subcategoryId) return;
-    fetch(`${API_BASE_URL}/subcategories/${subcategoryId}`)
-      .then((r) => r.json())
+    getSubcategory(subcategoryId)
       .then((data: SubcategoryData) => setSubcategoryData(data))
       .catch(() => {});
   }, [subcategoryId]);
@@ -306,8 +306,7 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (serviceMode === "business") return;
-    fetch(`${API_BASE_URL}/users/${userId}`)
-      .then((r) => r.json())
+    getLegacyUser(userId)
       .then((user) => {
         const addresses: Address[] = user?.address ?? [];
         setSavedAddresses(addresses);
@@ -322,8 +321,7 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (serviceMode !== "business" || !businessAffiliationId) return;
-    fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
-      .then((r) => r.json())
+    getUserAffiliations(userId)
       .then(
         (
           businesses: {
@@ -550,21 +548,7 @@ export default function CreateServiceFormScreen() {
           })),
       };
 
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/services`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setSubmitError(
-          data?.error ?? "Something went wrong. Please try again.",
-        );
-        return;
-      }
-
-      const service = await res.json();
+      const service = await createService(userId, body);
 
       // Upload selected images to the service_images bucket
       if (selectedImages.length > 0) {
@@ -596,15 +580,7 @@ export default function CreateServiceFormScreen() {
               } as unknown as Blob);
             }
 
-            const uploadRes = await fetch(`${API_BASE_URL}/uploads/images`, {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!uploadRes.ok) {
-              const data = await uploadRes.json();
-              throw new Error(data?.error ?? "Image upload failed");
-            }
+            await uploadImage(formData);
           }),
         );
 
@@ -651,15 +627,7 @@ export default function CreateServiceFormScreen() {
               } as unknown as Blob);
             }
 
-            const uploadRes = await fetch(`${API_BASE_URL}/uploads/pdfs`, {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!uploadRes.ok) {
-              const data = await uploadRes.json();
-              throw new Error(data?.error ?? "PDF upload failed");
-            }
+            await uploadPdf(formData);
           }),
         );
 

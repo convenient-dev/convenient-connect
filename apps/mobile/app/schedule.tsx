@@ -2,7 +2,8 @@ import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getAvailability, toggleAvailability, setWeeklySlots, setOverrides } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -219,8 +220,7 @@ export default function ScheduleScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/${userId}/availability`)
-        .then((res) => res.json())
+      getAvailability(userId)
         .then((data: AvailabilityResponse) => {
           setAvailable(data.availabilityEnabled);
 
@@ -524,39 +524,8 @@ export default function ScheduleScreen() {
 
     setSaving(true);
     try {
-      const weeklyRes = await fetch(
-        `${API_BASE_URL}/users/${userId}/availability/weekly`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slots }),
-        },
-      );
-      if (!weeklyRes.ok) {
-        const data = await weeklyRes.json().catch(() => ({}));
-        Alert.alert(
-          "Couldn't save",
-          data?.error ?? "Failed to save. Please try again.",
-        );
-        return;
-      }
-
-      const overrideRes = await fetch(
-        `${API_BASE_URL}/users/${userId}/availability/overrides`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ overrides }),
-        },
-      );
-      if (!overrideRes.ok) {
-        const data = await overrideRes.json().catch(() => ({}));
-        Alert.alert(
-          "Couldn't save",
-          data?.error ?? "Failed to save overrides. Please try again.",
-        );
-        return;
-      }
+      await setWeeklySlots(userId, { slots });
+      await setOverrides(userId, { overrides });
 
       const latest =
         (lastOverrideDate &&
@@ -594,19 +563,7 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOn() {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/availability`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ availabilityEnabled: true }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        Alert.alert(
-          "Couldn't update",
-          data?.error ?? "Failed to update. Please try again.",
-        );
-        return;
-      }
+      await toggleAvailability(userId, { availabilityEnabled: true });
       setAvailable(true);
     } catch {
       Alert.alert("Couldn't update", "Network error. Please try again.");
@@ -621,19 +578,7 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOff() {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/availability`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ availabilityEnabled: false }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        Alert.alert(
-          "Couldn't update",
-          data?.error ?? "Failed to update. Please try again.",
-        );
-        return;
-      }
+      await toggleAvailability(userId, { availabilityEnabled: false });
       setAvailable(false);
     } finally {
       setConfirmOffVisible(false);

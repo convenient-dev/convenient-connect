@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/BackButton";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getUserAffiliations } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -48,8 +49,7 @@ export default function AffiliationsScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/${userId}/affiliations`)
-        .then((res) => res.json())
+      getUserAffiliations(userId)
         .then((data: Affiliation[]) => setAffiliations(data ?? []))
         .catch(() => setAffiliations([]))
         .finally(() => setLoading(false));

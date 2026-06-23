@@ -1,6 +1,7 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { createTicket } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -57,23 +58,11 @@ export default function SubmitTicketScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/tickets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topicKey,
-          subject: trimmedSubject,
-          description: trimmedDescription,
-        }),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setErrorMessage(data?.error ?? "Couldn't submit your ticket. Please try again.");
-        return;
-      }
-      const data = (await res.json()) as { id: string };
+      const data = await createTicket(userId, {
+        topicKey,
+        subject: trimmedSubject,
+        description: trimmedDescription,
+      }) as { id: string };
       setSubmittedTicketId(data.id);
       setSubmitted(true);
     } catch {

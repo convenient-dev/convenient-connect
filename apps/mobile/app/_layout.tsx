@@ -32,10 +32,6 @@ export default function RootLayout() {
               <Stack.Screen name="(earnings)" />
               <Stack.Screen name="(account)" />
               <Stack.Screen name="(support)" />
-              <Stack.Screen
-                name="modal"
-                options={{ presentation: "modal", title: "Modal" }}
-              />
             </Stack>
           </BusinessSignupProvider>
         </AuthProvider>

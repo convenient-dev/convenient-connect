@@ -9,8 +9,8 @@ import {
 } from "@/components/PhoneInput";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
@@ -44,17 +44,23 @@ const SOCIAL_OPTIONS: SocialOption[] = [
   {
     key: "gmail",
     label: "Continue with Gmail",
-    icon: <MaterialCommunityIcons name="gmail" size={24} color="#EA4335" />,
-  },
-  {
-    key: "email",
-    label: "Continue with Email",
-    icon: <MaterialIcons name="mail-outline" size={24} color={neutral[800]} />,
+    icon: (
+      <ExpoImage
+        source={require("@/assets/global-icons/gmail-logo.svg")}
+        style={{ width: 18, height: 18 }}
+        contentFit="contain"
+      />
+    ),
   },
   {
     key: "apple",
     label: "Continue with Apple",
     icon: <Ionicons name="logo-apple" size={24} color={neutral[900]} />,
+  },
+  {
+    key: "email",
+    label: "Continue with Email",
+    icon: <MaterialIcons name="mail-outline" size={24} color={neutral[800]} />,
   },
 ];
 

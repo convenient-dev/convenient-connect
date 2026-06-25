@@ -37,6 +37,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ConvenientConnect to use your location to find and save your address."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow ConvenientConnect to access your photos to upload service images.",

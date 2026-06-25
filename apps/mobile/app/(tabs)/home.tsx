@@ -5,14 +5,21 @@ import {
 } from "@/components/BookingRequestCard";
 import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
+import { AddressModal } from "@/components/AddressModal";
+import {
+  createAddress,
+  getDefaultAddress,
+  type Address,
+  type ResolvedLocation,
+} from "@/api/address";
 import { getUserServices } from "@/api/legacy";
 import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage, ImageSource } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -90,6 +97,8 @@ export default function HomeScreen() {
 
   const [services, setServices] = useState<MyServiceCardData[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
   const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
     new Set(),
   );
@@ -101,6 +110,32 @@ export default function HomeScreen() {
   function acceptRequest(id: string) {
     // setAcceptedRequests((prev) => new Set(prev).add(id));
     // TODO: Call API to accept the request, then update state based on response.
+  }
+
+  // Gate the onboarding prompt so it only appears once per landing, not on
+  // every screen focus.
+  const promptedForAddress = useRef(false);
+
+  const refreshDefaultAddress = useCallback(() => {
+    getDefaultAddress()
+      .then((address) => {
+        setDefaultAddress(address);
+        // Final onboarding step: prompt for an address once if none is set yet.
+        if (!address && !promptedForAddress.current) {
+          promptedForAddress.current = true;
+          setAddressModalOpen(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Re-fetch when returning from the add-address screen so the header stays current.
+  useFocusEffect(refreshDefaultAddress);
+
+  async function handleUseCurrentLocation(location: ResolvedLocation) {
+    const saved = await createAddress({ ...location, is_default: true });
+    setDefaultAddress(saved);
+    setAddressModalOpen(false);
   }
 
   useEffect(() => {
@@ -163,14 +198,18 @@ export default function HomeScreen() {
 
           {/* Address + Menu */}
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.locationRow}>
+            <TouchableOpacity
+              style={styles.locationRow}
+              activeOpacity={0.7}
+              onPress={() => router.push("/add-address")}
+            >
               <Ionicons
                 name="location-outline"
                 size={22}
                 color={primary[400]}
               />
               <Text style={styles.locationText} numberOfLines={1}>
-                {authUser?.user.user_address ?? "—"}
+                {defaultAddress?.address ?? authUser?.user.user_address ?? "—"}
               </Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
@@ -306,6 +345,15 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+      <AddressModal
+        visible={addressModalOpen}
+        onClose={() => setAddressModalOpen(false)}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        onAddAddress={() => {
+          setAddressModalOpen(false);
+          router.push("/add-address");
+        }}
+      />
       <SideMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}

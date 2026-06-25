@@ -174,3 +174,38 @@ export async function submitBackgroundCheck(): Promise<boolean> {
   );
   return data.background_verification ?? false;
 }
+
+// ---------------------------------------------------------------------------
+// Account Deletion
+// ---------------------------------------------------------------------------
+
+export type DeleteAccountChannel = "phone" | "email";
+
+/**
+ * Sends a delete-account OTP to the authenticated user's phone or email.
+ * Returns the destination the OTP was delivered to.
+ */
+export async function sendDeleteAccountOtp(
+  deliveryType: DeleteAccountChannel,
+): Promise<string> {
+  const data = await laravelFetch<{ sent_to?: string }>(
+    "/service-provider/send-delete-account-otp",
+    { method: "POST", body: { delivery_type: deliveryType } },
+  );
+  return data.sent_to ?? "";
+}
+
+/**
+ * Verifies the delete-account OTP and permanently deactivates the account.
+ * On success the backend revokes all tokens, so callers must clear local auth.
+ */
+export async function deleteUserAccount(
+  otp: string,
+  deliveryType: DeleteAccountChannel,
+  deviceToken?: string,
+): Promise<void> {
+  await laravelFetch<string>("/service-provider/delete-user-acount", {
+    method: "POST",
+    body: { otp, delivery_type: deliveryType, device_token: deviceToken },
+  });
+}

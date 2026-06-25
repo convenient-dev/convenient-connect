@@ -1,12 +1,13 @@
-import { ScreenHeader } from "@/components/ScreenHeader";
+import { ApiError } from "@/api/client";
+import { requestPhoneOtp } from "@/api/profile";
 import {
+  buildFullPhone,
   Country,
   DEFAULT_COUNTRY,
   parseInitialPhone,
   toCountry,
 } from "@/components/PhoneInput";
-import { requestPhoneOtp } from "@/api/profile";
-import { ApiError } from "@/api/client";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,9 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import CountryPicker, {
-  CountryCode,
-} from "react-native-country-picker-modal";
+import CountryPicker, { CountryCode } from "react-native-country-picker-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { secondary, neutral, text, background, border } = Colors;
@@ -64,7 +63,7 @@ export default function UpdatePhoneScreen() {
       ? INVALID_PHONE_MESSAGE
       : null;
 
-  const fullNumber = `${country.dial} ${trimmed}`.trim();
+  const fullNumber = buildFullPhone(country, trimmed);
   const initialFull = (initial ?? "").trim();
   const isChanged = fullNumber !== initialFull;
   const canSave = trimmed.length > 0 && !phoneError && isChanged && !saving;
@@ -73,15 +72,16 @@ export default function UpdatePhoneScreen() {
     setSaving(true);
     setError(null);
     try {
-      const cleanNumber = fullNumber.replace(/-/g, "");
-      await requestPhoneOtp(cleanNumber);
+      await requestPhoneOtp(fullNumber);
       router.push({
         pathname: "/verify-phone-otp",
-        params: { phone: cleanNumber },
+        params: { phone: fullNumber },
       });
     } catch (e) {
       setError(
-        e instanceof ApiError ? e.message : "Failed to send OTP. Please try again.",
+        e instanceof ApiError
+          ? e.message
+          : "Failed to send OTP. Please try again.",
       );
     } finally {
       setSaving(false);

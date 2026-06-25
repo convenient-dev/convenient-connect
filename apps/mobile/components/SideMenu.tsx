@@ -169,6 +169,10 @@ export function SideMenu({
       key: "delete-account",
       label: "Delete Account",
       icon: require("@/assets/side-menu/delete.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/delete-account");
+      },
     },
   ];
 

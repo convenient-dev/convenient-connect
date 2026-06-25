@@ -1,6 +1,9 @@
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
+import {
+  type CountryCode as LibCountryCode,
+  parsePhoneNumberFromString,
+} from "libphonenumber-js";
 import React from "react";
 import {
   StyleSheet,
@@ -164,8 +167,20 @@ export function PhoneInput({
   );
 }
 
-/** Strips spaces/dashes and prefixes the dial code for API submission. */
+/**
+ * Normalize the selected country + local number into E.164 (e.g. "+12015550123")
+ * for API submission. libphonenumber-js parses the local number against the
+ * picked territory, dropping formatting (spaces/dashes/parens) and any national
+ * trunk prefix (UK "07911 123456" → "+447911123456"). Falls back to a naive
+ * dial-code concatenation when the number can't be parsed, so callers still get
+ * a best-effort value for unsupported or partial input.
+ */
 export function buildFullPhone(country: Country, phone: string): string {
+  const parsed = parsePhoneNumberFromString(
+    phone,
+    country.code as LibCountryCode,
+  );
+  if (parsed) return parsed.format("E.164");
   return `${country.dial}${phone.replace(/[\s-]+/g, "")}`;
 }
 

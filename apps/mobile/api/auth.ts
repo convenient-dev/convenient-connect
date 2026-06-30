@@ -1,4 +1,4 @@
-import { laravelFetch } from "./client";
+import { laravelFetch, toAbsoluteUrl } from "./client";
 import type { components } from "./generated/api-types";
 
 type OtpLoginData = components["schemas"]["OtpLoginData"];
@@ -17,7 +17,7 @@ function mapLoginData(data: OtpLoginData): LoginResult {
     accessToken: data.access_token!,
     user: data.user!,
     providerType: (data.provider_type as LoginResult["providerType"]) ?? null,
-    profileImage: data.profile_image ?? null,
+    profileImage: toAbsoluteUrl(data.profile_image),
     backgroundVerification: data.background_verification ?? false,
     businessVerification: data.business_verification ?? false,
   };

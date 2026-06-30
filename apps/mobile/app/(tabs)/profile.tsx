@@ -1,4 +1,5 @@
 import { getUserCategories } from "@/api/legacy";
+import { getAboutMe } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -118,6 +119,7 @@ export default function ProfileScreen() {
   const { user: authUser } = useAuth();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [categories, setCategories] = useState<string[]>([]);
+  const [aboutMe, setAboutMe] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeAccountStatus | null>(
     null,
   );
@@ -134,7 +136,7 @@ export default function ProfileScreen() {
         phoneVerified: authUser.user.phone_verified,
         avatarUrl: authUser.profileImage,
         accountType: authUser.providerType ?? "individual",
-        aboutMe: null,
+        aboutMe,
         stripeAccountId: null,
       }
     : null;
@@ -163,6 +165,13 @@ export default function ProfileScreen() {
         })
         .catch(() => setCategories([]))
         .finally(() => setLoading(false));
+
+      // Load the saved About Me text so the row reflects the latest value and
+      // we can seed the editor with it. Refreshes on every focus, including
+      // when returning from the About Me screen after a save.
+      getAboutMe()
+        .then((text) => setAboutMe(text))
+        .catch(() => {});
     }, [authUser?.user.user_id]),
   );
 

@@ -7,6 +7,16 @@ export const LARAVEL_API_BASE_URL =
 export const LEGACY_API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
+// The API returns storage paths relative to the host (e.g. "/storage/...").
+const LARAVEL_HOST = LARAVEL_API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
+
+/** Resolves a relative storage path from the API into an absolute URL. */
+export function toAbsoluteUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${LARAVEL_HOST}${path}`;
+}
+
 export class ApiError extends Error {
   statusCode: number;
 

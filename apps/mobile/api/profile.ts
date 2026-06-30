@@ -1,18 +1,10 @@
-import { laravelFetch, LARAVEL_API_BASE_URL } from "./client";
+import { laravelFetch, toAbsoluteUrl } from "./client";
 import type { components } from "./generated/api-types";
 import type { AuthUserProfile } from "@/auth/AuthContext";
 
 type AuthUser = components["schemas"]["AuthUser"];
 type AuthUserProfileData = components["schemas"]["AuthUserProfileData"];
 type ProviderProfileData = components["schemas"]["ProviderProfileData"];
-
-const LARAVEL_HOST = LARAVEL_API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
-
-function toAbsoluteUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${LARAVEL_HOST}${path}`;
-}
 
 function mapAuthUserProfile(data: AuthUserProfileData): AuthUserProfile {
   return {

@@ -47,7 +47,7 @@ export default function AddAddressScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Debounce timer ref for real-time search
-  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadAddresses = React.useCallback(async () => {
     let list = await listAddresses();

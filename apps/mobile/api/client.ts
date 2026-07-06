@@ -69,6 +69,13 @@ export async function laravelFetch<T>(
     headers["Accept"] = "application/json";
   }
 
+  // Prevent iOS URLSession caching
+  if (method === "GET") {
+    headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    headers["Pragma"] = "no-cache";
+    headers["Expires"] = "0";
+  }
+
   const url = `${LARAVEL_API_BASE_URL}${path}`;
 
   const res = await fetch(url, {

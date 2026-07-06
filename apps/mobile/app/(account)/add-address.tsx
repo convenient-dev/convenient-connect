@@ -1,4 +1,3 @@
-import { ApiError } from "@/api/client";
 import {
   Address,
   createAddress,
@@ -10,6 +9,7 @@ import {
   searchAddresses,
   updateAddress,
 } from "@/api/address";
+import { ApiError } from "@/api/client";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -46,18 +46,11 @@ export default function AddAddressScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debounce timer ref for real-time search
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   const loadAddresses = React.useCallback(async () => {
     let list = await listAddresses();
-    // A lone address is always the default — promote it if the backend didn't.
-    if (list.length === 1 && !list[0].isDefault) {
-      const promoted = await updateAddress(list[0].id, {
-        address: list[0].address,
-        latitude: list[0].latitude,
-        longitude: list[0].longitude,
-        is_default: true,
-      });
-      list = [promoted];
-    }
     setAddresses(list);
     setSelectedId((prev) => prev ?? list.find((a) => a.isDefault)?.id ?? null);
     return list;
@@ -66,7 +59,9 @@ export default function AddAddressScreen() {
   useEffect(() => {
     loadAddresses()
       .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Failed to load addresses."),
+        setError(
+          e instanceof ApiError ? e.message : "Failed to load addresses.",
+        ),
       )
       .finally(() => setLoading(false));
   }, [loadAddresses]);
@@ -77,12 +72,61 @@ export default function AddAddressScreen() {
     return fallback;
   }
 
+  // Debounced search effect - triggers search as user types
+  useEffect(() => {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Don't search if query is empty or too short
+    if (query.trim().length < 3) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+
+    // Set new timeout for debounced search (300ms delay)
+    searchTimeoutRef.current = setTimeout(async () => {
+      const trimmed = query.trim();
+      if (!trimmed) return;
+
+      setSearching(true);
+      setSearched(true);
+      setError(null);
+
+      try {
+        const matches = await searchAddresses(trimmed);
+        setResults(matches);
+      } catch (e) {
+        setResults([]);
+        setError(messageFor(e, "Address search failed. Please try again."));
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    // Cleanup on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [query]);
+
   async function handleSearchSubmit() {
     const trimmed = query.trim();
     if (!trimmed || searching) return;
+
+    // Clear debounce timer and search immediately
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     setSearching(true);
     setSearched(true);
     setError(null);
+
     try {
       const matches = await searchAddresses(trimmed);
       setResults(matches);
@@ -193,17 +237,13 @@ export default function AddAddressScreen() {
           <TextInput
             style={styles.searchInput}
             value={query}
-            onChangeText={(value) => {
-              setQuery(value);
-              if (value.trim() === "") {
-                setResults([]);
-                setSearched(false);
-              }
-            }}
+            onChangeText={setQuery}
             placeholder="Search for an address"
             placeholderTextColor={neutral[400]}
             returnKeyType="search"
             onSubmitEditing={handleSearchSubmit}
+            autoCorrect={false}
+            autoCapitalize="words"
           />
           {searching ? (
             <ActivityIndicator color={neutral[400]} />
@@ -236,11 +276,7 @@ export default function AddAddressScreen() {
                     color={neutral[500]}
                   />
                   <Text style={styles.resultText}>{place.address}</Text>
-                  <MaterialIcons
-                    name="add"
-                    size={22}
-                    color={secondary[500]}
-                  />
+                  <MaterialIcons name="add" size={22} color={secondary[500]} />
                 </TouchableOpacity>
               ))
             )}
@@ -257,7 +293,11 @@ export default function AddAddressScreen() {
           {locating ? (
             <ActivityIndicator color={secondary[500]} />
           ) : (
-            <MaterialIcons name="my-location" size={22} color={secondary[500]} />
+            <MaterialIcons
+              name="my-location"
+              size={22}
+              color={secondary[500]}
+            />
           )}
           <Text style={styles.currentLocationText}>My Current Location</Text>
         </TouchableOpacity>
@@ -290,7 +330,11 @@ export default function AddAddressScreen() {
                       hitSlop={8}
                       onPress={() => handleRemove(address.id)}
                     >
-                      <MaterialIcons name="close" size={14} color={neutral[0]} />
+                      <MaterialIcons
+                        name="close"
+                        size={14}
+                        color={neutral[0]}
+                      />
                     </TouchableOpacity>
                   )}
                   <MaterialIcons

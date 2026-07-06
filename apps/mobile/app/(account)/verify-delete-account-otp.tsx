@@ -112,17 +112,35 @@ export default function VerifyDeleteAccountOtpScreen() {
     if (!channel) return;
     setLoading(true);
     try {
+      console.log("[DELETE] Starting account deletion...");
       await deleteUserAccount(digits.join(""), channel);
+      console.log("[DELETE] Account deletion API call succeeded");
       setModal({
         icon: "success",
         title: "Account Deleted",
         message: "Your account has been deleted successfully.",
         onConfirm: async () => {
-          await auth.logout();
-          router.replace("/");
+          console.log("[DELETE] Modal confirmed, starting logout...");
+          try {
+            await auth.logout();
+            console.log("[DELETE] Logout completed successfully");
+
+            // Verify token was actually cleared
+            const { getToken } = await import("@/auth/token-store");
+            const remainingToken = await getToken();
+            console.log("[DELETE] Token verification after logout:", remainingToken ? "STILL EXISTS!" : "cleared");
+
+            console.log("[DELETE] Navigating to home...");
+            router.replace("/");
+            console.log("[DELETE] Navigation completed");
+          } catch (error) {
+            console.error("[DELETE] Logout failed:", error);
+            router.replace("/");
+          }
         },
       });
     } catch (e) {
+      console.error("[DELETE] Account deletion failed:", e);
       const msg = e instanceof ApiError ? e.message : "Verification failed";
       setModal({
         icon: "error",
@@ -222,10 +240,12 @@ export default function VerifyDeleteAccountOtpScreen() {
         title={modal?.title ?? ""}
         message={modal?.message ?? ""}
         confirmLabel="Okay"
-        onConfirm={() => {
+        onConfirm={async () => {
           const onConfirm = modal?.onConfirm;
           setModal(null);
-          onConfirm?.();
+          if (onConfirm) {
+            await onConfirm();
+          }
         }}
       />
     </SafeAreaView>

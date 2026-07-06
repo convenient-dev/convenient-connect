@@ -48,9 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
 
   const logout = useCallback(async () => {
+    console.log("[AUTH] Starting logout...");
+    console.log("[AUTH] Clearing token from storage...");
     await clearToken();
+    console.log("[AUTH] Token cleared from storage");
     setTokenState(null);
     setUser(null);
+    console.log("[AUTH] Auth state cleared, logout complete");
   }, []);
 
   useEffect(() => {
@@ -61,17 +65,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      console.log("[AUTH] Checking for stored token on app start...");
       const storedToken = await getToken();
       if (storedToken) {
+        console.log("[AUTH] Found stored token, fetching user profile...");
         setTokenState(storedToken);
         try {
           const { getAuthUser } = await import("@/api/profile");
           const profile = await getAuthUser();
+
+          // Validate profile data
+          if (!profile.user || !profile.user.id) {
+            console.log("[AUTH] Invalid profile data (user is null/undefined), clearing token");
+            throw new Error("Invalid profile data");
+          }
+
+          console.log("[AUTH] User profile loaded:", profile.user.email);
           setUser(profile);
-        } catch {
+        } catch (error) {
+          console.log("[AUTH] Failed to load profile, clearing token:", error);
           await clearToken();
           setTokenState(null);
         }
+      } else {
+        console.log("[AUTH] No stored token found");
       }
       setIsLoading(false);
     })();

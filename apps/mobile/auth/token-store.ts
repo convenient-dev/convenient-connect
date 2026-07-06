@@ -15,24 +15,40 @@ try {
 const memoryStore = new Map<string, string>();
 
 export async function getToken(): Promise<string | null> {
-  if (SecureStore) {
-    return SecureStore.getItemAsync(TOKEN_KEY);
-  }
-  return memoryStore.get(TOKEN_KEY) ?? null;
+  const token = SecureStore
+    ? await SecureStore.getItemAsync(TOKEN_KEY)
+    : memoryStore.get(TOKEN_KEY) ?? null;
+  console.log(
+    `[TOKEN-STORE] getToken() -> ${token ? `found (${token.substring(0, 20)}...)` : "null"}`
+  );
+  return token;
 }
 
 export async function setToken(token: string): Promise<void> {
+  console.log(
+    `[TOKEN-STORE] setToken() -> storing token (${token.substring(0, 20)}...)`
+  );
+  console.log("[TOKEN-STORE] setToken() called from:", new Error().stack);
   if (SecureStore) {
     await SecureStore.setItemAsync(TOKEN_KEY, token);
   } else {
     memoryStore.set(TOKEN_KEY, token);
   }
+  console.log("[TOKEN-STORE] Token stored successfully");
 }
 
 export async function clearToken(): Promise<void> {
+  console.log("[TOKEN-STORE] clearToken() -> deleting token...");
   if (SecureStore) {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
+    console.log("[TOKEN-STORE] Token deleted from SecureStore");
   } else {
     memoryStore.delete(TOKEN_KEY);
+    console.log("[TOKEN-STORE] Token deleted from memory store");
   }
+  // Verify it was actually cleared
+  const check = SecureStore
+    ? await SecureStore.getItemAsync(TOKEN_KEY)
+    : memoryStore.get(TOKEN_KEY) ?? null;
+  console.log(`[TOKEN-STORE] Verification after clear: ${check === null ? "SUCCESS (null)" : "FAILED (still exists)"}`);
 }

@@ -196,8 +196,15 @@ export async function deleteUserAccount(
   deliveryType: DeleteAccountChannel,
   deviceToken?: string,
 ): Promise<void> {
-  await laravelFetch<string>("/service-provider/delete-user-acount", {
+  console.log("[API] deleteUserAccount called with:", {
+    otp: otp.substring(0, 2) + "**",
+    deliveryType,
+    deviceToken: deviceToken ? "present" : "not provided",
+  });
+  const response = await laravelFetch<string>("/service-provider/delete-user-acount", {
     method: "POST",
     body: { otp, delivery_type: deliveryType, device_token: deviceToken },
   });
+  console.log("[API] deleteUserAccount backend response:", response);
+  console.log("[API] deleteUserAccount completed successfully");
 }

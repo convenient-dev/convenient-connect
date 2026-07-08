@@ -64,18 +64,6 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash_screen.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "image": "./assets/splash_screen.png",
-            "backgroundColor": "#000000"
-          }
-        }
-      ],
       "expo-secure-store",
       [
         "@react-native-google-signin/google-signin",

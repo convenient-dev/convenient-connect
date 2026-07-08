@@ -37,6 +37,12 @@
           <string>exp+my-app</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.1008944383437-5vegtk12na1cu0u94rn4l1pko214ha5m</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
@@ -55,6 +61,12 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>Allow ConvenientConnect to access your camera.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Allow ConvenientConnect to use your location to find and save your address.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Allow ConvenientConnect to use your location to find and save your address.</string>
     <key>NSMicrophoneUsageDescription</key>

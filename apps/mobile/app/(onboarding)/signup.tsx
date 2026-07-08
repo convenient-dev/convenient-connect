@@ -1,5 +1,7 @@
-import { numberLogin } from "@/api/auth";
+import { googleLogin, numberLogin } from "@/api/auth";
 import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
+import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
 import { BackButton } from "@/components/BackButton";
 import {
   buildFullPhone,
@@ -66,10 +68,51 @@ const SOCIAL_OPTIONS: SocialOption[] = [
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
+
+  const handleGoogleLogin = async () => {
+    if (socialLoading) return;
+    setSocialLoading("gmail");
+    try {
+      const google = await signInWithGoogle();
+      if (google.status === "cancelled") return;
+      if (google.status === "error") {
+        Alert.alert("Error", google.message);
+        return;
+      }
+      const result = await googleLogin({
+        email: google.email,
+        firstName: google.firstName,
+        lastName: google.lastName,
+      });
+      await login(result.accessToken, {
+        user: result.user,
+        providerType: result.providerType,
+        profileImage: result.profileImage,
+        backgroundVerification: result.backgroundVerification,
+        businessVerification: result.businessVerification,
+      });
+      if (result.providerType) {
+        router.replace("/home");
+      } else {
+        router.replace({
+          pathname: "/select-provider-type",
+          params: { method: "email" },
+        });
+      }
+    } catch (e) {
+      await googleSignOutQuietly();
+      const msg = e instanceof ApiError ? e.message : "Google sign-in failed";
+      Alert.alert("Error", msg);
+    } finally {
+      setSocialLoading(null);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -142,15 +185,26 @@ export default function SignupScreen() {
               key={option.key}
               style={styles.socialButton}
               activeOpacity={0.7}
+              disabled={socialLoading !== null}
               onPress={() => {
                 if (option.key === "email") {
                   router.push("/signup-by-email");
                 }
-                // TODO: Wire facebook, gmail, apple social auth SDKs
+                if (option.key === "gmail") {
+                  handleGoogleLogin();
+                }
+                // TODO: Wire facebook, apple social auth SDKs
               }}
             >
               <View style={styles.socialIcon}>{option.icon}</View>
-              <Text style={styles.socialText}>{option.label}</Text>
+              {socialLoading === option.key ? (
+                <ActivityIndicator
+                  style={styles.socialSpinner}
+                  color={neutral[800]}
+                />
+              ) : (
+                <Text style={styles.socialText}>{option.label}</Text>
+              )}
             </TouchableOpacity>
           ))}
 
@@ -244,6 +298,10 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: text.primary,
     letterSpacing: -0.408,
+  },
+  socialSpinner: {
+    flex: 1,
+    marginRight: 28,
   },
   accountRow: {
     flexDirection: "row",

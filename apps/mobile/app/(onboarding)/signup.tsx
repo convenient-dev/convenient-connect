@@ -10,7 +10,6 @@ import {
   PhoneInput,
 } from "@/components/PhoneInput";
 import { Colors } from "@/constants/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
@@ -38,11 +37,11 @@ interface SocialOption {
 }
 
 const SOCIAL_OPTIONS: SocialOption[] = [
-  {
-    key: "facebook",
-    label: "Continue with Facebook",
-    icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
-  },
+  // {
+  //   key: "facebook",
+  //   label: "Continue with Facebook",
+  //   icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
+  // },
   {
     key: "gmail",
     label: "Continue with Gmail",
@@ -54,11 +53,11 @@ const SOCIAL_OPTIONS: SocialOption[] = [
       />
     ),
   },
-  {
-    key: "apple",
-    label: "Continue with Apple",
-    icon: <Ionicons name="logo-apple" size={24} color={neutral[900]} />,
-  },
+  // {
+  //   key: "apple",
+  //   label: "Continue with Apple",
+  //   icon: <Ionicons name="logo-apple" size={24} color={neutral[900]} />,
+  // },
   {
     key: "email",
     label: "Continue with Email",

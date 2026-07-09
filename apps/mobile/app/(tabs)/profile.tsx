@@ -30,7 +30,6 @@ interface UserProfile {
   phoneVerified?: boolean;
   avatarUrl: string | null;
   accountType: "individual" | "business" | string;
-  profileTypeStatus?: "active" | "pending" | string;
   backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
   aboutMe?: string | null;
   // Set after the user starts the background-check flow. The Stripe Connect
@@ -192,9 +191,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const profileTypeLabel =
-    user?.accountType === "business" ? "Business" : "Individual";
-
   const backgroundComplete = authUser?.backgroundVerification ?? false;
 
   const backgroundLabel = backgroundComplete
@@ -301,25 +297,6 @@ export default function ProfileScreen() {
               router.push({
                 pathname: "/update-email",
                 params: { email: user?.email ?? "" },
-              })
-            }
-          />
-          <View style={styles.rowDivider} />
-
-          <ProfileRow
-            label="Profile Type"
-            value={profileTypeLabel}
-            valueMuted
-            trailingIcon={
-              user?.profileTypeStatus === "pending" ? "warning" : undefined
-            }
-            onPress={() =>
-              router.push({
-                pathname:
-                  user?.profileTypeStatus === "pending"
-                    ? "/profile-type/profile-type-pending"
-                    : "/profile-type",
-                params: { accountType: user?.accountType ?? "individual" },
               })
             }
           />

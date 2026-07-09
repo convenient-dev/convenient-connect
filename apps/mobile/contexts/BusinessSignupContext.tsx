@@ -23,11 +23,22 @@ export interface BusinessSignupState {
   ein: string;
 }
 
+// A business submitted for review. Kept in memory until the
+// create-business API exists to persist and list them.
+export interface PendingBusiness {
+  id: number;
+  name: string;
+  /** Distinct category names of the selected services (e.g. "Automotive"). */
+  categories: string[];
+}
+
 // the contract the provider exposes to the consumers
 interface BusinessSignupContextValue {
   data: BusinessSignupState; // read any field
   update: (partial: Partial<BusinessSignupState>) => void; // update any field(s)
   reset: () => void;
+  pendingBusinesses: PendingBusiness[];
+  addPendingBusiness: (business: Omit<PendingBusiness, "id">) => void;
 }
 
 const INITIAL_STATE: BusinessSignupState = {
@@ -51,6 +62,9 @@ export function BusinessSignupProvider({
   children: React.ReactNode;
 }) {
   const [data, setData] = useState<BusinessSignupState>(INITIAL_STATE);
+  const [pendingBusinesses, setPendingBusinesses] = useState<
+    PendingBusiness[]
+  >([]);
 
   const update = useCallback((partial: Partial<BusinessSignupState>) => {
     setData((prev) => ({ ...prev, ...partial }));
@@ -60,10 +74,20 @@ export function BusinessSignupProvider({
     setData(INITIAL_STATE);
   }, []);
 
+  const addPendingBusiness = useCallback(
+    (business: Omit<PendingBusiness, "id">) => {
+      setPendingBusinesses((prev) => [
+        ...prev,
+        { ...business, id: prev.length + 1 },
+      ]);
+    },
+    [],
+  );
+
   // only re-create the context value if data, update, or reset changes (which they won't, except for data when fields are updated)
   const value = useMemo(
-    () => ({ data, update, reset }),
-    [data, update, reset],
+    () => ({ data, update, reset, pendingBusinesses, addPendingBusiness }),
+    [data, update, reset, pendingBusinesses, addPendingBusiness],
   );
 
   return (

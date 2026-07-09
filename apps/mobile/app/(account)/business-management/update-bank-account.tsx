@@ -1,14 +1,11 @@
 import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useCurrentUser } from "@/constants/session";
-import { submitProfileTypeChange } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,43 +21,33 @@ const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const { data, reset } = useBusinessSignup();
+  // Business details, services, and documents collected on the previous
+  // screens of the create-business flow.
+  const params = useLocalSearchParams<{
+    businessName?: string;
+    categoryNames?: string;
+  }>();
+  const { addPendingBusiness, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function handleUpdateDetails() {
     // TODO: Open Stripe to update account details.
   }
 
-  async function handleSubmit() {
-    if (submitting) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await submitProfileTypeChange(userId, {
-        businessName: data.businessName,
-        businessAddress: data.businessAddress,
-        city: data.city,
-        state: data.state,
-        zipCode: data.zipCode,
-        registrationDoc: data.registrationDoc?.url ?? "",
-        governmentId: data.governmentId?.url ?? "",
-        ein: data.ein,
-      });
-      setSuccessVisible(true);
-    } catch (e: any) {
-      setSubmitError(e?.message ?? "Failed to submit. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  function handleSubmit() {
+    // TODO: Submit `params` (business details, serviceIds) and the uploaded
+    // documents/EIN to the create-business API once it exists.
+    setSuccessVisible(true);
   }
 
   function handleSuccessConfirm() {
     setSuccessVisible(false);
+    addPendingBusiness({
+      name: params.businessName ?? "",
+      categories: (params.categoryNames ?? "").split(",").filter(Boolean),
+    });
     reset();
-    router.dismissAll();
+    router.dismissTo("/business-management");
   }
 
   return (
@@ -101,27 +88,20 @@ export default function UpdateBankAccountScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        {submitError && <Text style={styles.errorText}>{submitError}</Text>}
         <TouchableOpacity
           style={styles.updateButton}
           activeOpacity={0.85}
           onPress={handleUpdateDetails}
-          disabled={submitting}
         >
           <Text style={styles.updateButtonText}>Update account details</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+          style={styles.submitButton}
           activeOpacity={0.85}
           onPress={handleSubmit}
-          disabled={submitting}
         >
-          {submitting ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit with this account</Text>
-          )}
+          <Text style={styles.submitButtonText}>Submit with this account</Text>
         </TouchableOpacity>
       </View>
 
@@ -129,7 +109,7 @@ export default function UpdateBankAccountScreen() {
         visible={successVisible}
         icon="success"
         title="Success"
-        message="Your request to change your profile type is now under review. We’ll notify you once the change has been completed."
+        message="Your business is now under review. We'll notify you once it has been approved."
         confirmLabel="Done"
         onConfirm={handleSuccessConfirm}
       />
@@ -242,19 +222,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: neutral[0],
     letterSpacing: -0.408,
-  },
-  errorText: {
-    fontSize: 13,
-    color: secondary[500],
-    textAlign: "center",
-    marginBottom: 4,
   },
 });

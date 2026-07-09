@@ -1,22 +1,11 @@
-import { ConfirmModal } from "@/components/ConfirmModal";
-import {
-  buildFullPhone,
-  Country,
-  DEFAULT_COUNTRY,
-  PhoneInput,
-} from "@/components/PhoneInput";
+import { getCities, getCountries, getStates } from "@/api/location";
+import { BackButton } from "@/components/BackButton";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { Colors } from "@/constants/theme";
-import { completeProfile, getAuthUser } from "@/api/profile";
-import { getCities, getCountries, getStates } from "@/api/location";
-import { ApiError } from "@/api/client";
-import { useAuth } from "@/auth/AuthContext";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -28,13 +17,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, primary, neutral, text, background, border } = Colors;
+const { secondary, neutral, text, background, border } = Colors;
 
-/**
- * Users sometimes paste a full "STATE ZIP" string (e.g. "TN 38301" or
- * "TN38301") into the zip field. Strip any leading state-code prefix and keep
- * only the trailing digits so we submit a clean 5-digit ZIP.
- */
 function sanitizeZip(value: string): string {
   return value.replace(/\D/g, "").slice(0, 5);
 }
@@ -43,16 +27,18 @@ interface FieldProps {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  keyboardType?: "default" | "email-address" | "number-pad";
-  autoCapitalize?: "none" | "words" | "characters";
+  placeholder?: string;
+  keyboardType?: "default" | "number-pad";
+  multiline?: boolean;
 }
 
 function Field({
   label,
   value,
   onChangeText,
+  placeholder,
   keyboardType = "default",
-  autoCapitalize = "words",
+  multiline = false,
 }: FieldProps) {
   return (
     <View style={styles.field}>
@@ -60,34 +46,24 @@ function Field({
         {label} <Text style={styles.required}>*</Text>
       </Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, multiline && styles.inputMultiline]}
         value={value}
         onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoCorrect={false}
+        placeholder={placeholder}
         placeholderTextColor={neutral[400]}
+        keyboardType={keyboardType}
+        autoCapitalize={multiline ? "sentences" : "words"}
+        autoCorrect={false}
+        multiline={multiline}
+        textAlignVertical={multiline ? "top" : "center"}
       />
     </View>
   );
 }
 
-export default function EnterBusinessDetailsScreen() {
+export default function BusinessDetailsScreen() {
   const router = useRouter();
-  const { method = "phone" } = useLocalSearchParams<{
-    method?: "phone" | "email";
-  }>();
-  const { user: authUser, setUser } = useAuth();
 
-  // When the user signed up by phone we collect their email; when they signed
-  // up by email we collect their phone instead.
-  const collectEmail = method === "phone";
-
-  const [firstName, setFirstName] = useState(authUser?.user.user_fname ?? "");
-  const [lastName, setLastName] = useState(authUser?.user.user_lname ?? "");
-  const [email, setEmail] = useState(authUser?.user.user_email ?? "");
-  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const [phone, setPhone] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
@@ -96,9 +72,7 @@ export default function EnterBusinessDetailsScreen() {
   const [selectedState, setSelectedState] = useState<SelectOption | null>(null);
   const [selectedCity, setSelectedCity] = useState<SelectOption | null>(null);
   const [zip, setZip] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [successVisible, setSuccessVisible] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [about, setAbout] = useState("");
 
   const loadCountries = useCallback(
     (search: string) => getCountries(search || undefined),
@@ -119,49 +93,30 @@ export default function EnterBusinessDetailsScreen() {
     [selectedState],
   );
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const phoneValid = phone.replace(/\D/g, "").length >= 7;
-  const canSubmit =
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    (collectEmail ? emailValid : phoneValid) &&
+  const canContinue =
     businessName.trim().length > 0 &&
     businessAddress.trim().length > 0 &&
     !!selectedCountry &&
     !!selectedState &&
     !!selectedCity &&
-    zip.trim().length > 0;
+    zip.trim().length > 0 &&
+    about.trim().length > 0;
 
-  async function handleSubmit() {
+  function handleContinue() {
     if (!selectedCountry || !selectedState || !selectedCity) return;
-    setLoading(true);
-    try {
-      await completeProfile({
-        providerType: "business",
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
-        phoneNumber: collectEmail ? undefined : buildFullPhone(country, phone),
+    router.push({
+      pathname: "/business-management/select-services",
+      params: {
+        flow: "create-business",
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
-        countryId: selectedCountry.id,
-        stateId: selectedState.id,
-        cityId: selectedCity.id,
+        countryId: String(selectedCountry.id),
+        stateId: String(selectedState.id),
+        cityId: String(selectedCity.id),
         zipcode: zip.trim(),
-      });
-      getAuthUser().then(setUser).catch(() => {});
-      setSuccessMessage(
-        collectEmail
-          ? "Verification email sent successfully\nPlease check your inbox"
-          : "Your account is created successfully",
-      );
-      setSuccessVisible(true);
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Failed to save profile";
-      Alert.alert("Error", msg);
-    } finally {
-      setLoading(false);
-    }
+        about: about.trim(),
+      },
+    });
   }
 
   return (
@@ -171,52 +126,33 @@ export default function EnterBusinessDetailsScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        <View style={styles.header}>
+          <BackButton onPress={() => router.back()} />
+          <Text style={styles.title}>Business Details</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Enter your business details</Text>
-
-          <Field
-            label="First Name"
-            value={firstName}
-            onChangeText={setFirstName}
-          />
-          <Field label="Last Name" value={lastName} onChangeText={setLastName} />
-
-          {collectEmail ? (
-            <Field
-              label="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          ) : (
-            <View style={styles.field}>
-              <Text style={styles.label}>
-                Phone Number <Text style={styles.required}>*</Text>
-              </Text>
-              <PhoneInput
-                country={country}
-                onCountryChange={setCountry}
-                phone={phone}
-                onPhoneChange={setPhone}
-              />
-            </View>
-          )}
+          <Text style={styles.subtitle}>
+            Please provide the following information in order to proceed.
+          </Text>
 
           <Field
             label="Business Name"
             value={businessName}
             onChangeText={setBusinessName}
+            placeholder="Happy Tails Walk Co."
           />
           <Field
             label="Business Address"
             value={businessAddress}
             onChangeText={setBusinessAddress}
+            placeholder="1234 Chipmunk Lane"
           />
 
           <SearchableSelect
@@ -256,52 +192,37 @@ export default function EnterBusinessDetailsScreen() {
             disabledHint="Select a state first"
             onSelect={setSelectedCity}
           />
+
           <Field
             label="Zip code"
             value={zip}
             onChangeText={(value) => setZip(sanitizeZip(value))}
+            placeholder="04087"
             keyboardType="number-pad"
+          />
+          <Field
+            label="About"
+            value={about}
+            onChangeText={setAbout}
+            placeholder="Tell customers about your business"
+            multiline
           />
         </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.button, styles.backButton]}
-            activeOpacity={0.85}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.buttonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[
-              styles.button,
-              styles.nextButton,
-              (!canSubmit || loading) && { opacity: 0.6 },
+              styles.continueButton,
+              !canContinue && styles.continueDisabled,
             ]}
             activeOpacity={0.85}
-            disabled={!canSubmit || loading}
-            onPress={handleSubmit}
+            disabled={!canContinue}
+            onPress={handleContinue}
           >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
+            <Text style={styles.continueText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      <ConfirmModal
-        visible={successVisible}
-        icon="success"
-        title="Success"
-        message={successMessage}
-        confirmLabel="Okay"
-        onConfirm={() => {
-          setSuccessVisible(false);
-          router.replace("/(tabs)/home");
-        }}
-      />
     </SafeAreaView>
   );
 }
@@ -312,18 +233,33 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  headerSpacer: { width: 40 },
+  title: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "600",
+    color: text.primary,
+    textAlign: "center",
+    letterSpacing: -0.408,
+  },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 24,
     gap: 22,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
+  subtitle: {
+    fontSize: 16,
     color: text.primary,
-    letterSpacing: -0.5,
-    marginBottom: 6,
+    letterSpacing: -0.408,
+    lineHeight: 22,
   },
   field: {
     gap: 10,
@@ -347,27 +283,28 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
-  footer: {
-    flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 8,
+  inputMultiline: {
+    height: 140,
+    paddingTop: 14,
+    paddingBottom: 14,
+    lineHeight: 22,
   },
-  button: {
-    flex: 1,
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  continueButton: {
     height: 56,
     borderRadius: 999,
+    backgroundColor: secondary[400],
     alignItems: "center",
     justifyContent: "center",
   },
-  backButton: {
-    backgroundColor: secondary[400],
+  continueDisabled: {
+    opacity: 0.6,
   },
-  nextButton: {
-    backgroundColor: primary[400],
-  },
-  buttonText: {
+  continueText: {
     fontSize: 17,
     fontWeight: "600",
     color: neutral[0],

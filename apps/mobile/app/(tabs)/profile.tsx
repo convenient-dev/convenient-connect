@@ -30,7 +30,6 @@ interface UserProfile {
   phoneVerified?: boolean;
   avatarUrl: string | null;
   accountType: "individual" | "business" | string;
-  profileTypeStatus?: "active" | "pending" | string;
   backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
   aboutMe?: string | null;
   // Set after the user starts the background-check flow. The Stripe Connect
@@ -192,9 +191,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const profileTypeLabel =
-    user?.accountType === "business" ? "Business" : "Individual";
-
   const backgroundComplete = authUser?.backgroundVerification ?? false;
 
   const backgroundLabel = backgroundComplete
@@ -238,7 +234,7 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
               onPress={() =>
                 router.push({
-                  pathname: "/update-avatar",
+                  pathname: "/profile/update-avatar",
                   params: user?.avatarUrl
                     ? { currentAvatarUrl: user.avatarUrl }
                     : {},
@@ -268,7 +264,7 @@ export default function ProfileScreen() {
             valueMuted
             onPress={() =>
               router.push({
-                pathname: "/update-name",
+                pathname: "/profile/update-name",
                 params: {
                   firstName: user?.firstName ?? "",
                   lastName: user?.lastName ?? "",
@@ -285,7 +281,7 @@ export default function ProfileScreen() {
             trailingIcon={user?.phoneVerified ? "verified" : undefined}
             onPress={() =>
               router.push({
-                pathname: "/update-phone",
+                pathname: "/profile/update-phone",
                 params: { phoneNumber: user?.phoneNumber ?? "" },
               })
             }
@@ -299,27 +295,8 @@ export default function ProfileScreen() {
             trailingIcon={user?.emailVerified ? "verified" : undefined}
             onPress={() =>
               router.push({
-                pathname: "/update-email",
+                pathname: "/profile/update-email",
                 params: { email: user?.email ?? "" },
-              })
-            }
-          />
-          <View style={styles.rowDivider} />
-
-          <ProfileRow
-            label="Profile Type"
-            value={profileTypeLabel}
-            valueMuted
-            trailingIcon={
-              user?.profileTypeStatus === "pending" ? "warning" : undefined
-            }
-            onPress={() =>
-              router.push({
-                pathname:
-                  user?.profileTypeStatus === "pending"
-                    ? "/profile-type/profile-type-pending"
-                    : "/profile-type",
-                params: { accountType: user?.accountType ?? "individual" },
               })
             }
           />
@@ -344,7 +321,7 @@ export default function ProfileScreen() {
             valueMuted
             onPress={() =>
               router.push({
-                pathname: "/about-me",
+                pathname: "/profile/about-me",
                 params: user?.aboutMe ? { aboutMe: user.aboutMe } : {},
               })
             }

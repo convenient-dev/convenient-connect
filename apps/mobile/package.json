@@ -14,6 +14,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@quidone/react-native-wheel-picker": "^1.7.0",
+    "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
@@ -36,6 +37,7 @@
     "expo-updates": "~29.0.17",
     "expo-web-browser": "~15.0.10",
     "libphonenumber-js": "^1.13.7",
+    "lottie-react-native": "~7.3.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

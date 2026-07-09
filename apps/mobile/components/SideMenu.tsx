@@ -125,6 +125,15 @@ export function SideMenu({
       },
     },
     {
+      key: "business-management",
+      label: "Business Management",
+      icon: require("@/assets/side-menu/group.png"),
+      onPress: () => {
+        onClose();
+        router.push("/business-management" as never);
+      },
+    },
+    {
       key: "notifications",
       label: "Notifications",
       icon: require("@/assets/side-menu/notifications.svg"),

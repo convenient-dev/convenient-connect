@@ -1,29 +1,33 @@
 import { Colors } from "@/constants/theme";
-import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import LottieView from "lottie-react-native";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text } = Colors;
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const reducedMotion = useReducedMotion();
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
       <View style={styles.content}>
-        <ExpoImage
-          source={require("@/assets/cc_logo.png")}
+        <LottieView
+          source={require("@/assets/splash-screen-logo.json")}
+          autoPlay={!reducedMotion}
+          loop={false}
+          resizeMode="contain"
           style={styles.logo}
-          contentFit="contain"
         />
         <Text style={styles.title}>Welcome to ConvenientConnect</Text>
         <Text style={styles.subtitle}>
-          Book trusted local services and grow your business — all in one place.
+          Your Platform to Promote and Grow Your Services.
         </Text>
       </View>
 

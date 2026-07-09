@@ -160,13 +160,6 @@ export default function EnterPersonalDetailsScreen() {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.button, styles.backButton]}
-            activeOpacity={0.85}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.buttonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[
               styles.button,
               styles.nextButton,
@@ -254,9 +247,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-  },
-  backButton: {
-    backgroundColor: secondary[400],
   },
   nextButton: {
     backgroundColor: primary[400],

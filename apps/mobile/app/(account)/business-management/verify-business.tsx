@@ -1,6 +1,4 @@
-import { uploadBusinessDoc } from "@/api/legacy";
 import { BackButton } from "@/components/BackButton";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -9,10 +7,9 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -38,7 +35,6 @@ interface UploadCardProps {
   acceptedHeading: string;
   acceptedItems: string[];
   uploaded: UploadedDoc | null;
-  uploading: boolean;
   error: string | null;
   onPick: () => void;
 }
@@ -50,7 +46,6 @@ function UploadCard({
   acceptedHeading,
   acceptedItems,
   uploaded,
-  uploading,
   error,
   onPick,
 }: UploadCardProps) {
@@ -81,19 +76,14 @@ function UploadCard({
         style={styles.uploadZone}
         activeOpacity={0.7}
         onPress={onPick}
-        disabled={uploading}
       >
-        {uploading ? (
-          <ActivityIndicator size="small" color={primary[500]} />
-        ) : (
-          <MaterialIcons
-            name={uploaded ? "check-circle" : "file-upload"}
-            size={22}
-            color={uploaded ? primary[500] : neutral[400]}
-          />
-        )}
+        <MaterialIcons
+          name={uploaded ? "check-circle" : "file-upload"}
+          size={22}
+          color={uploaded ? primary[500] : neutral[400]}
+        />
         <Text style={styles.uploadText}>
-          {uploading ? "Uploading…" : (uploaded?.fileName ?? "Upload Document")}
+          {uploaded?.fileName ?? "Upload Document"}
         </Text>
       </TouchableOpacity>
 
@@ -109,11 +99,12 @@ function UploadCard({
 
 export default function VerifyBusinessScreen() {
   const router = useRouter();
-  const { userId } = useCurrentUser();
+  // Business details entered on the previous screen, forwarded through
+  // each step of the create-business flow.
+  const params = useLocalSearchParams();
   const { data, update } = useBusinessSignup();
   const { registrationDoc, governmentId, ein } = data;
 
-  const [uploadingDoc, setUploadingDoc] = useState<DocType | null>(null);
   const [registrationError, setRegistrationError] = useState<string | null>(
     null,
   );
@@ -243,42 +234,21 @@ export default function VerifyBusinessScreen() {
       return;
     }
 
-    setUploadingDoc(docType);
-    try {
-      const formData = new FormData();
-      formData.append("userId", String(userId));
-      formData.append("docType", docType);
-
-      if (Platform.OS === "web") {
-        const blobRes = await fetch(asset.uri);
-        const blob = await blobRes.blob();
-        formData.append(
-          "file",
-          new File([blob], asset.name, { type: asset.mime }),
-        );
-      } else {
-        formData.append("file", {
-          uri: asset.uri,
-          name: asset.name,
-          type: asset.mime,
-        } as unknown as Blob);
-      }
-
-      const json = (await uploadBusinessDoc(formData)) as UploadedDoc;
-      if (docType === "registration") {
-        update({ registrationDoc: json });
-      } else {
-        update({ governmentId: json });
-      }
-    } catch {
-      setError("Network error. Please check your connection.");
-    } finally {
-      setUploadingDoc(null);
+    // TODO: Upload to the create-business API on final submit. For now the
+    // picked file is kept locally (its uri) so the user can continue.
+    const doc: UploadedDoc = { url: asset.uri, fileName: asset.name };
+    if (docType === "registration") {
+      update({ registrationDoc: doc });
+    } else {
+      update({ governmentId: doc });
     }
   }
 
   function handleContinue() {
-    router.push("/profile-type/update-bank-account");
+    router.push({
+      pathname: "/business-management/update-bank-account",
+      params,
+    });
   }
 
   return (
@@ -315,7 +285,6 @@ export default function VerifyBusinessScreen() {
               "Business License",
             ]}
             uploaded={registrationDoc}
-            uploading={uploadingDoc === "registration"}
             error={registrationError}
             onPick={() => handlePickDoc("registration")}
           />
@@ -327,7 +296,6 @@ export default function VerifyBusinessScreen() {
             acceptedHeading="Accepted IDs:"
             acceptedItems={["Driver's License", "Passport", "State ID"]}
             uploaded={governmentId}
-            uploading={uploadingDoc === "governmentId"}
             error={governmentIdError}
             onPick={() => handlePickDoc("governmentId")}
           />

@@ -64,19 +64,13 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
+      "expo-secure-store",
       [
-        "expo-splash-screen",
+        "@react-native-google-signin/google-signin",
         {
-          "image": "./assets/splash_screen.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "image": "./assets/splash_screen.png",
-            "backgroundColor": "#000000"
-          }
+          "iosUrlScheme": "com.googleusercontent.apps.1008944383437-5vegtk12na1cu0u94rn4l1pko214ha5m"
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

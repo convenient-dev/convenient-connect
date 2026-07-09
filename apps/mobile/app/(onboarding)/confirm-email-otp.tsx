@@ -191,7 +191,7 @@ export default function ConfirmEmailOtpScreen() {
                   router.replace("/home");
                 } else {
                   router.replace({
-                    pathname: "/select-provider-type",
+                    pathname: "/enter-personal-details",
                     params: { method: "email" },
                   });
                 }

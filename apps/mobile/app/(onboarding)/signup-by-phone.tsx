@@ -195,7 +195,7 @@ export default function SignupByPhoneScreen() {
                   router.replace("/home");
                 } else {
                   router.replace({
-                    pathname: "/select-provider-type",
+                    pathname: "/enter-personal-details",
                     params: { method: "phone" },
                   });
                 }

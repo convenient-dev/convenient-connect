@@ -28,7 +28,6 @@ export async function setToken(token: string): Promise<void> {
   console.log(
     `[TOKEN-STORE] setToken() -> storing token (${token.substring(0, 20)}...)`
   );
-  console.log("[TOKEN-STORE] setToken() called from:", new Error().stack);
   if (SecureStore) {
     await SecureStore.setItemAsync(TOKEN_KEY, token);
   } else {

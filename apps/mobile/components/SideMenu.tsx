@@ -1,3 +1,6 @@
+import { logout as logoutApi } from "@/api/auth";
+import { useAuth } from "@/auth/AuthContext";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage, ImageSource } from "expo-image";
@@ -53,10 +56,12 @@ export function SideMenu({
   appVersion = "1.0.0",
 }: SideMenuProps) {
   const router = useRouter();
+  const auth = useAuth();
   const translateX = useRef(new Animated.Value(-MENU_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [rendered, setRendered] = React.useState(visible);
   const [notificationsOn, setNotificationsOn] = React.useState(true);
+  const [logoutModalVisible, setLogoutModalVisible] = React.useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -120,6 +125,15 @@ export function SideMenu({
       },
     },
     {
+      key: "business-management",
+      label: "Business Management",
+      icon: require("@/assets/side-menu/group.png"),
+      onPress: () => {
+        onClose();
+        router.push("/business-management" as never);
+      },
+    },
+    {
       key: "notifications",
       label: "Notifications",
       icon: require("@/assets/side-menu/notifications.svg"),
@@ -158,13 +172,27 @@ export function SideMenu({
       key: "logout",
       label: "Logout",
       icon: require("@/assets/side-menu/logout.svg"),
+      onPress: () => setLogoutModalVisible(true),
     },
     {
       key: "delete-account",
       label: "Delete Account",
       icon: require("@/assets/side-menu/delete.svg"),
+      onPress: () => {
+        onClose();
+        router.push("/delete-account");
+      },
     },
   ];
+
+  const handleLogout = async () => {
+    setLogoutModalVisible(false);
+    onClose();
+    try {
+      await logoutApi();
+    } catch {}
+    await auth.logout();
+  };
 
   const fullName = user
     ? `${user.firstName} ${user.lastName}`.trim() || "—"
@@ -287,6 +315,17 @@ export function SideMenu({
           </SafeAreaView>
         </Animated.View>
       </View>
+
+      <ConfirmModal
+        visible={logoutModalVisible}
+        title="Log Out"
+        message="Are you sure you want to log out?"
+        icon="alert"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutModalVisible(false)}
+      />
     </Modal>
   );
 }

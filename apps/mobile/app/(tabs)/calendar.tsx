@@ -12,7 +12,8 @@ import {
 import { FilterButton } from "@/components/FilterButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
-import { API_BASE_URL, useCurrentUser } from "@/constants/session";
+import { useCurrentUser } from "@/constants/session";
+import { getAvailability } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -198,8 +199,7 @@ export default function CalendarScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetch(`${API_BASE_URL}/users/${userId}/availability`)
-        .then((res) => res.json())
+      getAvailability(userId)
         .then((data: AvailabilityResponse) => {
           const days = new Set<DayKey>();
           for (const slot of data.weeklyAvailabilitySlots) {

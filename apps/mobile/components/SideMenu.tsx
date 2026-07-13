@@ -180,7 +180,7 @@ export function SideMenu({
       icon: require("@/assets/side-menu/delete.svg"),
       onPress: () => {
         onClose();
-        router.push("/delete-account");
+        router.push("/delete-account-warning");
       },
     },
   ];

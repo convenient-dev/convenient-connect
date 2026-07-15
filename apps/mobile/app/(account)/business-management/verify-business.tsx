@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -257,10 +257,7 @@ export default function VerifyBusinessScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <BackButton onPress={() => router.back()} />
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader />
 
         <ScrollView
           style={styles.scroll}
@@ -357,15 +354,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { flex: 1 },
 
   scroll: { flex: 1 },
   scrollContent: {

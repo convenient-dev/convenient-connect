@@ -1,5 +1,5 @@
-import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -25,6 +25,12 @@ export default function UpdateBankAccountScreen() {
   // screens of the create-business flow.
   const params = useLocalSearchParams<{
     businessName?: string;
+    businessAddress?: string;
+    countryName?: string;
+    stateName?: string;
+    cityName?: string;
+    zipcode?: string;
+    about?: string;
     categoryNames?: string;
   }>();
   const { addPendingBusiness, reset } = useBusinessSignup();
@@ -45,6 +51,12 @@ export default function UpdateBankAccountScreen() {
     addPendingBusiness({
       name: params.businessName ?? "",
       categories: (params.categoryNames ?? "").split(",").filter(Boolean),
+      address: params.businessAddress ?? "",
+      country: params.countryName ?? "",
+      state: params.stateName ?? "",
+      city: params.cityName ?? "",
+      zipCode: params.zipcode ?? "",
+      about: params.about ?? "",
     });
     reset();
     router.dismissTo("/business-management");
@@ -52,10 +64,7 @@ export default function UpdateBankAccountScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader />
 
       <ScrollView
         style={styles.scroll}
@@ -122,15 +131,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { flex: 1 },
 
   scroll: { flex: 1 },
   scrollContent: {

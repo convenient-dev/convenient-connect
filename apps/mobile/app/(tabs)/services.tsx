@@ -1,23 +1,20 @@
-import { BackButton } from "@/components/BackButton";
+import { BottomSheet } from "@/components/BottomSheet";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   SERVICE_STATUS_CONFIG,
   ServiceStatus,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
-import Divider from "@/components/ui/divider";
 import { useCurrentUser } from "@/constants/session";
 import { getUserServices } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Image,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,7 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background, brand, text } = Colors;
+const { primary, neutral, background } = Colors;
 
 interface Service {
   id: number;
@@ -51,94 +48,6 @@ function getRelativeTime(isoString: string): string {
 
 const TABS = ["All", "Freelance", "Business"] as const;
 type Tab = (typeof TABS)[number];
-
-const SHEET_HEIGHT = 220;
-
-interface ManageServiceSheetProps {
-  visible: boolean;
-  onClose: () => void;
-  onDetail: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-function ManageServiceSheet({
-  visible,
-  onClose,
-  onDetail,
-  onEdit,
-  onDelete,
-}: ManageServiceSheetProps) {
-  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        bounciness: 4,
-      }).start();
-    } else {
-      Animated.timing(translateY, {
-        toValue: SHEET_HEIGHT,
-        duration: 220,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [visible]);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.sheetOverlay} onPress={onClose}>
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          <Pressable>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Manage Service</Text>
-            <Divider />
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={onDetail}
-              activeOpacity={0.7}
-            >
-              <ExpoImage
-                source={require("@/assets/global-icons/view-detail.svg")}
-                style={{ width: 20, height: 20 }}
-              />
-              <Text style={styles.sheetOptionText}>Service Details</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={onEdit}
-              activeOpacity={0.7}
-            >
-              <ExpoImage
-                source={require("@/assets/global-icons/edit.svg")}
-                style={{ width: 20, height: 20 }}
-              />
-              <Text style={styles.sheetOptionText}>Edit Service</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={onDelete}
-              activeOpacity={0.7}
-            >
-              <ExpoImage
-                source={require("@/assets/global-icons/cancel.svg")}
-                style={{ width: 20, height: 20 }}
-              />
-              <Text style={styles.sheetOptionText}>Delete Service</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Animated.View>
-      </Pressable>
-    </Modal>
-  );
-}
 
 function ServiceCard({
   service,
@@ -216,18 +125,19 @@ export default function ServicesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.push("/home")} />
-        <Text style={styles.headerTitle}>My Services</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          hitSlop={8}
-          onPress={() => router.push("/create-service")}
-        >
-          <MaterialIcons name="add" size={22} color={primary[400]} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="My Services"
+        onBack={() => router.push("/home")}
+        rightAccessory={
+          <TouchableOpacity
+            style={styles.addButton}
+            hitSlop={8}
+            onPress={() => router.push("/create-service")}
+          >
+            <MaterialIcons name="add" size={22} color={primary[400]} />
+          </TouchableOpacity>
+        }
+      />
       {/* Filter tabs */}
       <TabBar
         tabs={TABS.map((tab) => ({ key: tab, label: tab }))}
@@ -260,24 +170,39 @@ export default function ServicesScreen() {
           )}
         </ScrollView>
       )}
-      <ManageServiceSheet
+      <BottomSheet
         visible={selectedService !== null}
+        title="Manage Service"
         onClose={() => setSelectedService(null)}
-        onDetail={() => {
-          const id = selectedService?.id;
-          setSelectedService(null);
-          if (id) router.push(`/service-detail/${id}`);
-        }}
-        onEdit={() => {
-          const id = selectedService?.id;
-          setSelectedService(null);
-          if (id) router.push(`/edit-service/${id}`);
-        }}
-        onDelete={() => {
-          const id = selectedService?.id;
-          setSelectedService(null);
-          if (id) router.push(`/edit-service/${id}/delete`);
-        }}
+        options={[
+          {
+            label: "Service Details",
+            icon: require("@/assets/global-icons/view-detail.svg"),
+            onPress: () => {
+              const id = selectedService?.id;
+              setSelectedService(null);
+              if (id) router.push(`/service-detail/${id}`);
+            },
+          },
+          {
+            label: "Edit Service",
+            icon: require("@/assets/global-icons/edit.svg"),
+            onPress: () => {
+              const id = selectedService?.id;
+              setSelectedService(null);
+              if (id) router.push(`/edit-service/${id}`);
+            },
+          },
+          {
+            label: "Delete Service",
+            icon: require("@/assets/global-icons/cancel.svg"),
+            onPress: () => {
+              const id = selectedService?.id;
+              setSelectedService(null);
+              if (id) router.push(`/edit-service/${id}/delete`);
+            },
+          },
+        ]}
       />
     </SafeAreaView>
   );
@@ -287,21 +212,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: background.screen,
-  },
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
   },
   addButton: {
     width: 22,
@@ -382,45 +292,5 @@ const styles = StyleSheet.create({
   moreButton: {
     alignSelf: "flex-start",
     padding: 2,
-  },
-  // Bottom sheet
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: background.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 12,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: neutral[300],
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[800],
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  sheetOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
-  },
-  sheetOptionText: {
-    fontSize: 15,
-    fontWeight: "400",
-    color: neutral[800],
   },
 });

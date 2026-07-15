@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
 import { confirmEmail, resendOtpEmail } from "@/api/auth";
@@ -116,9 +116,7 @@ export default function ConfirmEmailOtpScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
         <View style={styles.body}>
           <Text style={styles.title}>
@@ -240,11 +238,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   body: {
     flex: 1,
     paddingHorizontal: 20,

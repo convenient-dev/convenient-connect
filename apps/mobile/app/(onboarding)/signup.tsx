@@ -6,7 +6,7 @@ import {
   signInWithFacebook,
 } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   buildFullPhone,
   Country,
@@ -164,9 +164,7 @@ export default function SignupScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
         <ScrollView
           style={styles.flex}
@@ -272,11 +270,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 24,

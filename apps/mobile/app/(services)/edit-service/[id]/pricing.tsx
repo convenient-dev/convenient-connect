@@ -1,5 +1,5 @@
-import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { getService, getSubcategory } from "@/api/legacy";
 import { useCurrentUser } from "@/constants/session";
@@ -197,12 +197,7 @@ export default function EditServicePricingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Pricing</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Pricing" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -371,16 +366,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: background.screen },
   flex: { flex: 1 },
   loader: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
-  headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   sectionTitle: { fontSize: 15, fontWeight: "700", color: neutral[800], marginBottom: 4 },

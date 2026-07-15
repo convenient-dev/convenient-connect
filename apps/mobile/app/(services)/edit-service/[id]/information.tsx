@@ -1,6 +1,6 @@
-import { BackButton } from "@/components/BackButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { getService, getLegacyUser, getSubcategory, uploadImage, deleteImage, uploadPdf, deletePdf } from "@/api/legacy";
 import { useCurrentUser } from "@/constants/session";
@@ -475,12 +475,7 @@ export default function EditServiceInformationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Service Information</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Service Information" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -1192,16 +1187,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: background.screen },
   flex: { flex: 1 },
   loader: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
-  headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   field: { marginBottom: 20, gap: 8 },

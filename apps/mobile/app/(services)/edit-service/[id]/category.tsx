@@ -1,14 +1,13 @@
 import { getService } from "@/api/legacy";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
-import { BackButton } from "@/components/BackButton";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,7 +24,6 @@ interface ServiceCategory {
 
 export default function EditServiceCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const { userId } = useCurrentUser();
   const [loading, setLoading] = useState(true);
   const [subcategoryName, setSubcategoryName] = useState<string | null>(null);
@@ -42,11 +40,7 @@ export default function EditServiceCategoryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Service Category</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Service Category" />
 
       {loading ? (
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
@@ -70,16 +64,6 @@ export default function EditServiceCategoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: background.screen },
   loader: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: "neutral[800]" },
-  headerSpacer: { width: 38 },
   card: {
     marginHorizontal: 20,
     marginTop: 8,

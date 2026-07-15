@@ -1,4 +1,4 @@
-import { BackButton } from "@/components/BackButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { emailSignup } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -34,9 +34,7 @@ export default function SignupByEmailScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
         <View style={styles.body}>
           <Text style={styles.title}>Enter your email address</Text>
@@ -97,11 +95,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   body: {
     flex: 1,
     paddingHorizontal: 20,

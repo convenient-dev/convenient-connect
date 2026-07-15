@@ -327,13 +327,6 @@ export default function ProfileScreen() {
             }
           />
           <View style={styles.rowDivider} />
-
-          <ProfileRow
-            label="My Affiliations"
-            value="Businesses you're currently affiliated with"
-            valueMuted
-            onPress={() => router.push("/affiliations")}
-          />
         </View>
       </ScrollView>
     </SafeAreaView>

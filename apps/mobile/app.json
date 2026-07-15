@@ -70,6 +70,18 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.1008944383437-5vegtk12na1cu0u94rn4l1pko214ha5m"
         }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1573313984452730",
+          "clientToken": "7a56be5f70a0fb930d71eed5b54bb8cc",
+          "displayName": "ConvenientConnect",
+          "scheme": "fb1573313984452730",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": false
+        }
       ]
     ],
     "experiments": {

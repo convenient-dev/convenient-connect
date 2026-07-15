@@ -1,6 +1,10 @@
-import { googleLogin, numberLogin } from "@/api/auth";
+import { facebookLogin, googleLogin, numberLogin } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import {
+  facebookSignOutQuietly,
+  signInWithFacebook,
+} from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
 import { BackButton } from "@/components/BackButton";
 import {
@@ -10,6 +14,7 @@ import {
   PhoneInput,
 } from "@/components/PhoneInput";
 import { Colors } from "@/constants/theme";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
@@ -37,11 +42,11 @@ interface SocialOption {
 }
 
 const SOCIAL_OPTIONS: SocialOption[] = [
-  // {
-  //   key: "facebook",
-  //   label: "Continue with Facebook",
-  //   icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
-  // },
+  {
+    key: "facebook",
+    label: "Continue with Facebook",
+    icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
+  },
   {
     key: "gmail",
     label: "Continue with Gmail",
@@ -107,6 +112,45 @@ export default function SignupScreen() {
     } catch (e) {
       await googleSignOutQuietly();
       const msg = e instanceof ApiError ? e.message : "Google sign-in failed";
+      Alert.alert("Error", msg);
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    if (socialLoading) return;
+    setSocialLoading("facebook");
+    try {
+      const facebook = await signInWithFacebook();
+      if (facebook.status === "cancelled") return;
+      if (facebook.status === "error") {
+        Alert.alert("Error", facebook.message);
+        return;
+      }
+      const result = await facebookLogin({
+        email: facebook.email,
+        firstName: facebook.firstName,
+        lastName: facebook.lastName,
+      });
+      await login(result.accessToken, {
+        user: result.user,
+        providerType: result.providerType,
+        profileImage: result.profileImage,
+        backgroundVerification: result.backgroundVerification,
+        businessVerification: result.businessVerification,
+      });
+      if (result.providerType) {
+        router.replace("/home");
+      } else {
+        router.replace({
+          pathname: "/enter-personal-details",
+          params: { method: "email" },
+        });
+      }
+    } catch (e) {
+      await facebookSignOutQuietly();
+      const msg = e instanceof ApiError ? e.message : "Facebook sign-in failed";
       Alert.alert("Error", msg);
     } finally {
       setSocialLoading(null);
@@ -192,7 +236,10 @@ export default function SignupScreen() {
                 if (option.key === "gmail") {
                   handleGoogleLogin();
                 }
-                // TODO: Wire facebook, apple social auth SDKs
+                if (option.key === "facebook") {
+                  handleFacebookLogin();
+                }
+                // TODO: Wire apple social auth SDK
               }}
             >
               <View style={styles.socialIcon}>{option.icon}</View>

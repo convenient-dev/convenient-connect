@@ -4,13 +4,13 @@ import {
   sendDeleteAccountOtp,
 } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   StyleSheet,
   Text,
@@ -147,21 +147,14 @@ export default function DeleteAccountScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!selected || sending) && styles.sendButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          disabled={!selected || sending}
+        <Button
+          title="Send OTP"
+          variant="secondary"
+          size="lg"
+          loading={sending}
+          disabled={!selected}
           onPress={handleSendOtp}
-        >
-          {sending ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.sendText}>Send OTP</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -232,21 +225,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  sendButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

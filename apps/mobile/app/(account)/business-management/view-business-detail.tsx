@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
@@ -9,12 +10,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, neutral, text, background, border, status } = Colors;
+const { neutral, text, background, border, status } = Colors;
 
 // TODO: Get the connected bank account from the API once it exists.
 const BANK_ACCOUNT = {
@@ -107,15 +107,14 @@ export default function ViewBusinessDetailScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.editButton}
-          activeOpacity={0.85}
+        <Button
+          title="Edit"
+          variant="secondary"
+          size="lg"
           onPress={() => {
             // TODO: Open the edit-business flow once it exists.
           }}
-        >
-          <Text style={styles.editText}>Edit</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -186,18 +185,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 20,
-  },
-  editButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

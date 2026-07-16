@@ -7,13 +7,13 @@ import {
   parseInitialPhone,
   toCountry,
 } from "@/components/PhoneInput";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -153,18 +153,14 @@ export default function UpdatePhoneScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-            activeOpacity={0.85}
-            onPress={handleSave}
+          <Button
+            title="Verify"
+            variant="secondary"
+            size="md"
+            loading={saving}
             disabled={!canSave}
-          >
-            {saving ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.saveButtonText}>Verify</Text>
-            )}
-          </TouchableOpacity>
+            onPress={handleSave}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -248,21 +244,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  saveButton: {
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

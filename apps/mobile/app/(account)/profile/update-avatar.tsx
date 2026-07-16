@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { updateProfileImage, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
@@ -9,7 +10,6 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   StyleSheet,
   Text,
@@ -131,21 +131,14 @@ export default function EditAvatarScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            (!pickedUri || saving) && styles.saveButtonDisabled,
-          ]}
-          activeOpacity={0.85}
+        <Button
+          title="Save"
+          variant="primary"
+          size="md"
+          loading={saving}
+          disabled={!pickedUri}
           onPress={handleSave}
-          disabled={!pickedUri || saving}
-        >
-          {saving ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -199,21 +192,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  saveButton: {
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonDisabled: {
-    backgroundColor: neutral[200],
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

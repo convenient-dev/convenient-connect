@@ -6,6 +6,7 @@ import {
   signInWithFacebook,
 } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   buildFullPhone,
@@ -33,7 +34,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, neutral, text, background, border } = Colors;
+const { neutral, text, background, border } = Colors;
 
 interface SocialOption {
   key: string;
@@ -183,13 +184,12 @@ export default function SignupScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.verifyButton,
-              loading && styles.verifyButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={loading || !phone.trim()}
+          <Button
+            title="Verify"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!phone.trim()}
             onPress={async () => {
               const fullPhone = buildFullPhone(country, phone);
               setLoading(true);
@@ -207,13 +207,7 @@ export default function SignupScreen() {
                 setLoading(false);
               }
             }}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.verifyText}>Verify</Text>
-            )}
-          </TouchableOpacity>
+          />
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -284,22 +278,6 @@ const styles = StyleSheet.create({
   },
   phoneWrap: {
     marginBottom: 16,
-  },
-  verifyButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifyButtonDisabled: {
-    opacity: 0.6,
-  },
-  verifyText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   dividerRow: {
     flexDirection: "row",

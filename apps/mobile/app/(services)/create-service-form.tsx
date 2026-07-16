@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { useCurrentUser } from "@/constants/session";
 import { getSubcategory, getLegacyUser, getUserAffiliations, createService, uploadImage, uploadPdf } from "@/api/legacy";
@@ -686,13 +687,13 @@ export default function CreateServiceFormScreen() {
             hours. We'll notify you once it's approved.
           </Text>
 
-          <TouchableOpacity
-            style={styles.createAnotherBtn}
+          <Button
+            title="View my Services"
+            variant="primary"
+            size="lg"
+            style={{ marginTop: 16 }}
             onPress={() => router.replace("/(tabs)/services")}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.createAnotherText}>View my Services</Text>
-          </TouchableOpacity>
+          />
         </View>
       </SafeAreaView>
     );
@@ -1453,32 +1454,22 @@ export default function CreateServiceFormScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backButton}
+        <Button
+          title="Back"
+          variant="secondary"
+          size="md"
+          style={{ flex: 1 }}
           onPress={handleBack}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.nextButton, canProceed && styles.nextButtonActive]}
-          onPress={handleNext}
+        />
+        <Button
+          title={formStep === 5 ? "Submit" : "Next"}
+          variant="primary"
+          size="md"
+          style={{ flex: 1 }}
           disabled={!canProceed}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.nextButtonText,
-              canProceed && styles.nextButtonTextActive,
-            ]}
-          >
-            {formStep === 5 && submitting
-              ? "Submitting..."
-              : formStep === 5
-                ? "Submit"
-                : "Next"}
-          </Text>
-        </TouchableOpacity>
+          loading={formStep === 5 && submitting}
+          onPress={handleNext}
+        />
       </View>
 
       {/* Address picker bottom sheet */}
@@ -1737,13 +1728,13 @@ export default function CreateServiceFormScreen() {
             })}
           </ScrollView>
           {pickerField?.fieldType === "multiSelect" && (
-            <TouchableOpacity
-              style={styles.multiSelectDoneBtn}
+            <Button
+              title="Done"
+              variant="primary"
+              size="md"
+              style={{ marginHorizontal: 20, marginTop: 12 }}
               onPress={() => closeFieldPicker()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.multiSelectDoneText}>Done</Text>
-            </TouchableOpacity>
+            />
           )}
         </Animated.View>
       </Modal>
@@ -2421,38 +2412,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  backButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-  },
-  nextButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: neutral[200],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextButtonActive: {
-    backgroundColor: primary[400],
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[400],
-  },
-  nextButtonTextActive: {
-    color: neutral[0],
-  },
   // Bottom sheet
   bottomSheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -2509,19 +2468,6 @@ const styles = StyleSheet.create({
     color: primary[500],
     fontWeight: "600",
   },
-  multiSelectDoneBtn: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 13,
-    borderRadius: 10,
-    backgroundColor: primary[400],
-    alignItems: "center",
-  },
-  multiSelectDoneText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: neutral[0],
-  },
   // ── Success screen ────────────────────────────────────────────
   successContainer: {
     flex: 1,
@@ -2546,20 +2492,6 @@ const styles = StyleSheet.create({
     color: neutral[400],
     textAlign: "center",
     lineHeight: 21,
-  },
-  createAnotherBtn: {
-    marginTop: 16,
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  createAnotherText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
   },
   submitError: {
     fontSize: 13,

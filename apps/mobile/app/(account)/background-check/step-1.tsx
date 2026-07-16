@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { Colors } from "@/constants/theme";
@@ -5,10 +6,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background, status } = Colors;
+const { neutral, text, background, status } = Colors;
 
 const BENEFITS = [
   "Takes only a few minutes",
@@ -48,13 +49,13 @@ export default function OnboardingBackgroundCheckScreen() {
             Your background check is complete. You&apos;re all set to publish
             your services.
           </Text>
-          <TouchableOpacity
-            style={styles.successButton}
-            activeOpacity={0.85}
+          <Button
+            title="Done"
+            variant="primary"
+            size="lg"
+            style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
             onPress={handleDone}
-          >
-            <Text style={styles.successButtonText}>Done</Text>
-          </TouchableOpacity>
+          />
         </View>
       </SafeAreaView>
     );
@@ -92,13 +93,12 @@ export default function OnboardingBackgroundCheckScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.acceptButton}
-          activeOpacity={0.85}
+        <Button
+          title="Accept and Proceed"
+          variant="primary"
+          size="lg"
           onPress={handleAccept}
-        >
-          <Text style={styles.acceptButtonText}>Accept and Proceed</Text>
-        </TouchableOpacity>
+        />
         <Text style={styles.disclaimer}>
           By clicking on “Accept and Proceed”, you consent to provide us with
           the requested data.
@@ -149,21 +149,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     letterSpacing: -0.408,
     marginBottom: 14,
-  },
-  successButton: {
-    height: 56,
-    paddingHorizontal: 60,
-    borderRadius: 999,
-    backgroundColor: primary[300],
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  successButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   description: {
     fontSize: 15,
@@ -253,19 +238,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
-  },
-  acceptButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  acceptButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   disclaimer: {
     fontSize: 12,

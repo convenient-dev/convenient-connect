@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { emailSignup } from "@/api/auth";
@@ -6,19 +7,17 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, neutral, text, background } = Colors;
+const { neutral, text, background } = Colors;
 
 export default function SignupByEmailScreen() {
   const router = useRouter();
@@ -53,13 +52,12 @@ export default function SignupByEmailScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              (!isValid || loading) && styles.continueDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={!isValid || loading}
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!isValid}
             onPress={async () => {
               setLoading(true);
               try {
@@ -76,13 +74,7 @@ export default function SignupByEmailScreen() {
                 setLoading(false);
               }
             }}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.continueText}>Continue</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -120,21 +112,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

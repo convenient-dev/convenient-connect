@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
@@ -281,23 +282,22 @@ export default function EditServicePricingScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
+        <Button
+          title="Cancel"
+          variant="secondary"
+          size="md"
+          style={{ flex: 1 }}
           onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveButton, canSave && styles.saveButtonActive]}
-          onPress={handleSave}
+        />
+        <Button
+          title="Save"
+          variant="primary"
+          size="md"
+          style={{ flex: 1 }}
           disabled={!canSave}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.saveButtonText, canSave && styles.saveButtonTextActive]}>
-            {saving ? "Saving..." : "Save"}
-          </Text>
-        </TouchableOpacity>
+          loading={saving}
+          onPress={handleSave}
+        />
       </View>
 
       <ConfirmModal
@@ -394,18 +394,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingBottom: 6,
   },
   footer: { flexDirection: "row", gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
-  cancelButton: {
-    flex: 1, height: 50, borderRadius: 25,
-    backgroundColor: secondary[500], alignItems: "center", justifyContent: "center",
-  },
-  cancelButtonText: { fontSize: 16, fontWeight: "600", color: neutral[0] },
-  saveButton: {
-    flex: 1, height: 50, borderRadius: 25,
-    backgroundColor: neutral[200], alignItems: "center", justifyContent: "center",
-  },
-  saveButtonActive: { backgroundColor: primary[400] },
-  saveButtonText: { fontSize: 16, fontWeight: "600", color: neutral[400] },
-  saveButtonTextActive: { color: neutral[0] },
   bottomSheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: overlay.light },
   bottomSheet: {
     position: "absolute", left: 0, right: 0, bottom: 0,

@@ -1,17 +1,11 @@
+import { Button } from "@/components/Button";
 import { ModalIcon } from "@/components/ModalIcon";
 import { Colors } from "@/constants/theme";
 import type { ComponentProps } from "react";
 import React from "react";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-const { brand, neutral, background, text, overlay } = Colors;
+const { neutral, background, overlay } = Colors;
 
 interface Props {
   visible: boolean;
@@ -47,21 +41,21 @@ export function ConfirmModal({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.confirmBtn}
+            <Button
+              title={confirmLabel}
+              variant="secondary"
+              size="md"
               onPress={onConfirm}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.confirmText}>{confirmLabel}</Text>
-            </TouchableOpacity>
+              style={{ width: "100%" }}
+            />
             {onCancel && (
-              <TouchableOpacity
-                style={styles.cancelBtn}
+              <Button
+                title={cancelLabel}
+                variant="dark"
+                size="md"
                 onPress={onCancel}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelText}>{cancelLabel}</Text>
-              </TouchableOpacity>
+                style={{ width: "100%" }}
+              />
             )}
           </View>
         </Pressable>
@@ -110,31 +104,5 @@ const styles = StyleSheet.create({
     gap: 10,
     width: "100%",
     marginTop: 4,
-  },
-  cancelBtn: {
-    width: "100%",
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: neutral[1000],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: text.inverse,
-  },
-  confirmBtn: {
-    width: "100%",
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: brand.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: text.inverse,
   },
 });

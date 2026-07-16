@@ -5,6 +5,7 @@ import {
   sendDeleteAccountOtp,
 } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Colors } from "@/constants/theme";
@@ -12,18 +13,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background } = Colors;
+const { primary, neutral, text, background } = Colors;
 
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
@@ -199,36 +198,25 @@ export default function VerifyDeleteAccountOtpScreen() {
                 Resend code in {formatTimer(seconds)}
               </Text>
             ) : (
-              <TouchableOpacity
-                style={styles.resendButton}
-                activeOpacity={0.7}
+              <Button
+                title={resending ? "Sending..." : "Resend code"}
+                variant="ghost"
                 disabled={resending}
                 onPress={handleResend}
-              >
-                <Text style={styles.resendText}>
-                  {resending ? "Sending..." : "Resend code"}
-                </Text>
-              </TouchableOpacity>
+              />
             )}
           </View>
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.deleteButton,
-              (!isComplete || loading) && styles.deleteButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={!isComplete || loading}
+          <Button
+            title="Delete Account"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!isComplete}
             onPress={handleVerify}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.deleteText}>Delete Account</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -297,33 +285,8 @@ const styles = StyleSheet.create({
     color: neutral[400],
     letterSpacing: -0.408,
   },
-  resendButton: {
-    paddingVertical: 4,
-  },
-  resendText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: primary[400],
-    letterSpacing: -0.408,
-  },
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  deleteButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteButtonDisabled: {
-    opacity: 0.6,
-  },
-  deleteText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

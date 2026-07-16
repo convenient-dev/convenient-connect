@@ -1,4 +1,5 @@
 import { getUserAffiliations } from "@/api/legacy";
+import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
@@ -20,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background } = Colors;
+const { primary, neutral, text, background } = Colors;
 
 type TabKey = "businesses" | "affiliations";
 
@@ -133,16 +134,15 @@ export default function BusinessManagementScreen() {
           )}
 
           <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.createButton}
-              activeOpacity={0.85}
+            <Button
+              title="Create Business"
+              variant="secondary"
+              size="lg"
+              icon={<MaterialIcons name="add" size={22} color={Colors.neutral[0]} />}
               onPress={() =>
                 router.push("/business-management/business-details")
               }
-            >
-              <MaterialIcons name="add" size={22} color={neutral[0]} />
-              <Text style={styles.createText}>Create Business</Text>
-            </TouchableOpacity>
+            />
           </View>
         </>
       ) : loadingAffiliations ? (
@@ -268,21 +268,6 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  createButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  createText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   loader: { flex: 1 },
   subtitle: {

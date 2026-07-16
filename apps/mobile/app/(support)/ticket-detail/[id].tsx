@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
@@ -11,12 +12,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background, border } = Colors;
+const { primary, neutral, text, background, border } = Colors;
 
 
 type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
@@ -99,13 +99,12 @@ export default function TicketDetailScreen() {
           <Text style={styles.missingSub}>
             We couldn&apos;t find a ticket with id {id ?? "—"}.
           </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.85}
+          <Button
+            title="Back to My Tickets"
+            variant="secondary"
+            size="md"
             onPress={() => router.replace("/my-tickets")}
-          >
-            <Text style={styles.primaryButtonText}>Back to My Tickets</Text>
-          </TouchableOpacity>
+          />
         </View>
       </SafeAreaView>
     );
@@ -173,15 +172,14 @@ export default function TicketDetailScreen() {
 
       {canReply && (
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.85}
+          <Button
+            title="Reply to Support"
+            variant="secondary"
+            size="md"
+            icon={<MaterialIcons name="reply" size={18} color={neutral[0]} />}
             // TODO: wire up reply / message thread screen.
             onPress={() => {}}
-          >
-            <MaterialIcons name="reply" size={18} color={neutral[0]} />
-            <Text style={styles.primaryButtonText}>Reply to Support</Text>
-          </TouchableOpacity>
+          />
         </View>
       )}
     </SafeAreaView>
@@ -304,21 +302,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     paddingTop: 8,
-  },
-  primaryButton: {
-    flexDirection: "row",
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 
   missingWrap: {

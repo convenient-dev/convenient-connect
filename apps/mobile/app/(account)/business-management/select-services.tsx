@@ -1,4 +1,5 @@
 import { getCategories, getSubcategories } from "@/api/legacy";
+import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
@@ -257,17 +258,13 @@ export default function SelectServicesScreen() {
       )}
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            selected.length === 0 && styles.continueDisabled,
-          ]}
-          activeOpacity={0.85}
+        <Button
+          title="Continue"
+          variant="secondary"
+          size="lg"
           disabled={selected.length === 0}
           onPress={handleContinue}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -414,21 +411,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

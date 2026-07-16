@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -6,7 +7,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -105,24 +105,24 @@ export default function BackgroundCheck4Screen() {
               once you&apos;ve finished the steps in your browser.
             </Text>
             {error && <Text style={styles.error}>{error}</Text>}
-            <TouchableOpacity
-              style={[styles.primaryButton, styles.secondaryButton]}
-              activeOpacity={0.85}
+            <Button
+              title="Refresh"
+              variant="outline"
+              size="lg"
+              style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
               onPress={fetchStatus}
-            >
-              <Text style={styles.secondaryButtonText}>Refresh</Text>
-            </TouchableOpacity>
+            />
           </>
         )}
 
         {!loading && (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.85}
+          <Button
+            title="Done"
+            variant="primary"
+            size="lg"
+            style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
             onPress={handleDone}
-          >
-            <Text style={styles.primaryButtonText}>Done</Text>
-          </TouchableOpacity>
+          />
         )}
       </View>
     </SafeAreaView>
@@ -169,32 +169,5 @@ const styles = StyleSheet.create({
     color: "#c00",
     textAlign: "center",
     marginBottom: 12,
-  },
-  primaryButton: {
-    height: 56,
-    paddingHorizontal: 60,
-    borderRadius: 999,
-    backgroundColor: primary[300],
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginTop: 12,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  secondaryButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: primary[300],
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: primary[300],
-    letterSpacing: -0.408,
   },
 });

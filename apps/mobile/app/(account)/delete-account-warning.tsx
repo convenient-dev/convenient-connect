@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -75,17 +76,13 @@ export default function DeleteAccountWarningScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !acknowledged && styles.continueButtonDisabled,
-          ]}
-          activeOpacity={0.85}
+        <Button
+          title="Continue"
+          variant="secondary"
+          size="lg"
           disabled={!acknowledged}
           onPress={() => router.push("/delete-account")}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -166,21 +163,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueButtonDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

@@ -1,13 +1,14 @@
+import { Button } from "@/components/Button";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import LottieView from "lottie-react-native";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text } = Colors;
+const { neutral, text } = Colors;
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -32,13 +33,13 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.getStartedButton}
-          activeOpacity={0.85}
+        <Button
+          title="Get Started"
+          variant="primary"
+          size="lg"
+          style={{ maxWidth: 400 }}
           onPress={() => router.push("/signup")}
-        >
-          <Text style={styles.getStartedText}>Get Started</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -79,18 +80,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
-  },
-  getStartedButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  getStartedText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

@@ -1,4 +1,5 @@
 import { BottomSheet } from "@/components/BottomSheet";
+import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
@@ -176,16 +177,15 @@ export default function BusinessDetailScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.inviteButton, !isVerified && styles.inviteDisabled]}
-          activeOpacity={0.85}
+        <Button
+          title="Invite New Member"
+          variant="primary"
+          size="lg"
           disabled={!isVerified}
           onPress={() => {
             // TODO: Open the invite-member screen once it exists.
           }}
-        >
-          <Text style={styles.inviteText}>Invite New Member</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <BottomSheet
@@ -363,21 +363,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 20,
-  },
-  inviteButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  inviteDisabled: {
-    opacity: 0.5,
-  },
-  inviteText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

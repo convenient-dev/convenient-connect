@@ -1,17 +1,12 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import React from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { brand, neutral, text, background } = Colors;
+const { neutral, text, background } = Colors;
 
 export default function ManagePayoutMethodsScreen() {
   function handleAddAccountDetails() {
@@ -45,13 +40,13 @@ export default function ManagePayoutMethodsScreen() {
             business days for account verification.
           </Text>
 
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.85}
+          <Button
+            title="Add account details"
+            variant="primary"
+            size="lg"
+            style={{ marginTop: 24, alignSelf: "stretch" }}
             onPress={handleAddAccountDetails}
-          >
-            <Text style={styles.primaryButtonText}>Add account details</Text>
-          </TouchableOpacity>
+          />
 
           <View style={styles.poweredByBadge}>
             <ExpoImage
@@ -107,21 +102,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
     marginTop: 14,
     alignSelf: "stretch",
-  },
-  primaryButton: {
-    alignSelf: "stretch",
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-  primaryButtonText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   poweredByBadge: {
     marginTop: 18,

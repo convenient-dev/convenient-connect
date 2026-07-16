@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { useCurrentUser } from "@/constants/session";
@@ -5,7 +6,6 @@ import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -109,26 +109,21 @@ export default function DeleteServiceReasonScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.deleteBtn, !canDelete && styles.deleteBtnDisabled]}
+          <Button
+            title="Delete this service"
+            variant="secondary"
+            size="lg"
+            disabled={!canDelete}
+            loading={deleting}
             onPress={handleDelete}
-            disabled={!canDelete || deleting}
-            activeOpacity={0.85}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color={neutral[0]} />
-            ) : (
-              <Text style={styles.deleteBtnText}>Delete this service</Text>
-            )}
-          </TouchableOpacity>
+          />
 
-          <TouchableOpacity
-            style={styles.cancelBtn}
+          <Button
+            title="I don't want to delete"
+            variant="dark"
+            size="lg"
             onPress={() => router.push("/services")}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.cancelBtnText}>I don't want to delete</Text>
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -214,32 +209,5 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingTop: 8,
     gap: 12,
-  },
-  deleteBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: brand.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteBtnDisabled: {
-    opacity: 0.45,
-  },
-  deleteBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-  },
-  cancelBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: neutral[1000],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
   },
 });

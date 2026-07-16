@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { Colors } from "@/constants/theme";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -16,7 +17,7 @@ const SCREEN_HEIGHT = Dimensions.get("window").height;
 const ENTER_DURATION = 260;
 const EXIT_DURATION = 200;
 
-const { brand, neutral, background, text, overlay, secondary, border } = Colors;
+const { brand, neutral, background, text, overlay, border } = Colors;
 
 export interface FilterOption {
   key: string;
@@ -181,20 +182,8 @@ export function FilterBottomSheet({
             })}
 
             <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.applyButton}
-                activeOpacity={0.85}
-                onPress={handleApply}
-              >
-                <Text style={styles.applyText}>{applyLabel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.resetButton}
-                activeOpacity={0.85}
-                onPress={handleReset}
-              >
-                <Text style={styles.resetText}>{resetLabel}</Text>
-              </TouchableOpacity>
+              <Button title={applyLabel} variant="primary" size="lg" onPress={handleApply} />
+              <Button title={resetLabel} variant="secondary" size="lg" onPress={handleReset} />
             </View>
           </SafeAreaView>
         </Animated.View>
@@ -286,31 +275,5 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 28,
     gap: 12,
-  },
-  applyButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applyText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  resetButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resetText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

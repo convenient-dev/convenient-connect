@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
@@ -7,7 +8,6 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background, border } = Colors;
+const { primary, neutral, text, background, border } = Colors;
 
 const TOPIC_OPTIONS: { key: string; label: string }[] = [
   { key: "account", label: "Account & App Usages" },
@@ -169,21 +169,14 @@ export default function SubmitTicketScreen() {
           {errorMessage && (
             <Text style={styles.errorText}>{errorMessage}</Text>
           )}
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              !canSubmit && styles.primaryButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            onPress={handleSubmit}
+          <Button
+            title="Submit Ticket"
+            variant="secondary"
+            size="md"
+            loading={submitting}
             disabled={!canSubmit}
-          >
-            {submitting ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.primaryButtonText}>Submit Ticket</Text>
-            )}
-          </TouchableOpacity>
+            onPress={handleSubmit}
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -318,21 +311,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.408,
   },
-  primaryButton: {
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-
 });

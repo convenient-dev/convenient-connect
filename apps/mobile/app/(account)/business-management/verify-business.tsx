@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
 import {
@@ -331,17 +332,13 @@ export default function VerifyBusinessScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              !canContinue && styles.continueButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            onPress={handleContinue}
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
             disabled={!canContinue}
-          >
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </TouchableOpacity>
+            onPress={handleContinue}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -510,21 +507,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
-  },
-  continueButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueButtonDisabled: {
-    opacity: 0.5,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

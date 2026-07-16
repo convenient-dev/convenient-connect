@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -116,19 +117,13 @@ export default function BackgroundCheck3Screen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            (!accepted || submitting) && styles.primaryButtonDisabled,
-          ]}
-          activeOpacity={0.85}
+        <Button
+          title={submitting ? "Opening Stripe…" : "Accept and Proceed"}
+          variant="primary"
+          size="lg"
           disabled={!accepted || submitting}
           onPress={handleAcceptAndProceed}
-        >
-          <Text style={styles.primaryButtonText}>
-            {submitting ? "Opening Stripe…" : "Accept and Proceed"}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -188,21 +183,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 16,
-  },
-  primaryButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: primary[300],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

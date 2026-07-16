@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors } from "@/constants/theme";
@@ -9,12 +10,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { brand, primary, secondary, neutral, text, background, status } = Colors;
+const { primary, neutral, text, background, status } = Colors;
 
 
 const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
@@ -97,21 +97,19 @@ export default function UpdateBankAccountScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.updateButton}
-          activeOpacity={0.85}
+        <Button
+          title="Update account details"
+          variant="primary"
+          size="lg"
           onPress={handleUpdateDetails}
-        >
-          <Text style={styles.updateButtonText}>Update account details</Text>
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={styles.submitButton}
-          activeOpacity={0.85}
+        <Button
+          title="Submit with this account"
+          variant="secondary"
+          size="lg"
           onPress={handleSubmit}
-        >
-          <Text style={styles.submitButtonText}>Submit with this account</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <ConfirmModal
@@ -201,31 +199,5 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     gap: 10,
-  },
-  updateButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updateButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  submitButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

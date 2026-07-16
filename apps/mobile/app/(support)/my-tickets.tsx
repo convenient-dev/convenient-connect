@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
@@ -131,13 +132,13 @@ export default function MyTicketsScreen() {
             When you submit a ticket, you&apos;ll see its status and replies
             here.
           </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            activeOpacity={0.85}
+          <Button
+            title="Submit a Ticket"
+            variant="secondary"
+            size="sm"
+            style={{ marginTop: 18, alignSelf: "center" }}
             onPress={() => router.push("/submit-ticket")}
-          >
-            <Text style={styles.emptyButtonText}>Submit a Ticket</Text>
-          </TouchableOpacity>
+          />
         </View>
       ) : (
         <ScrollView
@@ -334,21 +335,6 @@ const styles = StyleSheet.create({
     color: neutral[400],
     textAlign: "center",
     lineHeight: 20,
-    letterSpacing: -0.408,
-  },
-  emptyButton: {
-    marginTop: 18,
-    paddingHorizontal: 24,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
     letterSpacing: -0.408,
   },
 });

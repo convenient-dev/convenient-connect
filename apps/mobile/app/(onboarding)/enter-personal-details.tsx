@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   buildFullPhone,
@@ -13,7 +14,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -21,12 +21,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, primary, neutral, text, background, border } = Colors;
+const { secondary, neutral, text, background, border } = Colors;
 
 interface FieldProps {
   label: string;
@@ -159,22 +158,15 @@ export default function EnterPersonalDetailsScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.nextButton,
-              (!canSubmit || loading) && { opacity: 0.6 },
-            ]}
-            activeOpacity={0.85}
-            disabled={!canSubmit || loading}
+          <Button
+            title="Next"
+            variant="primary"
+            size="lg"
+            style={{ flex: 1 }}
+            loading={loading}
+            disabled={!canSubmit}
             onPress={handleSubmit}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -240,21 +232,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     paddingTop: 8,
-  },
-  button: {
-    flex: 1,
-    height: 56,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextButton: {
-    backgroundColor: primary[400],
-  },
-  buttonText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

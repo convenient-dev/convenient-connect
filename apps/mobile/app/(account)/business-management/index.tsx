@@ -4,6 +4,7 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -49,6 +50,7 @@ function titleCase(s: string): string {
 }
 
 export default function BusinessManagementScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { pendingBusinesses } = useBusinessSignup();
@@ -75,7 +77,7 @@ export default function BusinessManagementScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
       <ScreenHeader title="Business Management" />
@@ -95,7 +97,7 @@ export default function BusinessManagementScreen() {
           ) : (
             <ScrollView
               style={styles.list}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[styles.listContent, contentWidthStyle]}
               showsVerticalScrollIndicator={false}
             >
               {pendingBusinesses.map((business) => (
@@ -133,7 +135,7 @@ export default function BusinessManagementScreen() {
             </ScrollView>
           )}
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, contentWidthStyle]}>
             <Button
               title="Create Business"
               variant="secondary"
@@ -154,7 +156,7 @@ export default function BusinessManagementScreen() {
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={styles.affiliationListContent}
+          contentContainerStyle={[styles.affiliationListContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.subtitle}>

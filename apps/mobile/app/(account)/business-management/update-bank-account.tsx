@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -20,6 +21,7 @@ const { primary, neutral, text, background, status } = Colors;
 const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details, services, and documents collected on the previous
   // screens of the create-business flow.
@@ -63,12 +65,12 @@ export default function UpdateBankAccountScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Update Bank Account</Text>
@@ -96,7 +98,7 @@ export default function UpdateBankAccountScreen() {
         </Text>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Update account details"
           variant="primary"

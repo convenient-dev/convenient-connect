@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SwipeButton } from "@/components/SwipeButton";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -59,6 +60,7 @@ function FeatureCard({ image, label }: Feature) {
 }
 
 export default function BackgroundCheck2Screen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [paymentSheetVisible, setPaymentSheetVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
@@ -108,10 +110,10 @@ export default function BackgroundCheck2Screen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title={`${FEE} One Time Sign up Fee`} />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.description}>
           This one-time fee helps verify your profile and keep our platform
           running smoothly.
@@ -130,7 +132,7 @@ export default function BackgroundCheck2Screen() {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <SwipeButton
           label={`Slide to pay ${FEE}`}
           onComplete={openPaymentSheet}

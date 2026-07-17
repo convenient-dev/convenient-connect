@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { verifyEmailOtp, resendEmailOtp } from "@/api/profile";
 import { ApiError } from "@/api/client";
@@ -50,6 +51,7 @@ export default function VerifyEmailOtpScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email?: string }>();
   const { user: authUser, setUser } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
@@ -110,7 +112,10 @@ export default function VerifyEmailOtpScreen() {
   const isComplete = digits.every((d) => d.length === 1);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -118,7 +123,7 @@ export default function VerifyEmailOtpScreen() {
       >
         <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>
             Enter the 4-digit code sent to {maskEmail(email)}
           </Text>
@@ -161,7 +166,7 @@ export default function VerifyEmailOtpScreen() {
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Verify"
             variant="secondary"

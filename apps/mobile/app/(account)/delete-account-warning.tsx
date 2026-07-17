@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -22,14 +23,15 @@ const BULLETS = [
 ];
 
 export default function DeleteAccountWarningScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [acknowledged, setAcknowledged] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Delete Account" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.subtitle}>
           Are you sure you want to delete your account?
         </Text>
@@ -75,7 +77,7 @@ export default function DeleteAccountWarningScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Continue"
           variant="secondary"

@@ -8,7 +8,6 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
-  Dimensions,
   Modal,
   Pressable,
   ScrollView,
@@ -16,14 +15,12 @@ import {
   Switch,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background } = Colors;
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const MENU_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340);
 
 interface MenuItem {
   key: string;
@@ -57,7 +54,9 @@ export function SideMenu({
 }: SideMenuProps) {
   const router = useRouter();
   const auth = useAuth();
-  const translateX = useRef(new Animated.Value(-MENU_WIDTH)).current;
+  const { width: windowWidth } = useWindowDimensions();
+  const menuWidth = Math.min(windowWidth * 0.82, 340);
+  const translateX = useRef(new Animated.Value(-menuWidth)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [rendered, setRendered] = React.useState(visible);
   const [notificationsOn, setNotificationsOn] = React.useState(true);
@@ -81,7 +80,7 @@ export function SideMenu({
     } else {
       Animated.parallel([
         Animated.timing(translateX, {
-          toValue: -MENU_WIDTH,
+          toValue: -menuWidth,
           duration: 220,
           useNativeDriver: true,
         }),
@@ -94,7 +93,7 @@ export function SideMenu({
         if (finished) setRendered(false);
       });
     }
-  }, [visible]);
+  }, [visible, menuWidth]);
 
   const items: MenuItem[] = [
     {
@@ -213,7 +212,12 @@ export function SideMenu({
           <Pressable style={styles.overlayPressable} onPress={onClose} />
         </Animated.View>
 
-        <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
+        <Animated.View
+          style={[
+            styles.drawer,
+            { width: menuWidth, transform: [{ translateX }] },
+          ]}
+        >
           <SafeAreaView style={styles.drawerSafe} edges={["top", "bottom"]}>
             <ScrollView
               contentContainerStyle={styles.drawerContent}
@@ -347,7 +351,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     left: 0,
-    width: MENU_WIDTH,
     backgroundColor: background.card,
     shadowColor: neutral[1000],
     shadowOffset: { width: 4, height: 0 },

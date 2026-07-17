@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getSubcategory, getLegacyUser, getUserAffiliations, createService, uploadImage, uploadPdf } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
@@ -141,6 +142,7 @@ function ReviewPricingRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function CreateServiceFormScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const {
@@ -672,7 +674,7 @@ export default function CreateServiceFormScreen() {
 
   if (submitted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <View style={styles.successContainer}>
           {/* Illustration */}
           <ExpoImage
@@ -700,7 +702,7 @@ export default function CreateServiceFormScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Step indicator + progress bar */}
       <View style={styles.stepHeader}>
         <View style={styles.stepRow}>
@@ -721,9 +723,10 @@ export default function CreateServiceFormScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={
-            formStep === 5 ? styles.scrollContentReview : styles.scrollContent
-          }
+          contentContainerStyle={[
+            formStep === 5 ? styles.scrollContentReview : styles.scrollContent,
+            contentWidthStyle,
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -1453,7 +1456,7 @@ export default function CreateServiceFormScreen() {
       ) : null}
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
           variant="secondary"

@@ -1,3 +1,4 @@
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getUserAffiliations } from "@/api/legacy";
 import { Button } from "@/components/Button";
@@ -53,6 +54,7 @@ function RadioOption({
 }
 
 export default function CreateServiceScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [selected, setSelected] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export default function CreateServiceScreen() {
   const canProceed = selected !== null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Step indicator + progress bar */}
       <View style={styles.stepHeader}>
         <View style={styles.stepRow}>
@@ -89,7 +91,7 @@ export default function CreateServiceScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
@@ -144,7 +146,7 @@ export default function CreateServiceScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
           variant="secondary"

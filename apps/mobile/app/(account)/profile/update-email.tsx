@@ -2,6 +2,7 @@ import { ApiError } from "@/api/client";
 import { requestEmailOtp } from "@/api/profile";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -21,6 +22,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVALID_EMAIL_MESSAGE = "Please enter a valid email address.";
 
 export default function UpdateEmailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { email: initial } = useLocalSearchParams<{ email?: string }>();
 
@@ -58,14 +60,14 @@ export default function UpdateEmailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScreenHeader title="Update Email" />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <View style={styles.field}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
@@ -91,7 +93,7 @@ export default function UpdateEmailScreen() {
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Verify"
             variant="secondary"

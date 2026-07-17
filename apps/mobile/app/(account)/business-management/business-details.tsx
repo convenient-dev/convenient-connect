@@ -2,6 +2,7 @@ import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -62,6 +63,7 @@ function Field({
 }
 
 export default function BusinessDetailsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const [businessName, setBusinessName] = useState("");
@@ -133,7 +135,7 @@ export default function BusinessDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -143,7 +145,7 @@ export default function BusinessDetailsScreen() {
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, contentWidthStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -216,7 +218,7 @@ export default function BusinessDetailsScreen() {
           />
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Continue"
             variant="secondary"

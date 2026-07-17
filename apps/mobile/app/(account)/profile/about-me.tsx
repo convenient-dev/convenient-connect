@@ -2,6 +2,7 @@ import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { updateAboutMe } from "@/api/profile";
 import { ApiError } from "@/api/client";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -19,6 +20,7 @@ const { secondary, neutral, text, background, border } = Colors;
 
 
 export default function AboutMeScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
 
@@ -42,14 +44,14 @@ export default function AboutMeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScreenHeader title="About Me" />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <TextInput
             style={styles.textArea}
             placeholder="Write a brief introduction about yourself, your experience, and the services you offer."
@@ -68,7 +70,7 @@ export default function AboutMeScreen() {
           </Text>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Save"
             variant="secondary"

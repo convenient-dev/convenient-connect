@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,6 +19,7 @@ const BULLETS = [
 ];
 
 export default function DeleteServiceScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -37,12 +39,12 @@ export default function DeleteServiceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Header */}
 
       <ScreenHeader title="Delete Service" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.warningText}>
           Deleting a service will permanently remove it from your profile and it
           will no longer be visible to clients.
@@ -64,7 +66,7 @@ export default function DeleteServiceScreen() {
         </Text>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Continue to delete"
           variant="secondary"

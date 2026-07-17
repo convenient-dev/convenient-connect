@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -33,13 +34,14 @@ function DetailField({ label, value }: { label: string; value: string }) {
 }
 
 export default function ViewBusinessDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { pendingBusinesses } = useBusinessSignup();
   const business = pendingBusinesses.find((b) => b.id === Number(id));
 
   if (!business) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
         <StatusBar style="dark" />
         <ScreenHeader title="Business Details" />
         <View style={styles.notFound}>
@@ -52,14 +54,14 @@ export default function ViewBusinessDetailScreen() {
   const isVerified = business.status === "verified";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
       <ScreenHeader title="Business Details" />
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
@@ -106,7 +108,7 @@ export default function ViewBusinessDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Edit"
           variant="secondary"

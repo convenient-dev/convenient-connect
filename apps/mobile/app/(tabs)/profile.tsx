@@ -3,6 +3,7 @@ import { getAboutMe } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -114,6 +115,7 @@ function ProfileRow({
 }
 
 export default function ProfileScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
   const { from } = useLocalSearchParams<{ from?: string }>();
@@ -181,7 +183,7 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -198,7 +200,7 @@ export default function ProfileScreen() {
     : "Please complete your background check";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="My Profile"
         onBack={handleBack}
@@ -215,7 +217,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.avatarSection}>

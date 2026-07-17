@@ -1,10 +1,11 @@
-import { Button } from "@/components/Button";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { ConfirmModal } from "@/components/ConfirmModal";
-import { Colors } from "@/constants/theme";
-import { verifyPhoneOtp, resendPhoneOtp } from "@/api/profile";
 import { ApiError } from "@/api/client";
+import { resendPhoneOtp, verifyPhoneOtp } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
@@ -53,6 +54,7 @@ export default function VerifyPhoneOtpScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const { user: authUser, setUser } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
@@ -113,7 +115,10 @@ export default function VerifyPhoneOtpScreen() {
   const isComplete = digits.every((d) => d.length === 1);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -121,7 +126,7 @@ export default function VerifyPhoneOtpScreen() {
       >
         <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>
             Enter the 4-digit code sent to {maskPhone(phone)}
           </Text>
@@ -164,7 +169,7 @@ export default function VerifyPhoneOtpScreen() {
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Verify"
             variant="secondary"
@@ -175,7 +180,10 @@ export default function VerifyPhoneOtpScreen() {
               if (!phone) return;
               setLoading(true);
               try {
-                const updatedUser = await verifyPhoneOtp(phone, digits.join(""));
+                const updatedUser = await verifyPhoneOtp(
+                  phone,
+                  digits.join(""),
+                );
                 if (authUser) {
                   setUser({ ...authUser, user: updatedUser });
                 }

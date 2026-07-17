@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -35,6 +36,7 @@ function parseAmount(raw: string): number {
 }
 
 export default function WithdrawScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -66,7 +68,10 @@ export default function WithdrawScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "left", "right"]}
+    >
       <ScreenHeader title="Withdraw" />
 
       <KeyboardAvoidingView
@@ -75,7 +80,7 @@ export default function WithdrawScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -144,7 +149,7 @@ export default function WithdrawScreen() {
           </Text>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title={parsed > 0 ? `Withdraw ${formatAmount(parsed)}` : "Withdraw"}
             variant="primary"

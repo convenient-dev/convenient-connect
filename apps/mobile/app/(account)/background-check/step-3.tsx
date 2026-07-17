@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -20,6 +21,7 @@ const AGREEMENT_URL = `${WEB_BASE_URL}/agreement`;
 const { primary, neutral, text, background } = Colors;
 
 export default function BackgroundCheck3Screen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [accepted, setAccepted] = useState(false);
@@ -82,10 +84,10 @@ export default function BackgroundCheck3Screen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Agreement" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.description}>
           Please read and accept our{" "}
           <Text style={styles.descriptionLink} onPress={handleOpenAgreement}>
@@ -116,7 +118,7 @@ export default function BackgroundCheck3Screen() {
         />
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title={submitting ? "Opening Stripe…" : "Accept and Proceed"}
           variant="primary"

@@ -3,6 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { updateProfileImage, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -22,6 +23,7 @@ const { primary, neutral, background } = Colors;
 
 
 export default function EditAvatarScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { currentAvatarUrl } = useLocalSearchParams<{
     currentAvatarUrl?: string;
@@ -103,10 +105,10 @@ export default function EditAvatarScreen() {
       : require("@/assets/default-avatar-square.svg");
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Edit Photo" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <View style={styles.previewWrap}>
           <ExpoImage
             source={previewSource}
@@ -130,7 +132,7 @@ export default function EditAvatarScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Save"
           variant="primary"

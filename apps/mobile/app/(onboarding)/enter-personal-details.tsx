@@ -6,6 +6,7 @@ import {
   DEFAULT_COUNTRY,
   PhoneInput,
 } from "@/components/PhoneInput";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { completeProfile, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
@@ -66,6 +67,7 @@ export default function EnterPersonalDetailsScreen() {
     method?: "phone" | "email";
   }>();
   const { user: authUser, setUser } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   // When the user signed up by phone we collect their email; when they signed
   // up by email we collect their phone instead.
@@ -113,7 +115,10 @@ export default function EnterPersonalDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -121,7 +126,7 @@ export default function EnterPersonalDetailsScreen() {
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, contentWidthStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -157,7 +162,7 @@ export default function EnterPersonalDetailsScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Next"
             variant="primary"

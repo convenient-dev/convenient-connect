@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { getCategories } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -58,6 +59,7 @@ function CategoryItem({
 }
 
 export default function CreateServiceCategoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { serviceMode, businessAffiliationId, businessName } =
     useLocalSearchParams<{
@@ -81,7 +83,7 @@ export default function CreateServiceCategoryScreen() {
   const canProceed = selected !== null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Step indicator + progress bar */}
       <View style={styles.stepHeader}>
         <View style={styles.stepRow}>
@@ -114,7 +116,7 @@ export default function CreateServiceCategoryScreen() {
           data={categories}
           keyExtractor={(item) => String(item.id)}
           numColumns={NUM_COLUMNS}
-          contentContainerStyle={styles.grid}
+          contentContainerStyle={[styles.grid, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <CategoryItem
@@ -127,7 +129,7 @@ export default function CreateServiceCategoryScreen() {
       )}
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
           variant="secondary"

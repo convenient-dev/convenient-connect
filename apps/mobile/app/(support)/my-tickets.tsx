@@ -3,6 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
 import { getTickets } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -50,6 +51,7 @@ const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
 };
 
 export default function MyTicketsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -71,7 +73,7 @@ export default function MyTicketsScreen() {
       : allTickets.filter((t) => t.status === filter);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="My Tickets"
         rightAccessory={
@@ -143,7 +145,7 @@ export default function MyTicketsScreen() {
       ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
         >
           {tickets.map((t) => (

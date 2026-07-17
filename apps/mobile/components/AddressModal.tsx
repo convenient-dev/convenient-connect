@@ -4,6 +4,7 @@ import {
   type ResolvedLocation,
 } from "@/api/address";
 import { Button } from "@/components/Button";
+import { MAX_DIALOG_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useState } from "react";
@@ -116,6 +117,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
+    maxWidth: MAX_DIALOG_WIDTH,
     backgroundColor: background.card,
     borderRadius: 20,
     paddingHorizontal: 24,

@@ -9,6 +9,7 @@ import {
 } from "@/components/PhoneInput";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -31,6 +32,7 @@ const LOCAL_PHONE_REGEX = /^[\d\s\-()]+$/;
 const INVALID_PHONE_MESSAGE = "Please enter a valid phone number.";
 
 export default function UpdatePhoneScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { phoneNumber: initial } = useLocalSearchParams<{
     phoneNumber?: string;
@@ -89,14 +91,14 @@ export default function UpdatePhoneScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScreenHeader title="Update Phone Number" />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <View style={styles.field}>
             <Text style={styles.label}>Phone Number</Text>
             <View style={styles.phoneRow}>
@@ -152,7 +154,7 @@ export default function UpdatePhoneScreen() {
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Verify"
             variant="secondary"

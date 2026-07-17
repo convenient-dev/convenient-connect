@@ -7,6 +7,7 @@ import {
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
 import { getUserServices } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -102,6 +103,7 @@ function ServiceCard({
 }
 
 export default function ServicesScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<Tab>("All");
@@ -124,7 +126,7 @@ export default function ServicesScreen() {
       : services.filter((s) => s.serviceMode === activeTab.toLowerCase());
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="My Services"
         onBack={() => router.push("/home")}
@@ -154,7 +156,7 @@ export default function ServicesScreen() {
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
         >
           {visibleServices.length === 0 ? (

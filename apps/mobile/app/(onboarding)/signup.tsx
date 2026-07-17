@@ -1,19 +1,21 @@
 import { facebookLogin, googleLogin, numberLogin } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
-import {
-  facebookSignOutQuietly,
-  signInWithFacebook,
-} from "@/auth/facebook";
+import { facebookSignOutQuietly, signInWithFacebook } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
 import { Button } from "@/components/Button";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   buildFullPhone,
   Country,
   DEFAULT_COUNTRY,
   PhoneInput,
 } from "@/components/PhoneInput";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import {
+  contentWidthStyle,
+  SCREEN_PADDING,
+  useResponsivePadding,
+} from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,14 +24,12 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -74,6 +74,8 @@ const SOCIAL_OPTIONS: SocialOption[] = [
 export default function SignupScreen() {
   const router = useRouter();
   const { login } = useAuth();
+
+  const { isWideScreen, screenPaddingStyle } = useResponsivePadding();
 
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState("");
@@ -159,7 +161,10 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -169,7 +174,11 @@ export default function SignupScreen() {
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            contentWidthStyle,
+            isWideScreen && styles.contentWide,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -216,11 +225,14 @@ export default function SignupScreen() {
           </View>
 
           {SOCIAL_OPTIONS.map((option) => (
-            <TouchableOpacity
+            <Button
               key={option.key}
-              style={styles.socialButton}
-              activeOpacity={0.7}
+              title={option.label}
+              variant="social"
+              icon={option.icon}
+              loading={socialLoading === option.key}
               disabled={socialLoading !== null}
+              style={styles.socialButton}
               onPress={() => {
                 if (option.key === "email") {
                   router.push("/signup-by-email");
@@ -233,17 +245,7 @@ export default function SignupScreen() {
                 }
                 // TODO: Wire apple social auth SDK
               }}
-            >
-              <View style={styles.socialIcon}>{option.icon}</View>
-              {socialLoading === option.key ? (
-                <ActivityIndicator
-                  style={styles.socialSpinner}
-                  color={neutral[800]}
-                />
-              ) : (
-                <Text style={styles.socialText}>{option.label}</Text>
-              )}
-            </TouchableOpacity>
+            />
           ))}
 
           <Text style={styles.consentText}>
@@ -265,9 +267,13 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_PADDING,
     paddingTop: 24,
     paddingBottom: 32,
+  },
+  contentWide: {
+    paddingTop: 40,
+    paddingBottom: 48,
   },
   title: {
     fontSize: 30,
@@ -296,29 +302,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
   socialButton: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: neutral[50],
-    borderRadius: 999,
-    paddingHorizontal: 20,
     marginBottom: 14,
-  },
-  socialIcon: {
-    width: 28,
-    alignItems: "center",
-  },
-  socialText: {
-    flex: 1,
-    textAlign: "center",
-    marginRight: 28,
-    fontSize: 17,
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  socialSpinner: {
-    flex: 1,
-    marginRight: 28,
   },
   accountRow: {
     flexDirection: "row",

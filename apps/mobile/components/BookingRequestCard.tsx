@@ -174,7 +174,6 @@ const styles = StyleSheet.create({
     borderColor: border.default,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
     backgroundColor: background.card,
   },
   requestHeader: {

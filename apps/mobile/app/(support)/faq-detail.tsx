@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams } from "expo-router";
 import React from "react";
@@ -8,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { primary, neutral, text, background, border } = Colors;
 
 export default function FaqDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { question, answer, topic } = useLocalSearchParams<{
     question: string;
     answer: string;
@@ -15,12 +17,12 @@ export default function FaqDetailScreen() {
   }>();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Customer Support" />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>

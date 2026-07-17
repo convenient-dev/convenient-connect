@@ -1,3 +1,4 @@
+import { MAX_SHEET_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useEffect, useRef, useState } from "react";
@@ -234,6 +235,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheetCard: {
+    width: "100%",
+    maxWidth: MAX_SHEET_WIDTH,
+    alignSelf: "center",
     backgroundColor: background.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

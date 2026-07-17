@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { emailSignup } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -21,13 +22,17 @@ const { neutral, text, background } = Colors;
 
 export default function SignupByEmailScreen() {
   const router = useRouter();
+  const { screenPaddingStyle } = useResponsivePadding();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -35,7 +40,7 @@ export default function SignupByEmailScreen() {
       >
         <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>Enter your email address</Text>
 
           <TextInput
@@ -51,7 +56,7 @@ export default function SignupByEmailScreen() {
           />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Continue"
             variant="secondary"

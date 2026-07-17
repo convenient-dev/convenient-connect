@@ -1,8 +1,10 @@
 import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
+import { CardGrid } from "@/components/CardGrid";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getAvailability, toggleAvailability, setWeeklySlots, setOverrides } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
@@ -173,6 +175,7 @@ function parseAnyTime(s: string): TimeValue {
 }
 
 export default function ScheduleScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
 
@@ -712,7 +715,7 @@ export default function ScheduleScreen() {
     !overrideRangesByDate[selectedModifyDate];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title={headerTitle} />
 
       {loading ? (
@@ -722,7 +725,7 @@ export default function ScheduleScreen() {
           style={styles.loader}
         />
       ) : (
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <View style={styles.availableCard}>
             <View style={styles.availableTextWrap}>
               <Text style={styles.availableTitle}>I&apos;m Available</Text>
@@ -1152,15 +1155,19 @@ export default function ScheduleScreen() {
                       </Text>
                     </View>
                     {selectedDateBookings.length > 0 ? (
-                      selectedDateBookings.map((b, idx) => (
-                        <BookingCard
-                          key={b.id}
-                          booking={b}
-                          dotColor={
-                            BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
-                          }
-                        />
-                      ))
+                      <CardGrid>
+                        {selectedDateBookings.map((b, idx) => (
+                          <BookingCard
+                            key={b.id}
+                            booking={b}
+                            dotColor={
+                              BOOKING_DOT_COLORS[
+                                idx % BOOKING_DOT_COLORS.length
+                              ]
+                            }
+                          />
+                        ))}
+                      </CardGrid>
                     ) : (
                       <View style={styles.bookingEmpty}>
                         <ExpoImage
@@ -1182,7 +1189,7 @@ export default function ScheduleScreen() {
       )}
 
       {available && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Cancel"
             variant="secondary"

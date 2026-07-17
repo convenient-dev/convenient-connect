@@ -6,6 +6,7 @@ import {
   categoryNameToSlug,
   getSubcategoryIcon,
 } from "@/components/SubcategoryIcon";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -71,6 +72,7 @@ function ServiceTile({
 }
 
 export default function SelectServicesScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details entered on the previous screen, forwarded through
   // each step of the create-business flow.
@@ -154,7 +156,7 @@ export default function SelectServicesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
       <ScreenHeader title="Services" />
@@ -170,7 +172,7 @@ export default function SelectServicesScreen() {
           style={styles.loader}
         />
       ) : (
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           {/* Selected services tray */}
           {selected.length > 0 && (
             <View style={styles.tray}>
@@ -257,7 +259,7 @@ export default function SelectServicesScreen() {
         </View>
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Continue"
           variant="secondary"

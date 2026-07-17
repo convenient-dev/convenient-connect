@@ -1,11 +1,3 @@
-import bookingsData from "@/assets/data/bookings.json";
-import {
-  BookingRequestCard,
-  type BookingRequest,
-} from "@/components/BookingRequestCard";
-import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
-import { SideMenu } from "@/components/SideMenu";
-import { AddressModal } from "@/components/AddressModal";
 import {
   createAddress,
   getDefaultAddress,
@@ -13,7 +5,17 @@ import {
   type ResolvedLocation,
 } from "@/api/address";
 import { getUserServices } from "@/api/legacy";
+import bookingsData from "@/assets/data/bookings.json";
 import { useAuth } from "@/auth/AuthContext";
+import { AddressModal } from "@/components/AddressModal";
+import {
+  BookingRequestCard,
+  type BookingRequest,
+} from "@/components/BookingRequestCard";
+import { CardGrid } from "@/components/CardGrid";
+import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
+import { SideMenu } from "@/components/SideMenu";
+import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -21,25 +23,27 @@ import { Image as ExpoImage, ImageSource } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   FlatList,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 const { primary, text, background, neutral } = Colors;
 const BANNER_GAP = 12;
-const BANNER_WIDTH = SCREEN_WIDTH - 44;
+// Banner art is ~2.9:1 (1038×360); used to size banners on wide screens.
+const BANNER_ASPECT_RATIO = 1038 / 360;
+const BANNER_ROTATE_INTERVAL_MS = 4000;
 
 const bannerAssets: Record<string, ImageSource> = {
   "1": require("@/assets/banners/home-banner-1.png"),
   "2": require("@/assets/banners/home-banner-2.png"),
+  "3": require("@/assets/banners/home-banner-3.png"),
+  "4": require("@/assets/banners/home-banner-4.png"),
 };
 
 type BookingStatus = "active" | "completed" | "pending" | "cancelled";
@@ -78,11 +82,43 @@ function toBookingRequest(b: Booking): BookingRequest {
 }
 
 export default function HomeScreen() {
+  const { isWideScreen, screenPadding, screenPaddingStyle } =
+    useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
   const { openMenu } = useLocalSearchParams<{ openMenu?: string }>();
+  const { width: windowWidth } = useWindowDimensions();
+  // Banners span the content card (padding 22 each side) inside the
+  // responsive screen padding. Wide screens show two banners per page,
+  // each at the artwork's native aspect ratio.
+  const contentWidth = windowWidth - 2 * screenPadding - 44;
+  const bannersPerPage = isWideScreen ? 2 : 1;
+  const bannerWidth =
+    (contentWidth - (bannersPerPage - 1) * BANNER_GAP) / bannersPerPage;
+  const bannerHeight = isWideScreen ? bannerWidth / BANNER_ASPECT_RATIO : 120;
+  const bannerPageWidth = (bannerWidth + BANNER_GAP) * bannersPerPage;
+  const bannerPageCount = Math.ceil(
+    Object.keys(bannerAssets).length / bannersPerPage,
+  );
   const [activeBanner, setActiveBanner] = useState(0);
+  const [bannerAutoRotate, setBannerAutoRotate] = useState(true);
   const bannerRef = useRef<FlatList>(null);
+
+  // Auto-rotate: advance one page per interval, wrapping to the start.
+  // Paused while the user drags; any page change (auto or manual) restarts
+  // the countdown since activeBanner is a dependency.
+  useEffect(() => {
+    if (!bannerAutoRotate || bannerPageCount <= 1) return;
+    const timer = setTimeout(() => {
+      const next = (activeBanner + 1) % bannerPageCount;
+      bannerRef.current?.scrollToOffset({
+        offset: next * bannerPageWidth,
+        animated: true,
+      });
+      setActiveBanner(next);
+    }, BANNER_ROTATE_INTERVAL_MS);
+    return () => clearTimeout(timer);
+  }, [bannerAutoRotate, activeBanner, bannerPageCount, bannerPageWidth]);
 
   const user = authUser
     ? {
@@ -155,13 +191,13 @@ export default function HomeScreen() {
 
   const handleBannerScroll = (event: any) => {
     const index = Math.round(
-      event.nativeEvent.contentOffset.x / (BANNER_WIDTH + BANNER_GAP),
+      event.nativeEvent.contentOffset.x / bannerPageWidth,
     );
-    setActiveBanner(index);
+    setActiveBanner(Math.min(Math.max(index, 0), bannerPageCount - 1));
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -295,22 +331,27 @@ export default function HomeScreen() {
               keyExtractor={([id]) => id}
               horizontal
               pagingEnabled
-              snapToInterval={BANNER_WIDTH + BANNER_GAP}
+              snapToInterval={bannerPageWidth}
               decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
               onScroll={handleBannerScroll}
+              onScrollBeginDrag={() => setBannerAutoRotate(false)}
+              onScrollEndDrag={() => setBannerAutoRotate(true)}
               scrollEventThrottle={16}
               renderItem={({ item: [, source] }) => (
                 <ExpoImage
                   source={source}
-                  style={styles.bannerImage}
+                  style={[
+                    styles.bannerImage,
+                    { width: bannerWidth, height: bannerHeight },
+                  ]}
                   contentFit="cover"
                 />
               )}
             />
-            {/* Swipe dots */}
+            {/* Swipe dots — one per page */}
             <View style={styles.swipeDots}>
-              {Object.keys(bannerAssets).map((_, i) => (
+              {Array.from({ length: bannerPageCount }).map((_, i) => (
                 <View
                   key={i}
                   style={[
@@ -326,13 +367,15 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>New Requests</Text>
           </View>
           {newRequests.length > 0 ? (
-            newRequests.map((b) => (
-              <BookingRequestCard
-                key={b.id}
-                request={toBookingRequest(b)}
-                onAccept={() => acceptRequest(b.id)}
-              />
-            ))
+            <CardGrid gap={16}>
+              {newRequests.map((b) => (
+                <BookingRequestCard
+                  key={b.id}
+                  request={toBookingRequest(b)}
+                  onAccept={() => acceptRequest(b.id)}
+                />
+              ))}
+            </CardGrid>
           ) : (
             // Empty state
             <View style={styles.emptyState}>
@@ -511,8 +554,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   bannerImage: {
-    width: BANNER_WIDTH,
-    height: 120,
     marginRight: BANNER_GAP,
     borderRadius: 8,
   },

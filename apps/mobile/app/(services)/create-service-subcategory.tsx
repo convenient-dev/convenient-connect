@@ -1,6 +1,7 @@
 import { getSubcategories } from "@/api/legacy";
 import { Button } from "@/components/Button";
 import { getSubcategoryIcon } from "@/components/SubcategoryIcon";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -65,6 +66,7 @@ function SubcategoryItem({
 }
 
 export default function CreateServiceSubcategoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const {
     categoryId,
@@ -99,7 +101,7 @@ export default function CreateServiceSubcategoryScreen() {
   const canProceed = selected !== null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Step indicator + progress bar */}
       <View style={styles.stepHeader}>
         <View style={styles.stepRow}>
@@ -132,7 +134,7 @@ export default function CreateServiceSubcategoryScreen() {
           data={subcategories}
           keyExtractor={(item) => String(item.id)}
           numColumns={NUM_COLUMNS}
-          contentContainerStyle={styles.grid}
+          contentContainerStyle={[styles.grid, contentWidthStyle]}
           columnWrapperStyle={styles.row}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
@@ -147,7 +149,7 @@ export default function CreateServiceSubcategoryScreen() {
       )}
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
           variant="secondary"

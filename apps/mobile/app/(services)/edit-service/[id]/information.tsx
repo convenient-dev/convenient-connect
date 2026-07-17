@@ -4,6 +4,7 @@ import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { getService, getLegacyUser, getSubcategory, uploadImage, deleteImage, uploadPdf, deletePdf } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
@@ -78,6 +79,7 @@ interface ServiceDetail {
 }
 
 export default function EditServiceInformationScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -464,7 +466,7 @@ export default function EditServiceInformationScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -475,7 +477,7 @@ export default function EditServiceInformationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Service Information" />
 
       <KeyboardAvoidingView
@@ -484,7 +486,7 @@ export default function EditServiceInformationScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -885,7 +887,7 @@ export default function EditServiceInformationScreen() {
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Cancel"
           variant="secondary"

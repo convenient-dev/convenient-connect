@@ -4,6 +4,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { updateName, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -21,6 +22,7 @@ const { secondary, neutral, text, background, border } = Colors;
 
 
 export default function UpdateNameScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { firstName: initialFirst, lastName: initialLast } =
     useLocalSearchParams<{ firstName?: string; lastName?: string }>();
@@ -83,14 +85,14 @@ export default function UpdateNameScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScreenHeader title="Update Name" />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <View style={styles.field}>
             <Text style={styles.label}>First Name</Text>
             <TextInput
@@ -133,7 +135,7 @@ export default function UpdateNameScreen() {
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Save"
             variant="secondary"

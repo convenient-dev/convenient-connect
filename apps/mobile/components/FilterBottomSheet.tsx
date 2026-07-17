@@ -1,19 +1,19 @@
 import { Button } from "@/components/Button";
+import { MAX_SHEET_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 const ENTER_DURATION = 260;
 const EXIT_DURATION = 200;
 
@@ -65,7 +65,8 @@ export function FilterBottomSheet({
     () => initialValue ?? emptyValues(sections),
   );
   const [mounted, setMounted] = useState(visible);
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const { height: windowHeight } = useWindowDimensions();
+  const translateY = useRef(new Animated.Value(windowHeight)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -87,7 +88,7 @@ export function FilterBottomSheet({
     } else if (mounted) {
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: SCREEN_HEIGHT,
+          toValue: windowHeight,
           duration: EXIT_DURATION,
           useNativeDriver: true,
         }),
@@ -100,7 +101,15 @@ export function FilterBottomSheet({
         if (finished) setMounted(false);
       });
     }
-  }, [visible, initialValue, sections, backdropOpacity, translateY, mounted]);
+  }, [
+    visible,
+    initialValue,
+    sections,
+    backdropOpacity,
+    translateY,
+    mounted,
+    windowHeight,
+  ]);
 
   function toggleOption(section: FilterSection, optionKey: string) {
     setValues((prev) => {
@@ -202,6 +211,9 @@ const styles = StyleSheet.create({
     backgroundColor: overlay.light,
   },
   sheet: {
+    width: "100%",
+    maxWidth: MAX_SHEET_WIDTH,
+    alignSelf: "center",
     backgroundColor: background.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

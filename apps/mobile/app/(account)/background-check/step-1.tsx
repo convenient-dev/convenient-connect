@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/auth/AuthContext";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -18,6 +19,7 @@ const BENEFITS = [
 ];
 
 export default function OnboardingBackgroundCheckScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
   const verified =
@@ -36,9 +38,9 @@ export default function OnboardingBackgroundCheckScreen() {
 
   if (verified) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ScreenHeader title="Background Check" />
-        <View style={styles.successBody}>
+        <View style={[styles.successBody, contentWidthStyle]}>
           <ExpoImage
             source={require("@/assets/global-icons/verified-success.png")}
             style={styles.successIllustration}
@@ -53,7 +55,7 @@ export default function OnboardingBackgroundCheckScreen() {
             title="Done"
             variant="primary"
             size="lg"
-            style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
+            style={{ width: "auto", alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
             onPress={handleDone}
           />
         </View>
@@ -62,10 +64,10 @@ export default function OnboardingBackgroundCheckScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Complete Background Check" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.description}>
           For the safety of everyone on our platform, all providers must
           complete a quick background check. This helps us verify your identity
@@ -92,7 +94,7 @@ export default function OnboardingBackgroundCheckScreen() {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Accept and Proceed"
           variant="primary"

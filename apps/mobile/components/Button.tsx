@@ -11,9 +11,15 @@ import {
   ViewStyle,
 } from "react-native";
 
-const { primary, neutral, brand } = Colors;
+const { primary, neutral, brand, text } = Colors;
 
-export type ButtonVariant = "primary" | "secondary" | "dark" | "outline" | "ghost";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "dark"
+  | "outline"
+  | "ghost"
+  | "social";
 export type ButtonSize = "lg" | "md" | "sm";
 
 interface Props {
@@ -42,7 +48,13 @@ export function Button({
   textStyle,
 }: Props) {
   const isDisabled = disabled || loading;
-  const spinnerColor = variant === "outline" || variant === "ghost" ? primary[400] : neutral[0];
+  const isSocial = variant === "social";
+  const spinnerColor =
+    variant === "outline" || variant === "ghost"
+      ? primary[400]
+      : isSocial
+        ? neutral[800]
+        : neutral[0];
 
   return (
     <TouchableOpacity
@@ -53,18 +65,34 @@ export function Button({
         isDisabled && styles.disabled,
         style,
       ]}
-      activeOpacity={variant === "ghost" ? 0.7 : 0.85}
+      activeOpacity={variant === "ghost" || isSocial ? 0.7 : 0.85}
       disabled={isDisabled}
       onPress={onPress}
     >
-      {loading ? (
+      {loading && !isSocial ? (
         <ActivityIndicator color={spinnerColor} />
       ) : (
         <>
-          {icon && iconPosition === "left" && <View>{icon}</View>}
-          <Text style={[styles.text, textSizeStyles[size], variantTextStyles[variant], textStyle]}>
-            {title}
-          </Text>
+          {icon && iconPosition === "left" && (
+            <View style={isSocial && styles.socialIcon}>{icon}</View>
+          )}
+          {loading ? (
+            <ActivityIndicator
+              style={styles.socialSpinner}
+              color={spinnerColor}
+            />
+          ) : (
+            <Text
+              style={[
+                styles.text,
+                textSizeStyles[size],
+                variantTextStyles[variant],
+                textStyle,
+              ]}
+            >
+              {title}
+            </Text>
+          )}
           {icon && iconPosition === "right" && <View>{icon}</View>}
         </>
       )}
@@ -87,10 +115,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: -0.408,
   },
+  socialIcon: {
+    width: 28,
+    alignItems: "center",
+  },
+  socialSpinner: {
+    flex: 1,
+    marginRight: 28,
+  },
 });
 
 const sizeStyles: Record<ButtonSize, ViewStyle> = {
-  lg: { height: 56, paddingHorizontal: 24 },
+  // lg buttons stretch to their container but stay centered and capped so
+  // CTAs don't span edge-to-edge on wide displays (foldables/tablets).
+  lg: {
+    height: 56,
+    paddingHorizontal: 24,
+    width: "100%",
+    // maxWidth: 500,
+    alignSelf: "center",
+  },
   md: { height: 48, paddingHorizontal: 20 },
   sm: { height: 40, paddingHorizontal: 18 },
 };
@@ -111,6 +155,13 @@ const variantStyles: Record<ButtonVariant, ViewStyle> = {
     borderColor: primary[400],
   },
   ghost: { paddingVertical: 4 },
+  // Icon left, label centered (offset by the icon width on the right).
+  social: {
+    backgroundColor: neutral[50],
+    justifyContent: "flex-start",
+    gap: 0,
+    paddingHorizontal: 20,
+  },
 };
 
 const variantTextStyles: Record<ButtonVariant, TextStyle> = {
@@ -119,4 +170,11 @@ const variantTextStyles: Record<ButtonVariant, TextStyle> = {
   dark: { color: neutral[0] },
   outline: { color: primary[400] },
   ghost: { color: primary[400], fontSize: 16 },
+  social: {
+    flex: 1,
+    textAlign: "center",
+    marginRight: 28,
+    fontWeight: "400",
+    color: text.primary,
+  },
 };

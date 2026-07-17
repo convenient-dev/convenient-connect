@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -29,6 +30,7 @@ const REASONS = [
 type Reason = (typeof REASONS)[number];
 
 export default function DeleteServiceReasonScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -59,14 +61,14 @@ export default function DeleteServiceReasonScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Delete Service" />
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.sectionHeading}>Tell us more</Text>
 
           <View style={styles.options}>
@@ -108,7 +110,7 @@ export default function DeleteServiceReasonScreen() {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Delete this service"
             variant="secondary"

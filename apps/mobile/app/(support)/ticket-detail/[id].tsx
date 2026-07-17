@@ -3,6 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
 import { getTicket } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -53,6 +54,7 @@ const TICKET_STATUS_DOT_COLOR: Record<TicketStatus, string> = {
 };
 
 export default function TicketDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useCurrentUser();
@@ -74,7 +76,7 @@ export default function TicketDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ScreenHeader title="Ticket" />
         <View style={styles.missingWrap}>
           <ActivityIndicator size="large" color={primary[400]} />
@@ -85,7 +87,7 @@ export default function TicketDetailScreen() {
 
   if (!ticket) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ScreenHeader title="Ticket" />
         <View style={styles.missingWrap}>
           <View style={styles.missingIcon}>
@@ -113,12 +115,12 @@ export default function TicketDetailScreen() {
   const canReply = ticket.status !== "closed";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Ticket Details" subtitle={ticket.id} />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
@@ -171,7 +173,7 @@ export default function TicketDetailScreen() {
       </ScrollView>
 
       {canReply && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Reply to Support"
             variant="secondary"

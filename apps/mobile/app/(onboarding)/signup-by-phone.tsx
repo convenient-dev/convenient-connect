@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { confirmNumber, resendOtpNumber } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -53,6 +54,7 @@ export default function SignupByPhoneScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const { login } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
@@ -113,7 +115,10 @@ export default function SignupByPhoneScreen() {
   const isComplete = digits.every((d) => d.length === 1);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -121,7 +126,7 @@ export default function SignupByPhoneScreen() {
       >
         <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>
             Enter the 4-digit code sent to your SMS at {maskPhone(phone)}
           </Text>
@@ -164,7 +169,7 @@ export default function SignupByPhoneScreen() {
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Continue"
             variant="secondary"

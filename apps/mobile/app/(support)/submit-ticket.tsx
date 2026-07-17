@@ -3,6 +3,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
 import { createTicket } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -34,6 +35,7 @@ const SUBJECT_MAX = 80;
 const DESCRIPTION_MAX = 1000;
 
 export default function SubmitTicketScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [topicKey, setTopicKey] = useState<string>(TOPIC_OPTIONS[0].key);
@@ -73,7 +75,7 @@ export default function SubmitTicketScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -82,7 +84,7 @@ export default function SubmitTicketScreen() {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -165,7 +167,7 @@ export default function SubmitTicketScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           {errorMessage && (
             <Text style={styles.errorText}>{errorMessage}</Text>
           )}

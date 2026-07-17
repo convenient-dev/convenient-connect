@@ -1,4 +1,5 @@
 import { Button } from "@/components/Button";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,6 +25,7 @@ type AccountStatus = {
 };
 
 export default function BackgroundCheck4Screen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // accountId is forwarded from background-check-3 after the user creates
   // their connected account. The webhook keeps Stripe state authoritative —
@@ -72,8 +74,8 @@ export default function BackgroundCheck4Screen() {
     !!status?.onboardingComplete && !!status?.readyToReceivePayments;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.body}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <View style={[styles.body, contentWidthStyle]}>
         <ExpoImage
           source={
             verified
@@ -109,7 +111,7 @@ export default function BackgroundCheck4Screen() {
               title="Refresh"
               variant="outline"
               size="lg"
-              style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
+              style={{ width: "auto", alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
               onPress={fetchStatus}
             />
           </>
@@ -120,7 +122,7 @@ export default function BackgroundCheck4Screen() {
             title="Done"
             variant="primary"
             size="lg"
-            style={{ alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
+            style={{ width: "auto", alignSelf: "center", paddingHorizontal: 60, marginTop: 12 }}
             onPress={handleDone}
           />
         )}

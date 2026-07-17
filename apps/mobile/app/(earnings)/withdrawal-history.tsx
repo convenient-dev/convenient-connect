@@ -2,6 +2,7 @@ import earningHistoryData from "@/assets/data/earning-history.json";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -33,6 +34,7 @@ const STATUS_LABEL: Record<WithdrawalStatus, string> = {
 };
 
 export default function WithdrawalHistoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const sorted = [...WITHDRAWALS].sort((a, b) => {
@@ -48,12 +50,12 @@ export default function WithdrawalHistoryScreen() {
   const transferCount = completed.length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Withdrawal History" />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.summaryCard}>

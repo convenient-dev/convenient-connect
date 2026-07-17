@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import React from "react";
@@ -9,12 +10,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { neutral, text, background } = Colors;
 
 export default function ManagePayoutMethodsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   function handleAddAccountDetails() {
     // TODO: Open Stripe Connect onboarding.
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Payout Methods" />
       <Text style={styles.subtitle}>
         We use Stripe to ensure a secure financial experience
@@ -22,7 +24,7 @@ export default function ManagePayoutMethodsScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <ExpoImage

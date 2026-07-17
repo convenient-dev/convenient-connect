@@ -1,4 +1,5 @@
 import { getService } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -23,6 +24,7 @@ interface ServiceCategory {
 }
 
 export default function EditServiceCategoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useCurrentUser();
   const [loading, setLoading] = useState(true);
@@ -39,13 +41,13 @@ export default function EditServiceCategoryScreen() {
   }, [id, userId]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Service Category" />
 
       {loading ? (
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       ) : (
-        <View style={styles.card}>
+        <View style={[styles.card, contentWidthStyle]}>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Category</Text>
             <Text style={styles.rowValue}>{categoryName ?? "—"}</Text>

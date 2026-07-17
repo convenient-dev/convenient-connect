@@ -6,6 +6,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -41,6 +42,7 @@ interface ChannelOption {
 }
 
 export default function DeleteAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
 
@@ -92,10 +94,10 @@ export default function DeleteAccountScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Verify Account" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.subtitle}>
           Choose how you want to receive the OTP
         </Text>
@@ -146,7 +148,7 @@ export default function DeleteAccountScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Send OTP"
           variant="secondary"

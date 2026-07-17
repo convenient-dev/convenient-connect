@@ -3,6 +3,7 @@ import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -70,6 +71,7 @@ function MemberSection({ title, members }: { title: string; members: Member[] })
 }
 
 export default function BusinessDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { pendingBusinesses } = useBusinessSignup();
@@ -81,7 +83,7 @@ export default function BusinessDetailScreen() {
 
   if (!business) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
         <StatusBar style="dark" />
         <ScreenHeader />
         <View style={styles.notFound}>
@@ -99,7 +101,7 @@ export default function BusinessDetailScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
       <ScreenHeader
@@ -157,7 +159,7 @@ export default function BusinessDetailScreen() {
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "members" ? (
@@ -176,7 +178,7 @@ export default function BusinessDetailScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Invite New Member"
           variant="primary"

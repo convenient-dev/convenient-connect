@@ -8,6 +8,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -44,6 +45,7 @@ function formatTimer(seconds: number): string {
 }
 
 export default function VerifyDeleteAccountOtpScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { channel, destination } = useLocalSearchParams<{
     channel?: DeleteAccountChannel;
@@ -156,7 +158,7 @@ export default function VerifyDeleteAccountOtpScreen() {
   const channelLabel = channel === "phone" ? "phone number" : "email";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -164,7 +166,7 @@ export default function VerifyDeleteAccountOtpScreen() {
       >
         <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>
             Enter the 4-digit code sent to your {channelLabel}
             {destination ? ` ${destination}` : ""}
@@ -208,7 +210,7 @@ export default function VerifyDeleteAccountOtpScreen() {
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           <Button
             title="Delete Account"
             variant="secondary"

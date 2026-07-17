@@ -1,3 +1,4 @@
+import { MAX_SHEET_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Divider from "@/components/ui/divider";
 import { Image as ExpoImage } from "expo-image";
@@ -90,6 +91,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
+    width: "100%",
+    maxWidth: MAX_SHEET_WIDTH,
+    alignSelf: "center",
     backgroundColor: background.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

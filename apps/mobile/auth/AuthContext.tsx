@@ -74,13 +74,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const { getAuthUser } = await import("@/api/profile");
           const profile = await getAuthUser();
 
-          // Validate profile data
-          if (!profile.user || !profile.user.id) {
-            console.log("[AUTH] Invalid profile data (user is null/undefined), clearing token");
+          console.log("[AUTH] getAuthUser() returned:", {
+            hasUser: !!profile.user,
+            userId: profile.user?.user_id,
+            userFname: profile.user?.user_fname,
+            userLname: profile.user?.user_lname,
+            providerType: profile.providerType,
+            hasEmail: !!profile.user?.user_email,
+            hasPhone: !!profile.user?.user_contact,
+          });
+
+          // Validate profile data - check user_id not id
+          if (!profile.user || !profile.user.user_id) {
+            console.log("[AUTH] Invalid profile data, user_id missing:", profile.user?.user_id);
             throw new Error("Invalid profile data");
           }
 
-          console.log("[AUTH] User profile loaded:", profile.user.email);
+          console.log("[AUTH] User profile loaded:", profile.user.user_email);
           setUser(profile);
         } catch (error) {
           console.log("[AUTH] Failed to load profile, clearing token:", error);

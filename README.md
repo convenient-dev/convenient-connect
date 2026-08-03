@@ -16,6 +16,11 @@ my-app/
 
 - **Node.js 20+** and **npm 10+**
 - **JDK 17** — required for the Android build. Newer JDKs (21, 24, 25) are **not** supported by React Native 0.81 / Expo SDK 54 and will fail the Gradle build. ([Temurin 17](https://adoptium.net/temurin/releases/?version=17) or `brew install --cask zulu@17`)
+  - **Configure your shell:** Add to `~/.zshrc` (or `~/.bashrc`):
+    ```bash
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+    ```
+  - **For existing sessions:** Run `source ~/.zshrc` or open a new terminal
 - **Android** — [Android Studio](https://developer.android.com/studio) with an SDK platform + an AVD (Android Virtual Device) created via the Device Manager
 - **iOS** (macOS only) — [Xcode](https://apps.apple.com/app/xcode/id497799835) with Command Line Tools, plus CocoaPods (`brew install cocoapods` or `sudo gem install cocoapods`)
 

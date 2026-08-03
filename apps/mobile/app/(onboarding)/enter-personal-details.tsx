@@ -69,6 +69,16 @@ export default function EnterPersonalDetailsScreen() {
   const { user: authUser, setUser } = useAuth();
   const { screenPaddingStyle } = useResponsivePadding();
 
+  // Debug: Why are we on this screen?
+  console.log("[ENTER-PERSONAL-DETAILS] Screen loaded with:", {
+    method,
+    hasFname: !!authUser?.user.user_fname,
+    hasLname: !!authUser?.user.user_lname,
+    fname: authUser?.user.user_fname,
+    lname: authUser?.user.user_lname,
+    providerType: authUser?.providerType,
+  });
+
   // When the user signed up by phone we collect their email; when they signed
   // up by email we collect their phone instead.
   const collectEmail = method === "phone";
@@ -93,7 +103,6 @@ export default function EnterPersonalDetailsScreen() {
     setLoading(true);
     try {
       await completeProfile({
-        providerType: "individual",
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",

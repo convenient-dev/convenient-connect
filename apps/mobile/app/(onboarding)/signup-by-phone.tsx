@@ -181,6 +181,15 @@ export default function SignupByPhoneScreen() {
               setLoading(true);
               try {
                 const result = await confirmNumber(phone, digits.join(""));
+                console.log("[SIGNUP] Login result:", {
+                  providerType: result.providerType,
+                  userFname: result.user.user_fname,
+                  userLname: result.user.user_lname,
+                  userId: result.user.user_id,
+                  hasEmail: !!result.user.user_email,
+                  hasPhone: !!result.user.user_contact,
+                });
+
                 await login(result.accessToken, {
                   user: result.user,
                   providerType: result.providerType,
@@ -188,9 +197,20 @@ export default function SignupByPhoneScreen() {
                   backgroundVerification: result.backgroundVerification,
                   businessVerification: result.businessVerification,
                 });
-                if (result.providerType) {
+
+                // Check if user has completed profile by checking if they have both names.
+                // We can't rely on providerType since the backend doesn't always set it.
+                const hasCompletedProfile =
+                  !!result.user.user_fname?.trim() &&
+                  !!result.user.user_lname?.trim();
+
+                console.log("[SIGNUP] hasCompletedProfile:", hasCompletedProfile);
+
+                if (hasCompletedProfile) {
+                  console.log("[SIGNUP] Redirecting to /home");
                   router.replace("/home");
                 } else {
+                  console.log("[SIGNUP] Redirecting to /enter-personal-details");
                   router.replace({
                     pathname: "/enter-personal-details",
                     params: { method: "phone" },

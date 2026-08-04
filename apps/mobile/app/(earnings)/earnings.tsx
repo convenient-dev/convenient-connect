@@ -1,4 +1,6 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -12,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, brand, neutral, text, background, border } = Colors;
+const { primary, secondary, neutral, text, background, border } = Colors;
 
 interface EarningsRow {
   key: string;
@@ -21,6 +23,7 @@ interface EarningsRow {
 }
 
 export default function EarningsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const rows: EarningsRow[] = [
@@ -46,12 +49,12 @@ export default function EarningsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Earnings" />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.bentoRow}>
@@ -74,14 +77,17 @@ export default function EarningsScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.withdrawButton}
-          activeOpacity={0.85}
+        <Button
+          title="Withdraw"
+          variant="dark"
+          size="lg"
+          icon={
+            <MaterialIcons name="arrow-forward" size={20} color={neutral[0]} />
+          }
+          iconPosition="right"
+          style={{ marginTop: 14 }}
           onPress={() => router.push("/withdraw" as never)}
-        >
-          <Text style={styles.withdrawButtonText}>Withdraw</Text>
-          <MaterialIcons name="arrow-forward" size={20} color={neutral[0]} />
-        </TouchableOpacity>
+        />
 
         <View style={styles.linksList}>
           {rows.map((row, i) => (
@@ -208,23 +214,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 2,
   },
-  withdrawButton: {
-    flexDirection: "row",
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: neutral[900],
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 14,
-  },
-  withdrawButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-
   linksList: {
     marginTop: 14,
   },

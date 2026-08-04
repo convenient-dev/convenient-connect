@@ -23,6 +23,8 @@ export interface BusinessSignupState {
   ein: string;
 }
 
+export type BusinessStatus = "pending" | "verified";
+
 // A business submitted for review. Kept in memory until the
 // create-business API exists to persist and list them.
 export interface PendingBusiness {
@@ -30,6 +32,13 @@ export interface PendingBusiness {
   name: string;
   /** Distinct category names of the selected services (e.g. "Automotive"). */
   categories: string[];
+  status: BusinessStatus;
+  address: string;
+  country: string;
+  state: string;
+  city: string;
+  zipCode: string;
+  about: string;
 }
 
 // the contract the provider exposes to the consumers
@@ -38,7 +47,10 @@ interface BusinessSignupContextValue {
   update: (partial: Partial<BusinessSignupState>) => void; // update any field(s)
   reset: () => void;
   pendingBusinesses: PendingBusiness[];
-  addPendingBusiness: (business: Omit<PendingBusiness, "id">) => void;
+  addPendingBusiness: (
+    business: Omit<PendingBusiness, "id" | "status">,
+  ) => void;
+  setBusinessStatus: (id: number, status: BusinessStatus) => void;
 }
 
 const INITIAL_STATE: BusinessSignupState = {
@@ -75,19 +87,35 @@ export function BusinessSignupProvider({
   }, []);
 
   const addPendingBusiness = useCallback(
-    (business: Omit<PendingBusiness, "id">) => {
+    (business: Omit<PendingBusiness, "id" | "status">) => {
       setPendingBusinesses((prev) => [
         ...prev,
-        { ...business, id: prev.length + 1 },
+        { ...business, id: prev.length + 1, status: "pending" },
       ]);
+    },
+    [],
+  );
+
+  const setBusinessStatus = useCallback(
+    (id: number, status: BusinessStatus) => {
+      setPendingBusinesses((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status } : b)),
+      );
     },
     [],
   );
 
   // only re-create the context value if data, update, or reset changes (which they won't, except for data when fields are updated)
   const value = useMemo(
-    () => ({ data, update, reset, pendingBusinesses, addPendingBusiness }),
-    [data, update, reset, pendingBusinesses, addPendingBusiness],
+    () => ({
+      data,
+      update,
+      reset,
+      pendingBusinesses,
+      addPendingBusiness,
+      setBusinessStatus,
+    }),
+    [data, update, reset, pendingBusinesses, addPendingBusiness, setBusinessStatus],
   );
 
   return (

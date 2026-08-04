@@ -1,5 +1,7 @@
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getUserAffiliations } from "@/api/legacy";
+import { Button } from "@/components/Button";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background } = Colors;
+const { primary, neutral, background } = Colors;
 
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
@@ -52,6 +54,7 @@ function RadioOption({
 }
 
 export default function CreateServiceScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [selected, setSelected] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export default function CreateServiceScreen() {
   const canProceed = selected !== null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Step indicator + progress bar */}
       <View style={styles.stepHeader}>
         <View style={styles.stepRow}>
@@ -88,7 +91,7 @@ export default function CreateServiceScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
@@ -143,16 +146,19 @@ export default function CreateServiceScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backButton}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Back"
+          variant="secondary"
+          size="md"
+          style={{ flex: 1 }}
           onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.nextButton, canProceed && styles.nextButtonActive]}
+        />
+        <Button
+          title="Next"
+          variant="primary"
+          size="md"
+          style={{ flex: 1 }}
           disabled={!canProceed}
           onPress={() => {
             if (!canProceed || !selected) return;
@@ -167,17 +173,7 @@ export default function CreateServiceScreen() {
               },
             });
           }}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.nextButtonText,
-              canProceed && styles.nextButtonTextActive,
-            ]}
-          >
-            Next
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -315,37 +311,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 8,
-  },
-  backButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-  },
-  nextButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: neutral[200],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextButtonActive: {
-    backgroundColor: primary[400],
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[400],
-  },
-  nextButtonTextActive: {
-    color: neutral[0],
   },
 });

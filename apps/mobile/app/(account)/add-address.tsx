@@ -10,7 +10,9 @@ import {
   updateAddress,
 } from "@/api/address";
 import { ApiError } from "@/api/client";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -30,6 +32,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { primary, secondary, neutral, text, background } = Colors;
 
 export default function AddAddressScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -223,12 +226,12 @@ export default function AddAddressScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <ScreenHeader title="Add Address" />
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -367,22 +370,15 @@ export default function AddAddressScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            (selectedId === null || saving) && styles.saveButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          disabled={selectedId === null || saving}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Save"
+          variant="secondary"
+          size="lg"
+          loading={saving}
+          disabled={selectedId === null}
           onPress={handleSave}
-        >
-          {saving ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.saveText}>Save</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -512,21 +508,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 12,
-  },
-  saveButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

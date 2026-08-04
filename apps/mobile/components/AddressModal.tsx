@@ -3,18 +3,12 @@ import {
   resolveCurrentLocation,
   type ResolvedLocation,
 } from "@/api/address";
+import { Button } from "@/components/Button";
+import { MAX_DIALOG_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 const { primary, secondary, neutral, text, background, border, overlay } =
   Colors;
@@ -84,33 +78,27 @@ export function AddressModal({
 
           <View style={styles.divider} />
 
-          <TouchableOpacity
-            style={[styles.button, styles.currentLocationButton]}
-            activeOpacity={0.85}
+          <Button
+            title="Use my current location"
+            variant="primary"
+            size="lg"
+            loading={locating}
             onPress={handleUseCurrentLocation}
-            disabled={locating}
-          >
-            {locating ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <>
-                <MaterialIcons name="my-location" size={20} color={neutral[0]} />
-                <Text style={styles.buttonText}>Use my current location</Text>
-              </>
-            )}
-          </TouchableOpacity>
+            icon={<MaterialIcons name="my-location" size={20} color={neutral[0]} />}
+            style={styles.button}
+          />
 
           <Text style={styles.or}>or</Text>
 
-          <TouchableOpacity
-            style={[styles.button, styles.addAddressButton]}
-            activeOpacity={0.85}
-            onPress={onAddAddress}
+          <Button
+            title="Add address"
+            variant="secondary"
+            size="lg"
             disabled={locating}
-          >
-            <MaterialIcons name="location-on" size={20} color={neutral[0]} />
-            <Text style={styles.buttonText}>Add address</Text>
-          </TouchableOpacity>
+            onPress={onAddAddress}
+            icon={<MaterialIcons name="location-on" size={20} color={neutral[0]} />}
+            style={styles.button}
+          />
 
           {error && <Text style={styles.error}>{error}</Text>}
         </Pressable>
@@ -129,6 +117,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
+    maxWidth: MAX_DIALOG_WIDTH,
     backgroundColor: background.card,
     borderRadius: 20,
     paddingHorizontal: 24,
@@ -166,25 +155,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
     alignSelf: "stretch",
-    height: 56,
-    borderRadius: 999,
-  },
-  currentLocationButton: {
-    backgroundColor: primary[400],
-  },
-  addAddressButton: {
-    backgroundColor: secondary[500],
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   or: {
     fontSize: 14,

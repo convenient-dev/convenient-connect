@@ -1,4 +1,6 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { emailSignup } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -6,39 +8,39 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, neutral, text, background } = Colors;
+const { neutral, text, background } = Colors;
 
 export default function SignupByEmailScreen() {
   const router = useRouter();
+  const { screenPaddingStyle } = useResponsivePadding();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>Enter your email address</Text>
 
           <TextInput
@@ -54,14 +56,13 @@ export default function SignupByEmailScreen() {
           />
         </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              (!isValid || loading) && styles.continueDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={!isValid || loading}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!isValid}
             onPress={async () => {
               setLoading(true);
               try {
@@ -78,13 +79,7 @@ export default function SignupByEmailScreen() {
                 setLoading(false);
               }
             }}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.continueText}>Continue</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -97,11 +92,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   body: {
     flex: 1,
     paddingHorizontal: 20,
@@ -127,21 +117,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

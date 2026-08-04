@@ -1,19 +1,15 @@
 import earningHistoryData from "@/assets/data/earning-history.json";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import React from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, brand, neutral, text, background, border } = Colors;
+const { primary, neutral, text, background, border } = Colors;
 
 type WithdrawalStatus = "completed" | "pending" | "failed";
 
@@ -38,6 +34,7 @@ const STATUS_LABEL: Record<WithdrawalStatus, string> = {
 };
 
 export default function WithdrawalHistoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const sorted = [...WITHDRAWALS].sort((a, b) => {
@@ -53,12 +50,12 @@ export default function WithdrawalHistoryScreen() {
   const transferCount = completed.length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Withdrawal History" />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.summaryCard}>
@@ -82,13 +79,13 @@ export default function WithdrawalHistoryScreen() {
               Once you withdraw from your earnings, your history will show up
               here.
             </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              activeOpacity={0.85}
+            <Button
+              title="Withdraw now"
+              variant="primary"
+              size="md"
+              style={{ marginTop: 20, alignSelf: "center" }}
               onPress={() => router.push("/withdraw" as never)}
-            >
-              <Text style={styles.emptyButtonText}>Withdraw now</Text>
-            </TouchableOpacity>
+            />
           </View>
         ) : (
           sorted.map((item, i) => (
@@ -217,20 +214,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     marginTop: 8,
-  },
-  emptyButton: {
-    marginTop: 20,
-    height: 48,
-    paddingHorizontal: 28,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

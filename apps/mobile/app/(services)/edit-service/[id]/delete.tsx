@@ -1,19 +1,15 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, brand, background } = Colors;
+const { primary, neutral, background } = Colors;
 
 
 const BULLETS = [
@@ -23,6 +19,7 @@ const BULLETS = [
 ];
 
 export default function DeleteServiceScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -42,12 +39,12 @@ export default function DeleteServiceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {/* Header */}
 
       <ScreenHeader title="Delete Service" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.warningText}>
           Deleting a service will permanently remove it from your profile and it
           will no longer be visible to clients.
@@ -69,32 +66,26 @@ export default function DeleteServiceScreen() {
         </Text>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.deleteBtn}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Continue to delete"
+          variant="secondary"
+          size="lg"
           onPress={() =>
             router.push({
               pathname: "/edit-service/[id]/delete-reason",
               params: { id },
             })
           }
-          activeOpacity={0.85}
-        >
-          <Text style={styles.deleteBtnText}>Continue to delete</Text>
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={styles.pauseBtn}
+        <Button
+          title="Inactivate service"
+          variant="dark"
+          size="lg"
+          loading={pausing}
           onPress={handlePause}
-          disabled={pausing}
-          activeOpacity={0.85}
-        >
-          {pausing ? (
-            <ActivityIndicator size="small" color={neutral[0]} />
-          ) : (
-            <Text style={styles.pauseBtnText}>Inactivate service</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -169,29 +160,5 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingTop: 8,
     gap: 12,
-  },
-  deleteBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: brand.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-  },
-  pauseBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: neutral[1000],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pauseBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
   },
 });

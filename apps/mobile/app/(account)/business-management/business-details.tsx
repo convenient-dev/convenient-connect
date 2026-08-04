@@ -1,10 +1,12 @@
 import { getCities, getCountries, getStates } from "@/api/location";
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,7 +14,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -62,10 +63,12 @@ function Field({
 }
 
 export default function BusinessDetailsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
+  // Businesses can only be registered in the US, so the country is fixed.
   const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
     null,
   );
@@ -74,10 +77,19 @@ export default function BusinessDetailsScreen() {
   const [zip, setZip] = useState("");
   const [about, setAbout] = useState("");
 
-  const loadCountries = useCallback(
-    (search: string) => getCountries(search || undefined),
-    [],
-  );
+  useEffect(() => {
+    getCountries("United States")
+      .then((countries) => {
+        const us =
+          countries.find((c) => c.name === "United States") ?? countries[0];
+        if (us) setSelectedCountry(us);
+      })
+      .catch(() => {
+        // Leave the country unset; the state select stays disabled and the
+        // form can't be submitted without it.
+      });
+  }, []);
+
   const loadStates = useCallback(
     (search: string) =>
       selectedCountry
@@ -111,8 +123,11 @@ export default function BusinessDetailsScreen() {
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
         countryId: String(selectedCountry.id),
+        countryName: selectedCountry.name,
         stateId: String(selectedState.id),
+        stateName: selectedState.name,
         cityId: String(selectedCity.id),
+        cityName: selectedCity.name,
         zipcode: zip.trim(),
         about: about.trim(),
       },
@@ -120,21 +135,17 @@ export default function BusinessDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <BackButton onPress={() => router.back()} />
-          <Text style={styles.title}>Business Details</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader title="Business Details" />
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, contentWidthStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -155,18 +166,16 @@ export default function BusinessDetailsScreen() {
             placeholder="1234 Chipmunk Lane"
           />
 
-          <SearchableSelect
-            label="Country"
-            required
-            placeholder="Select country"
-            value={selectedCountry}
-            loadOptions={loadCountries}
-            onSelect={(option) => {
-              setSelectedCountry(option);
-              setSelectedState(null);
-              setSelectedCity(null);
-            }}
-          />
+          <View style={styles.field}>
+            <Text style={styles.label}>
+              Country <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.readonlyInput}>
+              <Text style={styles.readonlyValue}>
+                {selectedCountry?.name ?? "United States"}
+              </Text>
+            </View>
+          </View>
           <SearchableSelect
             label="State"
             required
@@ -209,18 +218,14 @@ export default function BusinessDetailsScreen() {
           />
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              !canContinue && styles.continueDisabled,
-            ]}
-            activeOpacity={0.85}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
             disabled={!canContinue}
             onPress={handleContinue}
-          >
-            <Text style={styles.continueText}>Continue</Text>
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -233,22 +238,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { width: 40 },
-  title: {
-    flex: 1,
-    fontSize: 22,
-    fontWeight: "600",
-    color: text.primary,
-    textAlign: "center",
-    letterSpacing: -0.408,
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -283,6 +272,20 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
+  readonlyInput: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: border.default,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    justifyContent: "center",
+    backgroundColor: neutral[50],
+  },
+  readonlyValue: {
+    fontSize: 17,
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
   inputMultiline: {
     height: 140,
     paddingTop: 14,
@@ -293,21 +296,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

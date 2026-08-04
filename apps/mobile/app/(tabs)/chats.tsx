@@ -1,3 +1,4 @@
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -6,9 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const { background, neutral } = Colors;
 
 export default function ChatsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <View style={[styles.content, contentWidthStyle]}>
         <Text style={styles.title}>Chats</Text>
       </View>
     </SafeAreaView>

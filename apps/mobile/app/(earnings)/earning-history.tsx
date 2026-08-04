@@ -10,6 +10,7 @@ import {
 import { FilterButton } from "@/components/FilterButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import earningHistoryData from "@/assets/data/earning-history.json";
 import Feather from "@expo/vector-icons/Feather";
@@ -51,6 +52,7 @@ function formatAmount(value: number) {
 }
 
 export default function EarningHistoryScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const [activeTab, setActiveTab] = useState<TabKey>("earnings");
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [filterVisible, setFilterVisible] = useState(false);
@@ -122,7 +124,7 @@ export default function EarningHistoryScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="Earning History"
         rightAccessory={
@@ -172,7 +174,7 @@ export default function EarningHistoryScreen() {
 
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
             showsVerticalScrollIndicator={false}
           >
             {items.map((item, i) => (

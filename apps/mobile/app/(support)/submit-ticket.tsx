@@ -1,13 +1,14 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
 import { createTicket } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background, border } = Colors;
+const { primary, neutral, text, background, border } = Colors;
 
 const TOPIC_OPTIONS: { key: string; label: string }[] = [
   { key: "account", label: "Account & App Usages" },
@@ -34,6 +35,7 @@ const SUBJECT_MAX = 80;
 const DESCRIPTION_MAX = 1000;
 
 export default function SubmitTicketScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [topicKey, setTopicKey] = useState<string>(TOPIC_OPTIONS[0].key);
@@ -73,7 +75,7 @@ export default function SubmitTicketScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -82,7 +84,7 @@ export default function SubmitTicketScreen() {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -165,25 +167,18 @@ export default function SubmitTicketScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, contentWidthStyle]}>
           {errorMessage && (
             <Text style={styles.errorText}>{errorMessage}</Text>
           )}
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              !canSubmit && styles.primaryButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            onPress={handleSubmit}
+          <Button
+            title="Submit Ticket"
+            variant="secondary"
+            size="md"
+            loading={submitting}
             disabled={!canSubmit}
-          >
-            {submitting ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.primaryButtonText}>Submit Ticket</Text>
-            )}
-          </TouchableOpacity>
+            onPress={handleSubmit}
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -318,21 +313,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.408,
   },
-  primaryButton: {
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-
 });

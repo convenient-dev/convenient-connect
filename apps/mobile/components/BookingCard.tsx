@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -5,7 +6,7 @@ import { Image as ExpoImage } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const { primary, neutral, text, background, border } = Colors;
+const { neutral, text, background, border } = Colors;
 
 export type BookingStatus = "active" | "completed" | "pending" | "cancelled";
 
@@ -91,25 +92,20 @@ export function BookingCard({
           {booking.title}
         </Text>
         {isActive ? (
-          <TouchableOpacity
-            style={styles.chatButton}
-            activeOpacity={0.85}
+          <Button
+            title="Chat"
+            variant="primary"
+            size="sm"
             onPress={onChat}
-          >
-            <ExpoImage
-              source={require("@/assets/global-icons/chat-bubble.svg")}
-              style={styles.icon}
-            />
-            <Text style={styles.chatButtonText}>Chat</Text>
-          </TouchableOpacity>
+            icon={
+              <ExpoImage
+                source={require("@/assets/global-icons/chat-bubble.svg")}
+                style={styles.icon}
+              />
+            }
+          />
         ) : (
-          <TouchableOpacity
-            style={styles.bookingViewButton}
-            activeOpacity={0.85}
-            onPress={onView}
-          >
-            <Text style={styles.bookingViewButtonText}>View</Text>
-          </TouchableOpacity>
+          <Button title="View" variant="primary" size="sm" onPress={onView} />
         )}
       </View>
       <Text style={styles.bookingClient} numberOfLines={1}>
@@ -167,36 +163,9 @@ const styles = StyleSheet.create({
   manageButton: {
     marginLeft: "auto",
   },
-  bookingViewButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-  },
-  bookingViewButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  chatButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-  },
   icon: {
     width: 20,
     height: 20,
-  },
-  chatButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   bookingClient: {
     fontSize: 13,

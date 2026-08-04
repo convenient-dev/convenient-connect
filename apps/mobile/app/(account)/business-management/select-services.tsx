@@ -1,10 +1,12 @@
 import { getCategories, getSubcategories } from "@/api/legacy";
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   categoryNameToSlug,
   getSubcategoryIcon,
 } from "@/components/SubcategoryIcon";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -70,6 +72,7 @@ function ServiceTile({
 }
 
 export default function SelectServicesScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details entered on the previous screen, forwarded through
   // each step of the create-business flow.
@@ -153,14 +156,10 @@ export default function SelectServicesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.title}>Services</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Services" />
 
       <Text style={styles.subtitle}>
         Please select the services you are offering
@@ -173,7 +172,7 @@ export default function SelectServicesScreen() {
           style={styles.loader}
         />
       ) : (
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           {/* Selected services tray */}
           {selected.length > 0 && (
             <View style={styles.tray}>
@@ -260,18 +259,14 @@ export default function SelectServicesScreen() {
         </View>
       )}
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            selected.length === 0 && styles.continueDisabled,
-          ]}
-          activeOpacity={0.85}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Continue"
+          variant="secondary"
+          size="lg"
           disabled={selected.length === 0}
           onPress={handleContinue}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -283,22 +278,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: background.screen,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { width: 40 },
-  title: {
-    flex: 1,
-    fontSize: 22,
-    fontWeight: "600",
-    color: text.primary,
-    textAlign: "center",
-    letterSpacing: -0.408,
   },
   subtitle: {
     fontSize: 16,
@@ -392,13 +371,15 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: TILE_GAP,
+    rowGap: TILE_GAP,
+    columnGap: TILE_GAP,
   },
   tile: {
-    // 4 columns: 3 gaps of TILE_GAP leave ~22.9% per tile
-    flexBasis: "22.9%",
+    // 4 columns: basis leaves room for the 3 column gaps, then tiles
+    // grow (capped) to share the leftover space evenly.
+    flexBasis: "22%",
     flexGrow: 1,
-    maxWidth: "23%",
+    maxWidth: "23.5%",
     aspectRatio: 0.92,
     borderRadius: 14,
     backgroundColor: neutral[50],
@@ -432,21 +413,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

@@ -1,3 +1,4 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   buildFullPhone,
@@ -5,6 +6,7 @@ import {
   DEFAULT_COUNTRY,
   PhoneInput,
 } from "@/components/PhoneInput";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { completeProfile, getAuthUser } from "@/api/profile";
 import { ApiError } from "@/api/client";
@@ -13,7 +15,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -21,12 +22,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, primary, neutral, text, background, border } = Colors;
+const { secondary, neutral, text, background, border } = Colors;
 
 interface FieldProps {
   label: string;
@@ -67,6 +67,17 @@ export default function EnterPersonalDetailsScreen() {
     method?: "phone" | "email";
   }>();
   const { user: authUser, setUser } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
+
+  // Debug: Why are we on this screen?
+  console.log("[ENTER-PERSONAL-DETAILS] Screen loaded with:", {
+    method,
+    hasFname: !!authUser?.user.user_fname,
+    hasLname: !!authUser?.user.user_lname,
+    fname: authUser?.user.user_fname,
+    lname: authUser?.user.user_lname,
+    providerType: authUser?.providerType,
+  });
 
   // When the user signed up by phone we collect their email; when they signed
   // up by email we collect their phone instead.
@@ -92,7 +103,6 @@ export default function EnterPersonalDetailsScreen() {
     setLoading(true);
     try {
       await completeProfile({
-        providerType: "individual",
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
@@ -114,7 +124,10 @@ export default function EnterPersonalDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -122,7 +135,7 @@ export default function EnterPersonalDetailsScreen() {
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, contentWidthStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -158,23 +171,16 @@ export default function EnterPersonalDetailsScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.nextButton,
-              (!canSubmit || loading) && { opacity: 0.6 },
-            ]}
-            activeOpacity={0.85}
-            disabled={!canSubmit || loading}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Next"
+            variant="primary"
+            size="lg"
+            style={{ flex: 1 }}
+            loading={loading}
+            disabled={!canSubmit}
             onPress={handleSubmit}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -240,21 +246,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     paddingTop: 8,
-  },
-  button: {
-    flex: 1,
-    height: 56,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextButton: {
-    backgroundColor: primary[400],
-  },
-  buttonText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

@@ -1,34 +1,40 @@
-import { googleLogin, numberLogin } from "@/api/auth";
+import { facebookLogin, googleLogin, numberLogin } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
+import { facebookSignOutQuietly, signInWithFacebook } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
 import {
   buildFullPhone,
   Country,
   DEFAULT_COUNTRY,
   PhoneInput,
 } from "@/components/PhoneInput";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import {
+  contentWidthStyle,
+  SCREEN_PADDING,
+  useResponsivePadding,
+} from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { secondary, neutral, text, background, border } = Colors;
+const { neutral, text, background, border } = Colors;
 
 interface SocialOption {
   key: string;
@@ -37,11 +43,11 @@ interface SocialOption {
 }
 
 const SOCIAL_OPTIONS: SocialOption[] = [
-  // {
-  //   key: "facebook",
-  //   label: "Continue with Facebook",
-  //   icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
-  // },
+  {
+    key: "facebook",
+    label: "Continue with Facebook",
+    icon: <Ionicons name="logo-facebook" size={24} color="#1877F2" />,
+  },
   {
     key: "gmail",
     label: "Continue with Gmail",
@@ -68,6 +74,8 @@ const SOCIAL_OPTIONS: SocialOption[] = [
 export default function SignupScreen() {
   const router = useRouter();
   const { login } = useAuth();
+
+  const { isWideScreen, screenPaddingStyle } = useResponsivePadding();
 
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState("");
@@ -96,7 +104,14 @@ export default function SignupScreen() {
         backgroundVerification: result.backgroundVerification,
         businessVerification: result.businessVerification,
       });
-      if (result.providerType) {
+
+      // Check if user has completed profile by checking if they have both names.
+      // We can't rely on providerType since the backend doesn't always set it.
+      const hasCompletedProfile =
+        !!result.user.user_fname?.trim() &&
+        !!result.user.user_lname?.trim();
+
+      if (hasCompletedProfile) {
         router.replace("/home");
       } else {
         router.replace({
@@ -113,20 +128,71 @@ export default function SignupScreen() {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    if (socialLoading) return;
+    setSocialLoading("facebook");
+    try {
+      const facebook = await signInWithFacebook();
+      if (facebook.status === "cancelled") return;
+      if (facebook.status === "error") {
+        Alert.alert("Error", facebook.message);
+        return;
+      }
+      const result = await facebookLogin({
+        email: facebook.email,
+        firstName: facebook.firstName,
+        lastName: facebook.lastName,
+      });
+      await login(result.accessToken, {
+        user: result.user,
+        providerType: result.providerType,
+        profileImage: result.profileImage,
+        backgroundVerification: result.backgroundVerification,
+        businessVerification: result.businessVerification,
+      });
+
+      // Check if user has completed profile by checking if they have both names.
+      // We can't rely on providerType since the backend doesn't always set it.
+      const hasCompletedProfile =
+        !!result.user.user_fname?.trim() &&
+        !!result.user.user_lname?.trim();
+
+      if (hasCompletedProfile) {
+        router.replace("/home");
+      } else {
+        router.replace({
+          pathname: "/enter-personal-details",
+          params: { method: "email" },
+        });
+      }
+    } catch (e) {
+      await facebookSignOutQuietly();
+      const msg = e instanceof ApiError ? e.message : "Facebook sign-in failed";
+      Alert.alert("Error", msg);
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            contentWidthStyle,
+            isWideScreen && styles.contentWide,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -141,13 +207,12 @@ export default function SignupScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.verifyButton,
-              loading && styles.verifyButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={loading || !phone.trim()}
+          <Button
+            title="Verify"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!phone.trim()}
             onPress={async () => {
               const fullPhone = buildFullPhone(country, phone);
               setLoading(true);
@@ -165,13 +230,7 @@ export default function SignupScreen() {
                 setLoading(false);
               }
             }}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.verifyText}>Verify</Text>
-            )}
-          </TouchableOpacity>
+          />
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -180,11 +239,14 @@ export default function SignupScreen() {
           </View>
 
           {SOCIAL_OPTIONS.map((option) => (
-            <TouchableOpacity
+            <Button
               key={option.key}
-              style={styles.socialButton}
-              activeOpacity={0.7}
+              title={option.label}
+              variant="social"
+              icon={option.icon}
+              loading={socialLoading === option.key}
               disabled={socialLoading !== null}
+              style={styles.socialButton}
               onPress={() => {
                 if (option.key === "email") {
                   router.push("/signup-by-email");
@@ -192,19 +254,12 @@ export default function SignupScreen() {
                 if (option.key === "gmail") {
                   handleGoogleLogin();
                 }
-                // TODO: Wire facebook, apple social auth SDKs
+                if (option.key === "facebook") {
+                  handleFacebookLogin();
+                }
+                // TODO: Wire apple social auth SDK
               }}
-            >
-              <View style={styles.socialIcon}>{option.icon}</View>
-              {socialLoading === option.key ? (
-                <ActivityIndicator
-                  style={styles.socialSpinner}
-                  color={neutral[800]}
-                />
-              ) : (
-                <Text style={styles.socialText}>{option.label}</Text>
-              )}
-            </TouchableOpacity>
+            />
           ))}
 
           <Text style={styles.consentText}>
@@ -225,15 +280,14 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SCREEN_PADDING,
     paddingTop: 24,
     paddingBottom: 32,
+  },
+  contentWide: {
+    paddingTop: 40,
+    paddingBottom: 48,
   },
   title: {
     fontSize: 30,
@@ -244,22 +298,6 @@ const styles = StyleSheet.create({
   },
   phoneWrap: {
     marginBottom: 16,
-  },
-  verifyButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifyButtonDisabled: {
-    opacity: 0.6,
-  },
-  verifyText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
   dividerRow: {
     flexDirection: "row",
@@ -278,29 +316,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
   socialButton: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: neutral[50],
-    borderRadius: 999,
-    paddingHorizontal: 20,
     marginBottom: 14,
-  },
-  socialIcon: {
-    width: 28,
-    alignItems: "center",
-  },
-  socialText: {
-    flex: 1,
-    textAlign: "center",
-    marginRight: 28,
-    fontSize: 17,
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  socialSpinner: {
-    flex: 1,
-    marginRight: 28,
   },
   accountRow: {
     flexDirection: "row",

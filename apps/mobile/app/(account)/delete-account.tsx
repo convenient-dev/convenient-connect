@@ -4,13 +4,14 @@ import {
   sendDeleteAccountOtp,
 } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   StyleSheet,
   Text,
@@ -41,6 +42,7 @@ interface ChannelOption {
 }
 
 export default function DeleteAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
 
@@ -92,10 +94,10 @@ export default function DeleteAccountScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Verify Account" />
 
-      <View style={styles.body}>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.subtitle}>
           Choose how you want to receive the OTP
         </Text>
@@ -146,22 +148,15 @@ export default function DeleteAccountScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!selected || sending) && styles.sendButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          disabled={!selected || sending}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Send OTP"
+          variant="secondary"
+          size="lg"
+          loading={sending}
+          disabled={!selected}
           onPress={handleSendOtp}
-        >
-          {sending ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.sendText}>Send OTP</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -232,21 +227,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  sendButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

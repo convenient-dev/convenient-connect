@@ -1,7 +1,9 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { getService, getSubcategory } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
@@ -55,6 +57,7 @@ interface ServicePricing {
 }
 
 export default function EditServicePricingScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -189,20 +192,15 @@ export default function EditServicePricingScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Pricing</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <ScreenHeader title="Pricing" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -210,7 +208,7 @@ export default function EditServicePricingScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -285,24 +283,23 @@ export default function EditServicePricingScreen() {
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Cancel"
+          variant="secondary"
+          size="md"
+          style={{ flex: 1 }}
           onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveButton, canSave && styles.saveButtonActive]}
-          onPress={handleSave}
+        />
+        <Button
+          title="Save"
+          variant="primary"
+          size="md"
+          style={{ flex: 1 }}
           disabled={!canSave}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.saveButtonText, canSave && styles.saveButtonTextActive]}>
-            {saving ? "Saving..." : "Save"}
-          </Text>
-        </TouchableOpacity>
+          loading={saving}
+          onPress={handleSave}
+        />
       </View>
 
       <ConfirmModal
@@ -371,16 +368,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: background.screen },
   flex: { flex: 1 },
   loader: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
-  headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   sectionTitle: { fontSize: 15, fontWeight: "700", color: neutral[800], marginBottom: 4 },
@@ -409,18 +396,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingBottom: 6,
   },
   footer: { flexDirection: "row", gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
-  cancelButton: {
-    flex: 1, height: 50, borderRadius: 25,
-    backgroundColor: secondary[500], alignItems: "center", justifyContent: "center",
-  },
-  cancelButtonText: { fontSize: 16, fontWeight: "600", color: neutral[0] },
-  saveButton: {
-    flex: 1, height: 50, borderRadius: 25,
-    backgroundColor: neutral[200], alignItems: "center", justifyContent: "center",
-  },
-  saveButtonActive: { backgroundColor: primary[400] },
-  saveButtonText: { fontSize: 16, fontWeight: "600", color: neutral[400] },
-  saveButtonTextActive: { color: neutral[0] },
   bottomSheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: overlay.light },
   bottomSheet: {
     position: "absolute", left: 0, right: 0, bottom: 0,

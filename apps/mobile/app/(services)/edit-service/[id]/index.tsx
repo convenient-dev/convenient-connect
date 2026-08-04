@@ -3,6 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
 import { legacyFetch } from "@/api/client";
 import { getService } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -59,6 +60,7 @@ function InlineRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function EditServiceScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -143,7 +145,7 @@ export default function EditServiceScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -155,7 +157,7 @@ export default function EditServiceScreen() {
 
   if (!service) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <Text style={styles.errorText}>Service not found.</Text>
       </SafeAreaView>
     );
@@ -178,12 +180,12 @@ export default function EditServiceScreen() {
           : "You won't appear in client search results.";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title="Edit Service" subtitle={service.title} />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {/* Search Setting */}

@@ -1,7 +1,10 @@
 import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
+import { CardGrid } from "@/components/CardGrid";
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getAvailability, toggleAvailability, setWeeklySlots, setOverrides } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
@@ -27,7 +30,6 @@ import { Calendar, type DateData } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const {
-  brand,
   primary,
   secondary,
   neutral,
@@ -173,6 +175,7 @@ function parseAnyTime(s: string): TimeValue {
 }
 
 export default function ScheduleScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
 
@@ -712,7 +715,7 @@ export default function ScheduleScreen() {
     !overrideRangesByDate[selectedModifyDate];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader title={headerTitle} />
 
       {loading ? (
@@ -722,7 +725,7 @@ export default function ScheduleScreen() {
           style={styles.loader}
         />
       ) : (
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <View style={styles.availableCard}>
             <View style={styles.availableTextWrap}>
               <Text style={styles.availableTitle}>I&apos;m Available</Text>
@@ -1152,15 +1155,19 @@ export default function ScheduleScreen() {
                       </Text>
                     </View>
                     {selectedDateBookings.length > 0 ? (
-                      selectedDateBookings.map((b, idx) => (
-                        <BookingCard
-                          key={b.id}
-                          booking={b}
-                          dotColor={
-                            BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
-                          }
-                        />
-                      ))
+                      <CardGrid>
+                        {selectedDateBookings.map((b, idx) => (
+                          <BookingCard
+                            key={b.id}
+                            booking={b}
+                            dotColor={
+                              BOOKING_DOT_COLORS[
+                                idx % BOOKING_DOT_COLORS.length
+                              ]
+                            }
+                          />
+                        ))}
+                      </CardGrid>
                     ) : (
                       <View style={styles.bookingEmpty}>
                         <ExpoImage
@@ -1182,31 +1189,23 @@ export default function ScheduleScreen() {
       )}
 
       {available && (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.footerButton, styles.cancelButton]}
-            activeOpacity={0.85}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Cancel"
+            variant="secondary"
+            size="lg"
+            style={{ flex: 1 }}
+            disabled={saving}
             onPress={() => router.back()}
-            disabled={saving}
-          >
-            <Text style={styles.footerButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.footerButton,
-              styles.saveButton,
-              saving && styles.saveButtonDisabled,
-            ]}
-            activeOpacity={0.85}
+          />
+          <Button
+            title="Save"
+            variant="primary"
+            size="lg"
+            style={{ flex: 1 }}
+            loading={saving}
             onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.footerButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       )}
 
@@ -1405,23 +1404,23 @@ function TimeRangePickerModal({
           </View>
 
           <View style={styles.pickerActions}>
-            <TouchableOpacity
-              style={[styles.pickerButton, styles.pickerCancelButton]}
-              activeOpacity={0.85}
+            <Button
+              title="Cancel"
+              variant="secondary"
+              size="md"
+              style={{ flex: 1 }}
               onPress={onCancel}
-            >
-              <Text style={styles.pickerButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pickerButton, styles.pickerSaveButton]}
-              activeOpacity={0.85}
+            />
+            <Button
+              title="Save"
+              variant="primary"
+              size="md"
+              style={{ flex: 1 }}
               disabled={endData.length === 0}
               onPress={() =>
                 onSave(TIME_SLOTS[startIdx].time, TIME_SLOTS[endIdx].time)
               }
-            >
-              <Text style={styles.pickerButtonText}>Save</Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </View>
@@ -1604,28 +1603,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 12,
   },
-  footerButton: {
-    flex: 1,
-    height: 52,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButton: {
-    backgroundColor: brand.secondary,
-  },
-  saveButton: {
-    backgroundColor: brand.primary,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  footerButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
   loader: {
     flex: 1,
   },
@@ -1800,24 +1777,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 18,
-  },
-  pickerButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pickerCancelButton: {
-    backgroundColor: secondary[500],
-  },
-  pickerSaveButton: {
-    backgroundColor: primary[300],
-  },
-  pickerButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

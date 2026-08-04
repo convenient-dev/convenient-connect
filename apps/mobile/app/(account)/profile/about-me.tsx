@@ -1,17 +1,17 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { updateAboutMe } from "@/api/profile";
 import { ApiError } from "@/api/client";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +20,7 @@ const { secondary, neutral, text, background, border } = Colors;
 
 
 export default function AboutMeScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { aboutMe: initial } = useLocalSearchParams<{ aboutMe?: string }>();
 
@@ -43,14 +44,14 @@ export default function AboutMeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScreenHeader title="About Me" />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <TextInput
             style={styles.textArea}
             placeholder="Write a brief introduction about yourself, your experience, and the services you offer."
@@ -69,19 +70,14 @@ export default function AboutMeScreen() {
           </Text>
         </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-            activeOpacity={0.85}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Save"
+            variant="secondary"
+            size="md"
+            loading={saving}
             onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -124,21 +120,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  saveButton: {
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

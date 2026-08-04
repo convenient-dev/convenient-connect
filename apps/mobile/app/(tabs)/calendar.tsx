@@ -4,6 +4,7 @@ import {
   BookingRequestCard,
   type BookingRequest,
 } from "@/components/BookingRequestCard";
+import { CardGrid } from "@/components/CardGrid";
 import {
   FilterBottomSheet,
   type FilterSection,
@@ -14,6 +15,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
 import { getAvailability } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -173,6 +175,7 @@ const STATUS_FILTER_SECTIONS: FilterSection[] = [
 
 export default function CalendarScreen() {
   const { userId } = useCurrentUser();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   const [selectedDays, setSelectedDays] = useState<Set<DayKey>>(new Set());
   const [unavailableOverrides, setUnavailableOverrides] = useState<Set<string>>(
@@ -328,7 +331,7 @@ export default function CalendarScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="Calendar"
         rightAccessory={
@@ -372,7 +375,11 @@ export default function CalendarScreen() {
           style={styles.loader}
         />
       ) : viewMode === "calendar" ? (
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={contentWidthStyle}
+          showsVerticalScrollIndicator={false}
+        >
           <Calendar
             initialDate={selectedDate}
             current={selectedDate}
@@ -479,13 +486,15 @@ export default function CalendarScreen() {
                   New Request ({newRequests.length})
                 </Text>
               </View>
-              {newRequests.map((b) => (
-                <BookingRequestCard
-                  key={b.id}
-                  request={toBookingRequest(b)}
-                  onAccept={() => acceptRequest(b.id)}
-                />
-              ))}
+              <CardGrid gap={16}>
+                {newRequests.map((b) => (
+                  <BookingRequestCard
+                    key={b.id}
+                    request={toBookingRequest(b)}
+                    onAccept={() => acceptRequest(b.id)}
+                  />
+                ))}
+              </CardGrid>
             </View>
           )}
 
@@ -496,13 +505,17 @@ export default function CalendarScreen() {
               </Text>
             </View>
             {confirmedBookings.length > 0 ? (
-              confirmedBookings.map((b, idx) => (
-                <BookingCard
-                  key={b.id}
-                  booking={b}
-                  dotColor={BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]}
-                />
-              ))
+              <CardGrid>
+                {confirmedBookings.map((b, idx) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    dotColor={
+                      BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
+                    }
+                  />
+                ))}
+              </CardGrid>
             ) : (
               <View style={styles.bookingEmpty}>
                 <ExpoImage
@@ -529,28 +542,32 @@ export default function CalendarScreen() {
           )}
           <ScrollView
             style={styles.body}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, contentWidthStyle]}
             showsVerticalScrollIndicator={false}
           >
             {listBookings.length > 0 ? (
               listTab === "new" ? (
-                listBookings.map((b) => (
-                  <BookingRequestCard
-                    key={b.id}
-                    request={toBookingRequest(b)}
-                    onAccept={() => acceptRequest(b.id)}
-                  />
-                ))
+                <CardGrid gap={16}>
+                  {listBookings.map((b) => (
+                    <BookingRequestCard
+                      key={b.id}
+                      request={toBookingRequest(b)}
+                      onAccept={() => acceptRequest(b.id)}
+                    />
+                  ))}
+                </CardGrid>
               ) : (
-                listBookings.map((b, idx) => (
-                  <BookingCard
-                    key={b.id}
-                    booking={b}
-                    dotColor={
-                      BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
-                    }
-                  />
-                ))
+                <CardGrid>
+                  {listBookings.map((b, idx) => (
+                    <BookingCard
+                      key={b.id}
+                      booking={b}
+                      dotColor={
+                        BOOKING_DOT_COLORS[idx % BOOKING_DOT_COLORS.length]
+                      }
+                    />
+                  ))}
+                </CardGrid>
               )
             ) : (
               <View style={styles.bookingEmpty}>

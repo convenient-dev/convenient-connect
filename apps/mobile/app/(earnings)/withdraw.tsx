@@ -1,11 +1,12 @@
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { brand, primary, neutral, text, background, border, secondary, status } =
+const { primary, neutral, text, background, border, secondary, status } =
   Colors;
 
 // TODO: Replace with backend-provided balance and connected payout method.
@@ -35,6 +36,7 @@ function parseAmount(raw: string): number {
 }
 
 export default function WithdrawScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -66,7 +68,10 @@ export default function WithdrawScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "left", "right"]}
+    >
       <ScreenHeader title="Withdraw" />
 
       <KeyboardAvoidingView
@@ -75,7 +80,7 @@ export default function WithdrawScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -144,24 +149,15 @@ export default function WithdrawScreen() {
           </Text>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              !isValid && styles.submitButtonDisabled,
-            ]}
-            activeOpacity={0.85}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title={parsed > 0 ? `Withdraw ${formatAmount(parsed)}` : "Withdraw"}
+            variant="primary"
+            size="lg"
+            disabled={!isValid}
+            loading={submitting}
             onPress={handleSubmit}
-            disabled={!isValid || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                {parsed > 0 ? `Withdraw ${formatAmount(parsed)}` : "Withdraw"}
-              </Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -304,21 +300,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
-  },
-  submitButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButtonDisabled: {
-    backgroundColor: neutral[200],
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

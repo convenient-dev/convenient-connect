@@ -1,7 +1,9 @@
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
 import { getTickets } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -49,6 +51,7 @@ const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
 };
 
 export default function MyTicketsScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { userId } = useCurrentUser();
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -70,7 +73,7 @@ export default function MyTicketsScreen() {
       : allTickets.filter((t) => t.status === filter);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="My Tickets"
         rightAccessory={
@@ -131,18 +134,18 @@ export default function MyTicketsScreen() {
             When you submit a ticket, you&apos;ll see its status and replies
             here.
           </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            activeOpacity={0.85}
+          <Button
+            title="Submit a Ticket"
+            variant="secondary"
+            size="sm"
+            style={{ marginTop: 18, alignSelf: "center" }}
             onPress={() => router.push("/submit-ticket")}
-          >
-            <Text style={styles.emptyButtonText}>Submit a Ticket</Text>
-          </TouchableOpacity>
+          />
         </View>
       ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
         >
           {tickets.map((t) => (
@@ -334,21 +337,6 @@ const styles = StyleSheet.create({
     color: neutral[400],
     textAlign: "center",
     lineHeight: 20,
-    letterSpacing: -0.408,
-  },
-  emptyButton: {
-    marginTop: 18,
-    paddingHorizontal: 24,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: neutral[0],
     letterSpacing: -0.408,
   },
 });

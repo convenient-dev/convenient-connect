@@ -1,5 +1,7 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -9,22 +11,28 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { brand, primary, secondary, neutral, text, background, status } = Colors;
+const { primary, neutral, text, background, status } = Colors;
 
 
 const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details, services, and documents collected on the previous
   // screens of the create-business flow.
   const params = useLocalSearchParams<{
     businessName?: string;
+    businessAddress?: string;
+    countryName?: string;
+    stateName?: string;
+    cityName?: string;
+    zipcode?: string;
+    about?: string;
     categoryNames?: string;
   }>();
   const { addPendingBusiness, reset } = useBusinessSignup();
@@ -45,21 +53,24 @@ export default function UpdateBankAccountScreen() {
     addPendingBusiness({
       name: params.businessName ?? "",
       categories: (params.categoryNames ?? "").split(",").filter(Boolean),
+      address: params.businessAddress ?? "",
+      country: params.countryName ?? "",
+      state: params.stateName ?? "",
+      city: params.cityName ?? "",
+      zipCode: params.zipcode ?? "",
+      about: params.about ?? "",
     });
     reset();
     router.dismissTo("/business-management");
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <ScreenHeader />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Update Bank Account</Text>
@@ -87,22 +98,20 @@ export default function UpdateBankAccountScreen() {
         </Text>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.updateButton}
-          activeOpacity={0.85}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Update account details"
+          variant="primary"
+          size="lg"
           onPress={handleUpdateDetails}
-        >
-          <Text style={styles.updateButtonText}>Update account details</Text>
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={styles.submitButton}
-          activeOpacity={0.85}
+        <Button
+          title="Submit with this account"
+          variant="secondary"
+          size="lg"
           onPress={handleSubmit}
-        >
-          <Text style={styles.submitButtonText}>Submit with this account</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <ConfirmModal
@@ -122,15 +131,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { flex: 1 },
 
   scroll: { flex: 1 },
   scrollContent: {
@@ -201,31 +201,5 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     gap: 10,
-  },
-  updateButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  updateButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  submitButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

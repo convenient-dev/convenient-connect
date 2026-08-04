@@ -1,5 +1,7 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { confirmNumber, resendOtpNumber } from "@/api/auth";
 import { ApiError } from "@/api/client";
@@ -8,18 +10,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background } = Colors;
+const { primary, neutral, text, background } = Colors;
 
 const CODE_LENGTH = 4;
 const RESEND_SECONDS = 57;
@@ -54,6 +54,7 @@ export default function SignupByPhoneScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const { login } = useAuth();
+  const { screenPaddingStyle } = useResponsivePadding();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
@@ -114,17 +115,18 @@ export default function SignupByPhoneScreen() {
   const isComplete = digits.every((d) => d.length === 1);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => router.back()} />
-        </View>
+        <ScreenHeader />
 
-        <View style={styles.body}>
+        <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.title}>
             Enter the 4-digit code sent to your SMS at {maskPhone(phone)}
           </Text>
@@ -157,33 +159,37 @@ export default function SignupByPhoneScreen() {
                 Resend code in {formatTimer(seconds)}
               </Text>
             ) : (
-              <TouchableOpacity
-                style={styles.resendButton}
-                activeOpacity={0.7}
+              <Button
+                title={resending ? "Sending..." : "Resend code"}
+                variant="ghost"
                 disabled={resending}
                 onPress={handleResend}
-              >
-                <Text style={styles.resendText}>
-                  {resending ? "Sending..." : "Resend code"}
-                </Text>
-              </TouchableOpacity>
+              />
             )}
           </View>
         </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              (!isComplete || loading) && styles.continueButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            disabled={!isComplete || loading}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
+            loading={loading}
+            disabled={!isComplete}
             onPress={async () => {
               if (!phone) return;
               setLoading(true);
               try {
                 const result = await confirmNumber(phone, digits.join(""));
+                console.log("[SIGNUP] Login result:", {
+                  providerType: result.providerType,
+                  userFname: result.user.user_fname,
+                  userLname: result.user.user_lname,
+                  userId: result.user.user_id,
+                  hasEmail: !!result.user.user_email,
+                  hasPhone: !!result.user.user_contact,
+                });
+
                 await login(result.accessToken, {
                   user: result.user,
                   providerType: result.providerType,
@@ -191,9 +197,20 @@ export default function SignupByPhoneScreen() {
                   backgroundVerification: result.backgroundVerification,
                   businessVerification: result.businessVerification,
                 });
-                if (result.providerType) {
+
+                // Check if user has completed profile by checking if they have both names.
+                // We can't rely on providerType since the backend doesn't always set it.
+                const hasCompletedProfile =
+                  !!result.user.user_fname?.trim() &&
+                  !!result.user.user_lname?.trim();
+
+                console.log("[SIGNUP] hasCompletedProfile:", hasCompletedProfile);
+
+                if (hasCompletedProfile) {
+                  console.log("[SIGNUP] Redirecting to /home");
                   router.replace("/home");
                 } else {
+                  console.log("[SIGNUP] Redirecting to /enter-personal-details");
                   router.replace({
                     pathname: "/enter-personal-details",
                     params: { method: "phone" },
@@ -212,13 +229,7 @@ export default function SignupByPhoneScreen() {
                 setLoading(false);
               }
             }}
-          >
-            {loading ? (
-              <ActivityIndicator color={neutral[0]} />
-            ) : (
-              <Text style={styles.continueText}>Continue</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -244,11 +255,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
   body: {
     flex: 1,
     paddingHorizontal: 20,
@@ -290,33 +296,8 @@ const styles = StyleSheet.create({
     color: neutral[400],
     letterSpacing: -0.408,
   },
-  resendButton: {
-    paddingVertical: 4,
-  },
-  resendText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: primary[400],
-    letterSpacing: -0.408,
-  },
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  continueButton: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: secondary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueButtonDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

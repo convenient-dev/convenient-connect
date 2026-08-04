@@ -1,4 +1,5 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { getService } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
@@ -9,7 +10,6 @@ import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Modal,
   ScrollView,
   StatusBar,
@@ -120,8 +120,6 @@ function formatCustomValue(
   return cv.valueText ?? null;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 function ImageViewerModal({
   uri,
   onClose,
@@ -151,6 +149,7 @@ function ImageViewerModal({
 }
 
 export default function ServiceDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -166,7 +165,7 @@ export default function ServiceDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -178,14 +177,14 @@ export default function ServiceDetailScreen() {
 
   if (!service) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <Text style={styles.errorText}>Service not found.</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       {selectedImageUri && (
         <ImageViewerModal
           uri={selectedImageUri}
@@ -197,7 +196,7 @@ export default function ServiceDetailScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {/* WORK TYPE */}
@@ -521,8 +520,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fullscreenImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    ...StyleSheet.absoluteFillObject,
   },
   modalCloseButton: {
     position: "absolute",

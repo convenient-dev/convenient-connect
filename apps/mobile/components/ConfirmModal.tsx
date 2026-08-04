@@ -1,17 +1,14 @@
+import { Button } from "@/components/Button";
 import { ModalIcon } from "@/components/ModalIcon";
+import { MAX_DIALOG_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import LottieView from "lottie-react-native";
 import type { ComponentProps } from "react";
 import React from "react";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 
-const { brand, neutral, background, text, overlay } = Colors;
+const { neutral, background, overlay } = Colors;
 
 interface Props {
   visible: boolean;
@@ -34,6 +31,7 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
+  const reducedMotion = useReducedMotion();
   return (
     <Modal
       visible={visible}
@@ -43,25 +41,35 @@ export function ConfirmModal({
     >
       <Pressable style={styles.overlay} onPress={() => onCancel?.()}>
         <Pressable style={styles.card} onPress={() => {}}>
-          <ModalIcon variant={icon} />
+          {icon === "success" ? (
+            <LottieView
+              source={require("@/assets/Animated icons/Json/Check_Icon.json")}
+              autoPlay={!reducedMotion}
+              loop={false}
+              resizeMode="contain"
+              style={styles.successIcon}
+            />
+          ) : (
+            <ModalIcon variant={icon} />
+          )}
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.confirmBtn}
+            <Button
+              title={confirmLabel}
+              variant="secondary"
+              size="md"
               onPress={onConfirm}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.confirmText}>{confirmLabel}</Text>
-            </TouchableOpacity>
+              style={{ width: "100%" }}
+            />
             {onCancel && (
-              <TouchableOpacity
-                style={styles.cancelBtn}
+              <Button
+                title={cancelLabel}
+                variant="dark"
+                size="md"
                 onPress={onCancel}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelText}>{cancelLabel}</Text>
-              </TouchableOpacity>
+                style={{ width: "100%" }}
+              />
             )}
           </View>
         </Pressable>
@@ -80,11 +88,12 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
+    maxWidth: MAX_DIALOG_WIDTH,
     backgroundColor: background.card,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     alignItems: "center",
-    gap: 8,
+    gap: 16,
     shadowColor: neutral[1000],
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
@@ -96,6 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: neutral[800],
     textAlign: "center",
+    paddingTop: 20,
   },
   message: {
     fontSize: 13,
@@ -105,36 +115,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 8,
   },
+  // The check circle only fills ~42% of the Lottie canvas, so the view is
+  // oversized to render a ~52px circle and negative margins trim the
+  // whitespace — but no further than the card's 24px padding, or the
+  // canvas pokes past the card edge and gets clipped.
+  successIcon: {
+    width: 120,
+    height: 120,
+    marginTop: -12,
+    marginBottom: -32,
+  },
   actions: {
     flexDirection: "column",
     gap: 10,
     width: "100%",
     marginTop: 4,
-  },
-  cancelBtn: {
-    width: "100%",
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: neutral[1000],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: text.inverse,
-  },
-  confirmBtn: {
-    width: "100%",
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: brand.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: text.inverse,
   },
 });

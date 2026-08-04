@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from "react-native";
 const { text, neutral } = Colors;
 
 interface Props {
-  title: string;
+  title?: string;
   subtitle?: string;
   onBack?: () => void;
   titleAccessory?: React.ReactNode;
@@ -28,10 +28,12 @@ export function ScreenHeader({
     <View style={styles.header}>
       <BackButton onPress={handleBack} />
       <View style={styles.headerCenter}>
-        <View style={styles.titleRow}>
-          <Text style={styles.headerTitle}>{title}</Text>
-          {titleAccessory}
-        </View>
+        {(title || titleAccessory) && (
+          <View style={styles.titleRow}>
+            {title && <Text style={styles.headerTitle}>{title}</Text>}
+            {titleAccessory}
+          </View>
+        )}
         {subtitle && (
           <Text style={styles.headerSubtitle} numberOfLines={1}>
             {subtitle}

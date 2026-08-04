@@ -1,4 +1,6 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import {
   UploadedDoc,
@@ -98,6 +100,7 @@ function UploadCard({
 }
 
 export default function VerifyBusinessScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details entered on the previous screen, forwarded through
   // each step of the create-business flow.
@@ -252,19 +255,16 @@ export default function VerifyBusinessScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <BackButton onPress={() => router.back()} />
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader />
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -333,18 +333,14 @@ export default function VerifyBusinessScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              !canContinue && styles.continueButtonDisabled,
-            ]}
-            activeOpacity={0.85}
-            onPress={handleContinue}
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Continue"
+            variant="secondary"
+            size="lg"
             disabled={!canContinue}
-          >
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </TouchableOpacity>
+            onPress={handleContinue}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -357,15 +353,6 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 6,
-  },
-  headerSpacer: { flex: 1 },
 
   scroll: { flex: 1 },
   scrollContent: {
@@ -522,21 +509,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
-  },
-  continueButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueButtonDisabled: {
-    opacity: 0.5,
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
   },
 });

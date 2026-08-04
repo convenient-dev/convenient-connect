@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getFaq } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
@@ -29,6 +30,7 @@ interface Topic {
 }
 
 export default function CustomerSupportScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,7 @@ export default function CustomerSupportScreen() {
   }, [topics, trimmedQuery]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
       <ScreenHeader
         title="Customer Support"
         rightAccessory={
@@ -143,7 +145,7 @@ export default function CustomerSupportScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
         {searchActive && trimmedQuery ? (

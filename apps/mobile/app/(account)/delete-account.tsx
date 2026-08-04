@@ -4,13 +4,15 @@ import {
   sendDeleteAccountOtp,
 } from "@/api/profile";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, text, background } = Colors;
+const { secondary, neutral, text, background, status } = Colors;
 
 function maskPhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -36,11 +38,11 @@ function maskEmail(email: string): string {
 interface ChannelOption {
   channel: DeleteAccountChannel;
   label: string;
-  icon: "phone-iphone" | "mail-outline";
   destination: string;
 }
 
 export default function DeleteAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user: authUser } = useAuth();
 
@@ -55,8 +57,7 @@ export default function DeleteAccountScreen() {
   if (phone) {
     options.push({
       channel: "phone",
-      label: "Phone",
-      icon: "phone-iphone",
+      label: "Phone Number",
       destination: maskPhone(phone),
     });
   }
@@ -64,12 +65,11 @@ export default function DeleteAccountScreen() {
     options.push({
       channel: "email",
       label: "Email",
-      icon: "mail-outline",
       destination: maskEmail(email),
     });
   }
 
-  async function handleContinue() {
+  async function handleSendOtp() {
     if (!selected || sending) return;
     setSending(true);
     setError(null);
@@ -94,43 +94,42 @@ export default function DeleteAccountScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Delete Account" />
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <ScreenHeader title="Verify Account" />
 
-      <View style={styles.body}>
-        <View style={styles.warningIcon}>
-          <MaterialIcons name="warning-amber" size={40} color={secondary[500]} />
-        </View>
-
-        <Text style={styles.title}>Delete your account?</Text>
+      <View style={[styles.body, contentWidthStyle]}>
         <Text style={styles.subtitle}>
-          This will permanently delete your account and all associated data.
-          To continue, verify it&apos;s you by receiving a one-time code.
+          Choose how you want to receive the OTP
         </Text>
 
-        <Text style={styles.sectionLabel}>Send code via</Text>
+        <Image
+          source={require("@/assets/global-icons/phone.png")}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+
         <View style={styles.optionList}>
-          {options.map((option) => {
+          {options.map((option, index) => {
             const isSelected = selected === option.channel;
             return (
               <TouchableOpacity
                 key={option.channel}
-                style={[styles.option, isSelected && styles.optionSelected]}
-                activeOpacity={0.8}
+                style={[styles.option, index > 0 && styles.optionDivider]}
+                activeOpacity={0.7}
                 onPress={() => setSelected(option.channel)}
               >
-                <View style={styles.optionIcon}>
-                  <MaterialIcons
-                    name={option.icon}
-                    size={22}
-                    color={isSelected ? primary[500] : neutral[500]}
-                  />
-                </View>
                 <View style={styles.optionText}>
                   <Text style={styles.optionLabel}>{option.label}</Text>
-                  <Text style={styles.optionDestination}>
-                    {option.destination}
-                  </Text>
+                  <View style={styles.destinationRow}>
+                    <Text style={styles.optionDestination}>
+                      {option.destination}
+                    </Text>
+                    <MaterialIcons
+                      name="check-circle"
+                      size={16}
+                      color={status.active}
+                    />
+                  </View>
                 </View>
                 <MaterialIcons
                   name={
@@ -138,8 +137,8 @@ export default function DeleteAccountScreen() {
                       ? "radio-button-checked"
                       : "radio-button-unchecked"
                   }
-                  size={22}
-                  color={isSelected ? primary[500] : neutral[300]}
+                  size={24}
+                  color={isSelected ? secondary[500] : neutral[600]}
                 />
               </TouchableOpacity>
             );
@@ -149,30 +148,15 @@ export default function DeleteAccountScreen() {
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            (!selected || sending) && styles.continueButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          disabled={!selected || sending}
-          onPress={handleContinue}
-        >
-          {sending ? (
-            <ActivityIndicator color={neutral[0]} />
-          ) : (
-            <Text style={styles.continueText}>Continue</Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          activeOpacity={0.7}
-          disabled={sending}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Send OTP"
+          variant="secondary"
+          size="lg"
+          loading={sending}
+          disabled={!selected}
+          onPress={handleSendOtp}
+        />
       </View>
     </SafeAreaView>
   );
@@ -188,79 +172,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-  warningIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: secondary[50],
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: text.primary,
-    textAlign: "center",
-    letterSpacing: -0.408,
-  },
   subtitle: {
-    fontSize: 14,
+    fontSize: 17,
     color: neutral[400],
     textAlign: "center",
-    lineHeight: 20,
     letterSpacing: -0.408,
-    marginTop: 10,
-    marginBottom: 28,
+    marginTop: 16,
   },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-    marginBottom: 10,
+  illustration: {
+    alignSelf: "center",
+    width: 240,
+    height: 160,
+    marginTop: 36,
+    marginBottom: 24,
   },
   optionList: {
-    gap: 12,
+    marginHorizontal: -20,
   },
   option: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: neutral[100],
-    backgroundColor: neutral[50],
+    paddingVertical: 18,
+    paddingHorizontal: 20,
   },
-  optionSelected: {
-    borderColor: primary[400],
-    backgroundColor: primary[50],
-  },
-  optionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: background.card,
-    alignItems: "center",
-    justifyContent: "center",
+  optionDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: neutral[200],
   },
   optionText: {
     flex: 1,
+    gap: 4,
   },
   optionLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
     color: text.primary,
     letterSpacing: -0.408,
   },
+  destinationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   optionDestination: {
-    fontSize: 13,
+    fontSize: 16,
     color: neutral[400],
-    marginTop: 2,
     letterSpacing: -0.408,
   },
   errorText: {
@@ -271,33 +227,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-    gap: 8,
-  },
-  continueButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  continueButtonDisabled: {
-    opacity: 0.6,
-  },
-  continueText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
-    letterSpacing: -0.408,
-  },
-  cancelButton: {
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
   },
 });

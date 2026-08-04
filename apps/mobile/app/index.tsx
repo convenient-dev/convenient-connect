@@ -1,44 +1,49 @@
+import { Button } from "@/components/Button";
+import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import LottieView from "lottie-react-native";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text } = Colors;
+const { neutral, text } = Colors;
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const reducedMotion = useReducedMotion();
+  const { screenPaddingStyle } = useResponsivePadding(32, 100);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
+      <View style={[styles.content, screenPaddingStyle]}>
+        <View style={{ alignItems: "center", paddingTop: "40%" }}>
+          <LottieView
+            source={require("@/assets/splash-screen-logo.json")}
+            autoPlay={!reducedMotion}
+            loop={false}
+            resizeMode="contain"
+            style={styles.logo}
+          />
+          <Text style={styles.title}>Welcome to ConvenientConnect</Text>
+          <Text style={styles.subtitle}>
+            Your Platform to Promote and Grow Your Services.
+          </Text>
+        </View>
 
-      <View style={styles.content}>
-        <LottieView
-          source={require("@/assets/splash-screen-logo.json")}
-          autoPlay={!reducedMotion}
-          loop={false}
-          resizeMode="contain"
-          style={styles.logo}
-        />
-        <Text style={styles.title}>Welcome to ConvenientConnect</Text>
-        <Text style={styles.subtitle}>
-          Your Platform to Promote and Grow Your Services.
-        </Text>
-      </View>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.getStartedButton}
-          activeOpacity={0.85}
+        <Button
+          style={{ maxWidth: 500 }}
+          title="Get Started"
+          variant="primary"
+          size="lg"
           onPress={() => router.push("/signup")}
-        >
-          <Text style={styles.getStartedText}>Get Started</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -51,10 +56,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 16,
+    justifyContent: "space-between",
+    paddingVertical: 50,
   },
   logo: {
     width: 200,
@@ -73,24 +78,6 @@ const styles = StyleSheet.create({
     color: neutral[400],
     textAlign: "center",
     lineHeight: 22,
-    letterSpacing: -0.408,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  getStartedButton: {
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: primary[400],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  getStartedText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: neutral[0],
     letterSpacing: -0.408,
   },
 });

@@ -1,8 +1,10 @@
-import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { legacyFetch } from "@/api/client";
 import { getService, getLegacyUser, getSubcategory, uploadImage, deleteImage, uploadPdf, deletePdf } from "@/api/legacy";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
@@ -77,6 +79,7 @@ interface ServiceDetail {
 }
 
 export default function EditServiceInformationScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { userId } = useCurrentUser();
@@ -463,7 +466,7 @@ export default function EditServiceInformationScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -474,13 +477,8 @@ export default function EditServiceInformationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Service Information</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <ScreenHeader title="Service Information" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -488,7 +486,7 @@ export default function EditServiceInformationScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -889,29 +887,23 @@ export default function EditServiceInformationScreen() {
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Cancel"
+          variant="secondary"
+          size="md"
+          style={{ flex: 1 }}
           onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveButton, canSave && styles.saveButtonActive]}
-          onPress={handleSave}
+        />
+        <Button
+          title="Save"
+          variant="primary"
+          size="md"
+          style={{ flex: 1 }}
           disabled={!canSave}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.saveButtonText,
-              canSave && styles.saveButtonTextActive,
-            ]}
-          >
-            {saving ? "Saving..." : "Save"}
-          </Text>
-        </TouchableOpacity>
+          loading={saving}
+          onPress={handleSave}
+        />
       </View>
 
       {/* Address bottom sheet */}
@@ -1174,13 +1166,13 @@ export default function EditServiceInformationScreen() {
             })}
           </ScrollView>
           {pickerField?.fieldType === "multiSelect" && (
-            <TouchableOpacity
-              style={styles.multiSelectDoneBtn}
+            <Button
+              title="Done"
+              variant="primary"
+              size="md"
+              style={{ marginHorizontal: 20, marginTop: 12 }}
               onPress={() => closeFieldPicker()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.multiSelectDoneText}>Done</Text>
-            </TouchableOpacity>
+            />
           )}
         </Animated.View>
       </Modal>
@@ -1192,16 +1184,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: background.screen },
   flex: { flex: 1 },
   loader: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: neutral[800] },
-  headerSpacer: { width: 38 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   field: { marginBottom: 20, gap: 8 },
@@ -1385,26 +1367,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  cancelButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: secondary[500],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButtonText: { fontSize: 16, fontWeight: "600", color: neutral[0] },
-  saveButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: neutral[200],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonActive: { backgroundColor: primary[400] },
-  saveButtonText: { fontSize: 16, fontWeight: "600", color: neutral[400] },
-  saveButtonTextActive: { color: neutral[0] },
   bottomSheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: overlay.light,
@@ -1451,15 +1413,6 @@ const styles = StyleSheet.create({
   },
   bottomSheetOptionSelected: { backgroundColor: primary[50] },
   bottomSheetOptionText: { fontSize: 15, color: neutral[700] },
-  multiSelectDoneBtn: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 13,
-    borderRadius: 10,
-    backgroundColor: primary[400],
-    alignItems: "center",
-  },
-  multiSelectDoneText: { fontSize: 15, fontWeight: "600", color: neutral[0] },
   addressSearchRow: {
     flexDirection: "row",
     alignItems: "center",

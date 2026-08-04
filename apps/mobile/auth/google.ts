@@ -4,6 +4,7 @@ import {
   isSuccessResponse,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
+import { deriveNames } from "./names";
 
 let configured = false;
 
@@ -22,35 +23,6 @@ export type GoogleSignInResult =
   | { status: "cancelled" }
   | { status: "error"; message: string };
 
-// Backend validation: names are required, letters/spaces only, max 70 chars
-function sanitizeName(value: string): string {
-  return value
-    .replace(/[^\p{L} ]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 70);
-}
-
-function deriveNames(user: {
-  name: string | null;
-  email: string;
-  givenName: string | null;
-  familyName: string | null;
-}): { firstName: string; lastName: string } {
-  let first = user.givenName ?? "";
-  let last = user.familyName ?? "";
-  if (!first || !last) {
-    const parts = (user.name ?? "").trim().split(/\s+/).filter(Boolean);
-    if (!first) first = parts[0] ?? "";
-    if (!last) last = parts.slice(1).join(" ");
-  }
-  if (!first) first = user.email.split("@")[0];
-  return {
-    firstName: sanitizeName(first) || "Google",
-    lastName: sanitizeName(last) || "User",
-  };
-}
-
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   ensureConfigured();
   try {
@@ -60,7 +32,11 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
       return { status: "cancelled" };
     }
     const { user } = response.data;
-    return { status: "success", email: user.email, ...deriveNames(user) };
+    return {
+      status: "success",
+      email: user.email,
+      ...deriveNames(user, "Google"),
+    };
   } catch (e) {
     if (isErrorWithCode(e)) {
       if (e.code === statusCodes.IN_PROGRESS) {

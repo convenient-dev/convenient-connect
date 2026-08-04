@@ -31,6 +31,8 @@ export async function addBusinessProfile(params: {
   governmentIssuedId?: File | Blob;
   businessEin?: string | null;
   serviceSubCategoryIds: number[];
+  stripeAccountId?: string;
+  stripeAccountLastFour?: string;
 }): Promise<any> {
   const formData = new FormData();
   formData.append("business_name", params.businessName);
@@ -50,6 +52,12 @@ export async function addBusinessProfile(params: {
   params.serviceSubCategoryIds.forEach((id) => {
     formData.append("service_sub_category_ids[]", id.toString());
   });
+  if (params.stripeAccountId) {
+    formData.append("stripe_account_id", params.stripeAccountId);
+  }
+  if (params.stripeAccountLastFour) {
+    formData.append("stripe_account_last_four", params.stripeAccountLastFour);
+  }
 
   return laravelFetch<any>(`${BUSINESS_PREFIX}/add`, {
     method: "POST",

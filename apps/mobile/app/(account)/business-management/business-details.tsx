@@ -117,7 +117,7 @@ export default function BusinessDetailsScreen() {
   function handleContinue() {
     if (!selectedCountry || !selectedState || !selectedCity) return;
     router.push({
-      pathname: "/business-management/select-services",
+      pathname: "/business-management/select-category",
       params: {
         flow: "create-business",
         businessName: businessName.trim(),

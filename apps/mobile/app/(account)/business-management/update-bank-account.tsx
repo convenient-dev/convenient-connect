@@ -1,3 +1,4 @@
+import { addBusinessProfile } from "@/api/business";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -8,6 +9,8 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,24 +31,105 @@ export default function UpdateBankAccountScreen() {
   const params = useLocalSearchParams<{
     businessName?: string;
     businessAddress?: string;
+    countryId?: string;
     countryName?: string;
+    stateId?: string;
     stateName?: string;
+    cityId?: string;
     cityName?: string;
     zipcode?: string;
     about?: string;
+    serviceIds?: string;
     categoryNames?: string;
   }>();
-  const { addPendingBusiness, reset } = useBusinessSignup();
+  const { data, addPendingBusiness, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function handleUpdateDetails() {
     // TODO: Open Stripe to update account details.
   }
 
-  function handleSubmit() {
-    // TODO: Submit `params` (business details, serviceIds) and the uploaded
-    // documents/EIN to the create-business API once it exists.
-    setSuccessVisible(true);
+  async function handleSubmit() {
+    if (submitting) return;
+
+    const {
+      businessName,
+      businessAddress,
+      countryId,
+      stateId,
+      cityId,
+      zipcode,
+      about,
+      serviceIds,
+    } = params;
+
+    // Validate required params
+    if (
+      !businessName ||
+      !businessAddress ||
+      !countryId ||
+      !stateId ||
+      !cityId ||
+      !serviceIds
+    ) {
+      Alert.alert("Error", "Missing required business information");
+      return;
+    }
+
+    const serviceSubCategoryIds = serviceIds
+      .split(",")
+      .map((id) => parseInt(id.trim(), 10))
+      .filter((id) => !isNaN(id));
+
+    if (serviceSubCategoryIds.length === 0) {
+      Alert.alert("Error", "No services selected");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // TODO: Get Stripe account info from the connected account
+      // For now, we'll pass placeholder values
+      const stripeAccountId = "acct_placeholder";
+      const stripeAccountLastFour = ACCOUNT_LAST_FOUR;
+
+      await addBusinessProfile({
+        businessName: businessName.trim(),
+        businessAddress: businessAddress.trim(),
+        about: about?.trim() || null,
+        countryId: parseInt(countryId, 10),
+        stateId: parseInt(stateId, 10),
+        cityId: parseInt(cityId, 10),
+        zipcode: zipcode?.trim() || null,
+        businessDocuments: data.registrationDoc?.url
+          ? await uriToBlob(data.registrationDoc.url)
+          : undefined,
+        governmentIssuedId: data.governmentId?.url
+          ? await uriToBlob(data.governmentId.url)
+          : undefined,
+        businessEin: data.ein || null,
+        serviceSubCategoryIds,
+        // Stripe info - for now just pass as data in the request
+        stripeAccountId,
+        stripeAccountLastFour,
+      });
+
+      setSuccessVisible(true);
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error?.message || "Failed to create business profile. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function uriToBlob(uri: string): Promise<Blob> {
+    const response = await fetch(uri);
+    return await response.blob();
   }
 
   function handleSuccessConfirm() {
@@ -103,16 +187,24 @@ export default function UpdateBankAccountScreen() {
           title="Update account details"
           variant="primary"
           size="lg"
+          disabled={submitting}
           onPress={handleUpdateDetails}
         />
 
         <Button
-          title="Submit with this account"
+          title={submitting ? "Submitting..." : "Submit with this account"}
           variant="secondary"
           size="lg"
+          disabled={submitting}
           onPress={handleSubmit}
         />
       </View>
+
+      {submitting && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      )}
 
       <ConfirmModal
         visible={successVisible}
@@ -201,5 +293,16 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     gap: 10,
+  },
+
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

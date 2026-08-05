@@ -212,7 +212,7 @@ export default function VerifyPhoneOtpScreen() {
 
       <ConfirmModal
         visible={modal !== null}
-        icon={modal?.icon ?? "alert"}
+        icon={modal?.icon ?? "warning"}
         title={modal?.title ?? ""}
         message={modal?.message ?? ""}
         confirmLabel="Okay"

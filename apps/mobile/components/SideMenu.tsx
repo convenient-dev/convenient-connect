@@ -324,7 +324,7 @@ export function SideMenu({
         visible={logoutModalVisible}
         title="Log Out"
         message="Are you sure you want to log out?"
-        icon="alert"
+        icon="warning"
         confirmLabel="Log Out"
         cancelLabel="Cancel"
         onConfirm={handleLogout}

@@ -1,37 +1,80 @@
 import { Button } from "@/components/Button";
-import { ModalIcon } from "@/components/ModalIcon";
 import { MAX_DIALOG_WIDTH } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import LottieView from "lottie-react-native";
-import type { ComponentProps } from "react";
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 
 const { neutral, background, overlay } = Colors;
 
+type MessageType = "success" | "error" | "warning";
+type IconVariant = "success" | "error" | "warning";
+
 interface Props {
   visible: boolean;
   title: string;
   message: string;
-  icon?: ComponentProps<typeof ModalIcon>["variant"];
+  /**
+   * Type of message - determines default icon and styling
+   * @default "warning"
+   */
+  type?: MessageType;
+  /**
+   * Override the default icon for the message type.
+   * Set to `null` to hide the icon completely.
+   */
+  icon?: IconVariant | null;
+  /**
+   * Hide the icon completely
+   * @default false
+   */
+  showIcon?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel?: () => void;
 }
 
+const ICON_CONFIG: Record<IconVariant, any> = {
+  success: require("@/assets/Animated icons/Json/Check_Icon.json"),
+  error: require("@/assets/Animated icons/Json/Cross_Icon.json"),
+  warning: require("@/assets/Animated icons/Json/Exclamation_Icon.json"),
+};
+
+const TYPE_ICON_MAP: Record<MessageType, IconVariant> = {
+  success: "success",
+  error: "error",
+  warning: "warning",
+};
+
+function ModalIcon({ variant, reducedMotion }: { variant: IconVariant; reducedMotion: boolean }) {
+  return (
+    <LottieView
+      source={ICON_CONFIG[variant]}
+      autoPlay={!reducedMotion}
+      loop={false}
+      resizeMode="contain"
+      style={styles.lottieIcon}
+    />
+  );
+}
+
 export function ConfirmModal({
   visible,
   title,
   message,
-  icon = "alert",
+  type = "warning",
+  icon: iconOverride,
+  showIcon = true,
   confirmLabel = "Continue",
   cancelLabel = "Cancel",
   onConfirm,
   onCancel,
 }: Props) {
   const reducedMotion = useReducedMotion();
+  const icon = iconOverride !== undefined ? iconOverride : TYPE_ICON_MAP[type];
+
   return (
     <Modal
       visible={visible}
@@ -41,16 +84,8 @@ export function ConfirmModal({
     >
       <Pressable style={styles.overlay} onPress={() => onCancel?.()}>
         <Pressable style={styles.card} onPress={() => {}}>
-          {icon === "success" ? (
-            <LottieView
-              source={require("@/assets/Animated icons/Json/Check_Icon.json")}
-              autoPlay={!reducedMotion}
-              loop={false}
-              resizeMode="contain"
-              style={styles.successIcon}
-            />
-          ) : (
-            <ModalIcon variant={icon} />
+          {showIcon && icon !== null && (
+            <ModalIcon variant={icon} reducedMotion={reducedMotion} />
           )}
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
@@ -100,6 +135,12 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
   },
+  lottieIcon: {
+    width: 120,
+    height: 120,
+    marginTop: -12,
+    marginBottom: -32,
+  },
   title: {
     fontSize: 16,
     fontWeight: "700",
@@ -114,16 +155,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 2,
     marginBottom: 8,
-  },
-  // The check circle only fills ~42% of the Lottie canvas, so the view is
-  // oversized to render a ~52px circle and negative margins trim the
-  // whitespace — but no further than the card's 24px padding, or the
-  // canvas pokes past the card edge and gets clipped.
-  successIcon: {
-    width: 120,
-    height: 120,
-    marginTop: -12,
-    marginBottom: -32,
   },
   actions: {
     flexDirection: "column",

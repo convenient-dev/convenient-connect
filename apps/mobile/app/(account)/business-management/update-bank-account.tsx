@@ -249,7 +249,7 @@ export default function UpdateBankAccountScreen() {
 
       <ConfirmModal
         visible={verificationErrorVisible}
-        icon="alert"
+        icon="warning"
         title="Verification Required"
         message="Your provider profile must be verified before you can create a business profile. Please complete your background check first."
         confirmLabel="Complete Background Check"

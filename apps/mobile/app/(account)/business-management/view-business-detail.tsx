@@ -1,13 +1,15 @@
+import { getBusinessForEdit } from "@/api/business";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +17,24 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { neutral, text, background, border, status } = Colors;
+const { primary, neutral, text, background, border, status } = Colors;
+
+interface Business {
+  id: number;
+  business_name: string;
+  business_address: string;
+  about: string | null;
+  country_id: number;
+  state_id: number;
+  city_id: number;
+  zipcode: string | null;
+  business_ein: string | null;
+  status: string;
+  country?: { name: string };
+  state?: { name: string };
+  city?: { name: string };
+  stripe_account_last_four?: string;
+}
 
 // TODO: Get the connected bank account from the API once it exists.
 const BANK_ACCOUNT = {
@@ -35,9 +54,41 @@ function DetailField({ label, value }: { label: string; value: string }) {
 
 export default function ViewBusinessDetailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { pendingBusinesses } = useBusinessSignup();
-  const business = pendingBusinesses.find((b) => b.id === Number(id));
+
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadBusiness = useCallback(async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await getBusinessForEdit(Number(id));
+      setBusiness(data);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to load business");
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router]);
+
+  useEffect(() => {
+    loadBusiness();
+  }, [loadBusiness]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+        <StatusBar style="dark" />
+        <ScreenHeader title="Business Details" />
+        <View style={styles.notFound}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!business) {
     return (
@@ -51,7 +102,7 @@ export default function ViewBusinessDetailScreen() {
     );
   }
 
-  const isVerified = business.status === "verified";
+  const isVerified = business.status === "verified" || business.status === "active";
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
@@ -65,36 +116,44 @@ export default function ViewBusinessDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          <DetailField label="Business Name" value={business.name} />
-          <DetailField label="Business Address" value={business.address} />
+          <DetailField label="Business Name" value={business.business_name} />
+          <DetailField label="Business Address" value={business.business_address} />
         </View>
 
         <View style={styles.card}>
-          <DetailField label="Country" value={business.country} />
-          <DetailField label="State" value={business.state} />
-          <DetailField label="City" value={business.city} />
-          <DetailField label="Zip code" value={business.zipCode} />
+          <DetailField label="Country" value={business.country?.name || "—"} />
+          <DetailField label="State" value={business.state?.name || "—"} />
+          <DetailField label="City" value={business.city?.name || "—"} />
+          <DetailField label="Zip code" value={business.zipcode || "—"} />
         </View>
 
         <View style={styles.card}>
-          <DetailField label="About" value={business.about} />
+          <DetailField label="About" value={business.about || "—"} />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Bank Account</Text>
-          <DetailField
-            label="Account holder name"
-            value={BANK_ACCOUNT.holderName}
-          />
-          <DetailField
-            label="Routing number"
-            value={`*****${BANK_ACCOUNT.routingLastFour}`}
-          />
-          <DetailField
-            label="Account number"
-            value={`********${BANK_ACCOUNT.accountLastFour}`}
-          />
-        </View>
+        {business.business_ein && (
+          <View style={styles.card}>
+            <DetailField label="Business EIN" value={business.business_ein} />
+          </View>
+        )}
+
+        {business.stripe_account_last_four && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Bank Account</Text>
+            <DetailField
+              label="Account holder name"
+              value={BANK_ACCOUNT.holderName}
+            />
+            <DetailField
+              label="Routing number"
+              value={`*****${BANK_ACCOUNT.routingLastFour}`}
+            />
+            <DetailField
+              label="Account number"
+              value={`********${business.stripe_account_last_four}`}
+            />
+          </View>
+        )}
 
         <View style={[styles.card, styles.verificationCard]}>
           <Text style={styles.verificationText}>
@@ -114,7 +173,10 @@ export default function ViewBusinessDetailScreen() {
           variant="secondary"
           size="lg"
           onPress={() => {
-            // TODO: Open the edit-business flow once it exists.
+            router.push({
+              pathname: "/business-management/edit-business",
+              params: { id: String(business.id) },
+            });
           }}
         />
       </View>

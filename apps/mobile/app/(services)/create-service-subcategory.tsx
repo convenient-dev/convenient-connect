@@ -1,4 +1,4 @@
-import { getSubcategories } from "@/api/legacy";
+import { getServiceCategories } from "@/api/business";
 import { Button } from "@/components/Button";
 import { getSubcategoryIcon } from "@/components/SubcategoryIcon";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -90,9 +90,20 @@ export default function CreateServiceSubcategoryScreen() {
 
   useEffect(() => {
     if (!categoryId) return;
-    getSubcategories(categoryId)
-      .then((data) => {
-        setSubcategories(data);
+    getServiceCategories()
+      .then((categories) => {
+        const category = categories.find(
+          (cat) => cat.category_id === parseInt(categoryId, 10)
+        );
+        if (category) {
+          setSubcategories(
+            category.sub_category_list.map((sub) => ({
+              id: sub.sub_category_id,
+              name: sub.sub_category_name,
+              categoryId: category.category_id,
+            }))
+          );
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));

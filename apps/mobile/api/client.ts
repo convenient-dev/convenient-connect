@@ -103,6 +103,12 @@ export async function laravelFetch<T>(
     );
   }
 
+  // Debug logging for business/services endpoint
+  if (path.includes('/business/services')) {
+    const envelope = json as LaravelEnvelope<T>;
+    console.log(`[laravelFetch] ${path} - Status: ${envelope.status}, Data length: ${Array.isArray(envelope.data) ? envelope.data.length : 'N/A'}`);
+  }
+
   return (json as LaravelEnvelope<T>).data;
 }
 

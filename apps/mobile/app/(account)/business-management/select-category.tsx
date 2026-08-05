@@ -1,4 +1,4 @@
-import { getCategories } from "@/api/legacy";
+import { getServiceCategories } from "@/api/business";
 import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -25,7 +25,7 @@ const NUM_COLUMNS = 4;
 interface Category {
   id: number;
   name: string;
-  iconUrl: string;
+  iconUrl: string | null;
 }
 
 function CategoryItem({
@@ -70,9 +70,27 @@ export default function SelectCategoryScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getCategories();
-        setCategories(data);
-      } catch {
+        const data = await getServiceCategories();
+        console.log(`[SelectCategory] Received ${data.length} categories from API`);
+
+        // Log first category details for debugging
+        if (data.length > 0) {
+          console.log(`[SelectCategory] First category:`, {
+            id: data[0].category_id,
+            name: data[0].category_name,
+            subCount: data[0].sub_category_list?.length || 0
+          });
+        }
+
+        setCategories(
+          data.map((cat) => ({
+            id: cat.category_id,
+            name: cat.category_name,
+            iconUrl: cat.category_logo,
+          }))
+        );
+      } catch (error) {
+        console.error("[SelectCategory] Error loading categories:", error);
         Alert.alert("Error", "Failed to load categories");
       } finally {
         setLoading(false);

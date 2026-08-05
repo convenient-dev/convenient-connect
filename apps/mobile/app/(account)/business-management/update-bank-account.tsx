@@ -44,6 +44,7 @@ export default function UpdateBankAccountScreen() {
   }>();
   const { data, addPendingBusiness, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
+  const [verificationErrorVisible, setVerificationErrorVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   function handleUpdateDetails() {
@@ -104,10 +105,10 @@ export default function UpdateBankAccountScreen() {
         cityId: parseInt(cityId, 10),
         zipcode: zipcode?.trim() || null,
         businessDocuments: data.registrationDoc?.url
-          ? await uriToBlob(data.registrationDoc.url)
+          ? uriToFile(data.registrationDoc.url, data.registrationDoc.fileName || 'business_document.pdf') as any
           : undefined,
         governmentIssuedId: data.governmentId?.url
-          ? await uriToBlob(data.governmentId.url)
+          ? uriToFile(data.governmentId.url, data.governmentId.fileName || 'government_id.jpg') as any
           : undefined,
         businessEin: data.ein || null,
         serviceSubCategoryIds,
@@ -118,18 +119,40 @@ export default function UpdateBankAccountScreen() {
 
       setSuccessVisible(true);
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error?.message || "Failed to create business profile. Please try again."
-      );
+      const errorMessage = error?.message || "";
+
+      // Check if the error is about profile verification
+      if (errorMessage.toLowerCase().includes("not verified") ||
+          errorMessage.toLowerCase().includes("profile is not verified")) {
+        setVerificationErrorVisible(true);
+      } else {
+        Alert.alert(
+          "Error",
+          errorMessage || "Failed to create business profile. Please try again."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function uriToBlob(uri: string): Promise<Blob> {
-    const response = await fetch(uri);
-    return await response.blob();
+  function uriToFile(uri: string, filename: string): { uri: string; name: string; type: string } {
+    // Determine mime type from filename extension
+    const extension = filename.toLowerCase().split('.').pop() || '';
+    const mimeTypes: Record<string, string> = {
+      'pdf': 'application/pdf',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+    };
+    const type = mimeTypes[extension] || 'application/octet-stream';
+
+    // Return object that React Native FormData can handle
+    return {
+      uri,
+      name: filename,
+      type,
+    };
   }
 
   function handleSuccessConfirm() {
@@ -146,6 +169,15 @@ export default function UpdateBankAccountScreen() {
     });
     reset();
     router.dismissTo("/business-management");
+  }
+
+  function handleVerificationConfirm() {
+    setVerificationErrorVisible(false);
+    router.push("/(tabs)/profile");
+  }
+
+  function handleVerificationCancel() {
+    setVerificationErrorVisible(false);
   }
 
   return (
@@ -213,6 +245,17 @@ export default function UpdateBankAccountScreen() {
         message="Your business is now under review. We'll notify you once it has been approved."
         confirmLabel="Done"
         onConfirm={handleSuccessConfirm}
+      />
+
+      <ConfirmModal
+        visible={verificationErrorVisible}
+        icon="alert"
+        title="Verification Required"
+        message="Your provider profile must be verified before you can create a business profile. Please complete your background check first."
+        confirmLabel="Complete Background Check"
+        cancelLabel="Cancel"
+        onConfirm={handleVerificationConfirm}
+        onCancel={handleVerificationCancel}
       />
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import { getSubcategories } from "@/api/legacy";
+import { getServiceCategories } from "@/api/business";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { getSubcategoryIcon } from "@/components/SubcategoryIcon";
@@ -82,11 +82,22 @@ export default function SelectSubcategoriesScreen() {
     (async () => {
       try {
         if (!params.categoryId) return;
-        const data: { id: number; name: string; categoryId: number }[] =
-          await getSubcategories(params.categoryId);
+        const categories = await getServiceCategories();
+        const category = categories.find(
+          (cat) => cat.category_id === parseInt(params.categoryId!, 10),
+        );
+
+        if (!category) {
+          Alert.alert("Error", "Category not found");
+          setLoading(false);
+          return;
+        }
+
         setSubcategories(
-          data.map((s) => ({
-            ...s,
+          category.sub_category_list.map((sub) => ({
+            id: sub.sub_category_id,
+            name: sub.sub_category_name,
+            categoryId: category.category_id,
             categorySlug: params.categorySlug ?? "",
             categoryName: params.categoryName ?? "",
           })),

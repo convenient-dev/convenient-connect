@@ -1,6 +1,6 @@
 import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { getCategories } from "@/api/legacy";
+import { getServiceCategories } from "@/api/business";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -72,9 +72,15 @@ export default function CreateServiceCategoryScreen() {
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    getCategories()
+    getServiceCategories()
       .then((data) => {
-        setCategories(data);
+        setCategories(
+          data.map((cat) => ({
+            id: cat.category_id,
+            name: cat.category_name,
+            iconUrl: cat.category_logo ?? "",
+          }))
+        );
         setLoading(false);
       })
       .catch(() => setLoading(false));

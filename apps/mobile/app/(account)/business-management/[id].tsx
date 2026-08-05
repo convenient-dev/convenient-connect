@@ -1,3 +1,4 @@
+import { deleteBusiness, getBusinessForEdit, toggleBusinessStatus } from "@/api/business";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -5,12 +6,13 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -28,6 +30,24 @@ interface Member {
   id: number;
   name: string;
   email: string;
+}
+
+interface Business {
+  id: number;
+  business_name: string;
+  business_address: string;
+  about: string | null;
+  country_id: number;
+  state_id: number;
+  city_id: number;
+  zipcode: string | null;
+  business_ein: string | null;
+  status: string;
+  service_sub_categories: Array<{
+    sub_category_id: number;
+    sub_category_name: string;
+    category_name: string;
+  }>;
 }
 
 // TODO: Load members from the API once team management endpoints exist.
@@ -74,12 +94,79 @@ export default function BusinessDetailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { pendingBusinesses } = useBusinessSignup();
-  const business = pendingBusinesses.find((b) => b.id === Number(id));
 
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("members");
-  const [acceptingJobs, setAcceptingJobs] = useState(true);
+  const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+
+  const loadBusiness = useCallback(async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await getBusinessForEdit(Number(id));
+      setBusiness(data);
+      setAcceptingJobs(data.status === "active");
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to load business");
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router]);
+
+  useEffect(() => {
+    loadBusiness();
+  }, [loadBusiness]);
+
+  const handleToggleStatus = async () => {
+    if (!business) return;
+    try {
+      const newStatus = await toggleBusinessStatus(business.id);
+      setAcceptingJobs(newStatus);
+      Alert.alert("Success", `Business is now ${newStatus ? "active" : "inactive"}`);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update status");
+      setAcceptingJobs(!acceptingJobs);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!business) return;
+    Alert.alert(
+      "Delete Business",
+      `Are you sure you want to delete ${business.business_name}? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteBusiness(business.id);
+              Alert.alert("Success", "Business deleted successfully");
+              router.back();
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Failed to delete business");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+        <StatusBar style="dark" />
+        <ScreenHeader />
+        <View style={styles.notFound}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!business) {
     return (
@@ -93,7 +180,10 @@ export default function BusinessDetailScreen() {
     );
   }
 
-  const isVerified = business.status === "verified";
+  const isVerified = business.status === "verified" || business.status === "active";
+  const categoryNames = Array.from(
+    new Set(business.service_sub_categories.map((s) => s.category_name))
+  );
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "members", label: "Members" },
@@ -120,7 +210,7 @@ export default function BusinessDetailScreen() {
       <View style={styles.titleBlock}>
         <View style={styles.nameRow}>
           <Text style={styles.businessName} numberOfLines={2}>
-            {business.name}
+            {business.business_name}
           </Text>
           <MaterialIcons
             name={isVerified ? "check-circle" : "schedule"}
@@ -129,9 +219,9 @@ export default function BusinessDetailScreen() {
           />
         </View>
 
-        {business.categories.length > 0 && (
+        {categoryNames.length > 0 && (
           <View style={styles.chipRow}>
-            {business.categories.map((category) => (
+            {categoryNames.map((category) => (
               <View key={category} style={styles.chip}>
                 <CategoryIcon name={category} size={18} />
                 <Text style={styles.chipText}>{category}</Text>
@@ -147,7 +237,7 @@ export default function BusinessDetailScreen() {
           </View>
           <Switch
             value={isVerified && acceptingJobs}
-            onValueChange={setAcceptingJobs}
+            onValueChange={handleToggleStatus}
             disabled={!isVerified}
             trackColor={{ false: neutral[200], true: primary[400] }}
             thumbColor={neutral[0]}
@@ -207,11 +297,17 @@ export default function BusinessDetailScreen() {
             },
           },
           {
-            label: "Edit Business",
+            label: "Edit Service",
             icon: require("@/assets/global-icons/edit.svg"),
             onPress: () => {
               setMenuVisible(false);
-              // TODO: Open the edit-business flow once it exists.
+              router.push({
+                pathname: "/business-management/select-category",
+                params: {
+                  flow: "edit-business",
+                  businessId: String(business.id),
+                },
+              });
             },
           },
           {
@@ -219,7 +315,7 @@ export default function BusinessDetailScreen() {
             icon: require("@/assets/global-icons/cancel.svg"),
             onPress: () => {
               setMenuVisible(false);
-              // TODO: Open the delete-business flow once it exists.
+              handleDelete();
             },
           },
         ]}

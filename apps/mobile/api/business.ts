@@ -27,8 +27,11 @@ export async function addBusinessProfile(params: {
   stateId: number;
   cityId: number;
   zipcode?: string | null;
-  businessDocuments?: File | Blob;
-  governmentIssuedId?: File | Blob;
+  businessDocuments?: File | Blob | { uri: string; name: string; type: string };
+  governmentIssuedId?:
+    | File
+    | Blob
+    | { uri: string; name: string; type: string };
   businessEin?: string | null;
   serviceSubCategoryIds: number[];
   stripeAccountId?: string;
@@ -43,10 +46,10 @@ export async function addBusinessProfile(params: {
   formData.append("city_id", params.cityId.toString());
   if (params.zipcode) formData.append("zipcode", params.zipcode);
   if (params.businessDocuments) {
-    formData.append("business_documents", params.businessDocuments);
+    formData.append("business_documents", params.businessDocuments as any);
   }
   if (params.governmentIssuedId) {
-    formData.append("government_issued_id", params.governmentIssuedId);
+    formData.append("government_issued_id", params.governmentIssuedId as any);
   }
   if (params.businessEin) formData.append("business_ein", params.businessEin);
   params.serviceSubCategoryIds.forEach((id) => {
@@ -79,8 +82,14 @@ export async function updateBusinessProfile(
     stateId: number;
     cityId: number;
     zipcode?: string | null;
-    businessDocuments?: File | Blob;
-    governmentIssuedId?: File | Blob;
+    businessDocuments?:
+      | File
+      | Blob
+      | { uri: string; name: string; type: string };
+    governmentIssuedId?:
+      | File
+      | Blob
+      | { uri: string; name: string; type: string };
     businessEin?: string | null;
     serviceSubCategoryIds: number[];
   },
@@ -94,10 +103,10 @@ export async function updateBusinessProfile(
   formData.append("city_id", params.cityId.toString());
   if (params.zipcode) formData.append("zipcode", params.zipcode);
   if (params.businessDocuments) {
-    formData.append("business_documents", params.businessDocuments);
+    formData.append("business_documents", params.businessDocuments as any);
   }
   if (params.governmentIssuedId) {
-    formData.append("government_issued_id", params.governmentIssuedId);
+    formData.append("government_issued_id", params.governmentIssuedId as any);
   }
   if (params.businessEin) formData.append("business_ein", params.businessEin);
   params.serviceSubCategoryIds.forEach((id) => {
@@ -150,16 +159,37 @@ export async function toggleBusinessStatus(
   return data.status ?? false;
 }
 
+export interface ServiceSubCategory {
+  sub_category_id: number;
+  sub_category_name: string;
+  sub_category_logo: string | null;
+}
+
+export interface ServiceCategory {
+  category_id: number;
+  category_name: string;
+  category_logo: string | null;
+  sub_category_list: ServiceSubCategory[];
+}
+
 /**
  * Get service categories and subcategories.
  * @param search Optional search term to filter by category or subcategory name
+ * @returns Array of categories with their subcategories
  */
-export async function getServiceCategories(search?: string): Promise<any[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : "";
-  const data = await laravelFetch<{ categories?: any[] }>(
-    `${BUSINESS_PREFIX}/services${params}`,
-  );
-  return data.categories ?? [];
+export async function getServiceCategories(
+  search?: string,
+): Promise<ServiceCategory[]> {
+  const params = new URLSearchParams();
+
+  if (search) {
+    params.append("search", search);
+  }
+
+  const url = `${BUSINESS_PREFIX}/services?${params.toString()}`;
+  const response = await laravelFetch<ServiceCategory[]>(url);
+
+  return response ?? [];
 }
 
 /**
@@ -170,72 +200,4 @@ export async function getBusinessServices(businessId: number): Promise<any[]> {
     `${BUSINESS_PREFIX}/${businessId}/services`,
   );
   return data.services ?? [];
-}
-
-// ---------------------------------------------------------------------------
-// Business Members Management
-// ---------------------------------------------------------------------------
-
-/**
- * Invite a member to join a business.
- */
-export async function inviteBusinessMember(params: {
-  email: string;
-  roleId: number;
-}): Promise<any> {
-  return laravelFetch<any>(`${MEMBERS_PREFIX}/invite`, {
-    method: "POST",
-    body: params,
-  });
-}
-
-/**
- * List all business members.
- */
-export async function listBusinessMembers(): Promise<any[]> {
-  const data = await laravelFetch<{ members?: any[] }>(`${MEMBERS_PREFIX}`);
-  return data.members ?? [];
-}
-
-/**
- * Get a specific business member.
- */
-export async function getBusinessMember(memberId: number): Promise<any> {
-  return laravelFetch<any>(`${MEMBERS_PREFIX}/${memberId}`);
-}
-
-/**
- * Resend invitation to a business member.
- */
-export async function resendMemberInvitation(memberId: number): Promise<void> {
-  await laravelFetch<void>(`${MEMBERS_PREFIX}/${memberId}/resend-invitation`, {
-    method: "POST",
-  });
-}
-
-/**
- * Get services assigned to a business member.
- */
-export async function getMemberServices(memberId: number): Promise<any[]> {
-  const data = await laravelFetch<{ services?: any[] }>(
-    `${MEMBERS_PREFIX}/${memberId}/services`,
-  );
-  return data.services ?? [];
-}
-
-/**
- * Assign or update services for a business member.
- */
-export async function updateMemberServices(
-  memberId: number,
-  serviceSubCategoryId: number,
-  params: any,
-): Promise<any> {
-  return laravelFetch<any>(
-    `${MEMBERS_PREFIX}/${memberId}/services/${serviceSubCategoryId}`,
-    {
-      method: "POST",
-      body: params,
-    },
-  );
 }

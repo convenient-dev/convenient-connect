@@ -686,7 +686,7 @@ export default function CreateServiceFormScreen() {
           <Text style={styles.successTitle}>Service Submitted!</Text>
           <Text style={styles.successDesc}>
             Your service profile is under review, which usually takes up to 24
-            hours. We'll notify you once it's approved.
+            hours. We&apos;ll notify you once it&apos;s approved.
           </Text>
 
           <Button

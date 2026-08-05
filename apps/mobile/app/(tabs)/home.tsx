@@ -135,7 +135,7 @@ export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-  const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
+  const [acceptedRequests] = useState<Set<string>>(
     new Set(),
   );
 

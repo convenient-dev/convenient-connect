@@ -1,5 +1,5 @@
 import { getBusinessForEdit, updateBusinessProfile } from "@/api/business";
-import { getCities, getCountries, getStates } from "@/api/location";
+import { getCities, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
@@ -75,9 +75,9 @@ interface Business {
   city_id: number;
   zipcode: string | null;
   business_ein: string | null;
-  service_sub_categories: Array<{
+  service_sub_categories: {
     sub_category_id: number;
-  }>;
+  }[];
   country?: { id: number; name: string };
   state?: { id: number; name: string };
   city?: { id: number; name: string };

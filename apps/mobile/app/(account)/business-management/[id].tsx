@@ -43,11 +43,11 @@ interface Business {
   zipcode: string | null;
   business_ein: string | null;
   status: string;
-  service_sub_categories: Array<{
+  service_sub_categories: {
     sub_category_id: number;
     sub_category_name: string;
     category_name: string;
-  }>;
+  }[];
 }
 
 // TODO: Load members from the API once team management endpoints exist.

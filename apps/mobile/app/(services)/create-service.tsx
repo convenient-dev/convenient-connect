@@ -97,7 +97,7 @@ export default function CreateServiceScreen() {
         {/* Title */}
         <Text style={styles.title}>How You Want to Offer This Service</Text>
         <Text style={styles.subtitle}>
-          Select a business you're affiliated with, or choose to work
+          Select a business you&apos;re affiliated with, or choose to work
           independently.
         </Text>
 

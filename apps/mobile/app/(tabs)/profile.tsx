@@ -40,12 +40,6 @@ interface UserProfile {
   stripeAccountId?: string | null;
 }
 
-interface StripeAccountStatus {
-  readyToReceivePayments: boolean;
-  onboardingComplete: boolean;
-  requirementsStatus: string | null;
-}
-
 interface UserCategory {
   id: number;
   name: string;
@@ -121,9 +115,6 @@ export default function ProfileScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [categories, setCategories] = useState<string[]>([]);
   const [aboutMe, setAboutMe] = useState<string | null>(null);
-  const [stripeStatus, setStripeStatus] = useState<StripeAccountStatus | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
 
   const user: UserProfile | null = authUser

@@ -58,7 +58,7 @@ export default function VerifyEmailOtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
-  const inputs = useRef<Array<TextInput | null>>([]);
+  const inputs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
     if (seconds <= 0) return;

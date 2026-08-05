@@ -191,7 +191,7 @@ export default function CalendarScreen() {
     status: [],
   });
   const [selectedDate, setSelectedDate] = useState<string>(todayKey());
-  const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
+  const [acceptedRequests] = useState<Set<string>>(
     new Set(),
   );
   const [visibleMonth, setVisibleMonth] = useState<string>(() =>

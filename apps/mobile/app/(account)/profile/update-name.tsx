@@ -129,7 +129,7 @@ export default function UpdateNameScreen() {
             )}
           </View>
           <Text style={styles.subtitle}>
-            Changing your name means you'll need to verify your ID again.
+            Changing your name means you&apos;ll need to verify your ID again.
           </Text>
 
           {error && <Text style={styles.errorText}>{error}</Text>}

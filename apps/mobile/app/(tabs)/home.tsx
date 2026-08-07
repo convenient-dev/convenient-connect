@@ -125,9 +125,7 @@ export default function HomeScreen() {
         firstName: authUser.user.user_fname ?? "",
         lastName: authUser.user.user_lname ?? "",
         avatarUrl: authUser.profileImage,
-        accountType: authUser.providerType ?? "",
-        isPersonVerified: authUser.backgroundVerification,
-        isBusinessVerified: authUser.businessVerification,
+        backgroundVerification: authUser.backgroundVerification,
       }
     : null;
 
@@ -406,9 +404,7 @@ export default function HomeScreen() {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 avatarUrl: user.avatarUrl,
-                accountType: user.accountType,
-                isPersonVerified: user.isPersonVerified,
-                isBusinessVerified: user.isBusinessVerified,
+                backgroundVerification: user.backgroundVerification,
               }
             : null
         }

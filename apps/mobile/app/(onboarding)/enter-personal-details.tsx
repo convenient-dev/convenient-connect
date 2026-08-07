@@ -72,11 +72,8 @@ export default function EnterPersonalDetailsScreen() {
   // Debug: Why are we on this screen?
   console.log("[ENTER-PERSONAL-DETAILS] Screen loaded with:", {
     method,
-    hasFname: !!authUser?.user.user_fname,
-    hasLname: !!authUser?.user.user_lname,
     fname: authUser?.user.user_fname,
     lname: authUser?.user.user_lname,
-    providerType: authUser?.providerType,
   });
 
   // When the user signed up by phone we collect their email; when they signed
@@ -92,6 +89,15 @@ export default function EnterPersonalDetailsScreen() {
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Debug: Log initial state
+  console.log("[FORM] Initial state:", {
+    firstName,
+    lastName,
+    email,
+    phone,
+    collectEmail,
+  });
+
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const phoneValid = phone.replace(/\D/g, "").length >= 7;
   const canSubmit =
@@ -100,14 +106,28 @@ export default function EnterPersonalDetailsScreen() {
     (collectEmail ? emailValid : phoneValid);
 
   async function handleSubmit() {
+    console.log("[SUBMIT] Form state before submit:", {
+      firstName,
+      lastName,
+      email,
+      phone,
+      country,
+      collectEmail,
+      authUserEmail: authUser?.user.user_email,
+    });
+
+    const submitData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
+      phoneNumber: collectEmail ? undefined : buildFullPhone(country, phone),
+    };
+
+    console.log("[SUBMIT] Data being sent to API:", submitData);
+
     setLoading(true);
     try {
-      await completeProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: collectEmail ? email.trim() : authUser?.user.user_email ?? "",
-        phoneNumber: collectEmail ? undefined : buildFullPhone(country, phone),
-      });
+      await completeProfile(submitData);
       getAuthUser().then(setUser).catch(() => {});
       setSuccessMessage(
         collectEmail

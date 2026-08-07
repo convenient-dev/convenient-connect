@@ -3649,7 +3649,7 @@
       "get": {
         "tags": ["Service Provider Business"],
         "summary": "General API for listing service categories and subcategories.",
-        "description": "Returns category list with sub_category_list (id/logo/name). By default returns first two categories. Supports search by category or sub-category name.",
+        "description": "Returns every active category with its active sub_category_list by default. There is no default category limit. Optional search filters by category or sub-category name.",
         "operationId": "3b80ceb71a4f941bbc759fd5b27c52bf",
         "parameters": [
           {
@@ -3701,11 +3701,143 @@
         ]
       }
     },
+    "/service-provider/business/services/categories": {
+      "get": {
+        "tags": ["Service Provider Business"],
+        "summary": "List active service categories only.",
+        "description": "Returns all active, non-deleted service categories using category_id, category_name, and category_logo. This endpoint has no search or pagination parameters and does not include subcategories.",
+        "operationId": "fad65df9b807a3f4effae4dbfb5fe5a7",
+        "responses": {
+          "200": {
+            "description": "Service categories retrieved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderServiceCategorySummaryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderBusinessUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderBusinessServerErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/business/services/categories/{categoryId}/subcategories": {
+      "get": {
+        "tags": ["Service Provider Business"],
+        "summary": "List active subcategories for one category.",
+        "description": "Pass one active category ID. Returns only its active, non-deleted subcategories using sub_category_id, sub_category_name, and sub_category_logo. This endpoint has no search or pagination parameters.",
+        "operationId": "f2e93a7cf3b6e19aaf20f0c8d51b1783",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "description": "Active services_categories.id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service subcategories retrieved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderServiceSubCategoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderBusinessUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service category not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "Error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Service category not found."
+                    },
+                    "data": {
+                      "example": null,
+                      "nullable": true
+                    },
+                    "meta": {
+                      "type": "array",
+                      "items": {},
+                      "example": []
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderBusinessServerErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/service-provider/business/{id}/services": {
       "get": {
         "tags": ["Service Provider Business"],
         "summary": "Get business services.",
-        "description": "Returns only assigned services for selected business.",
+        "description": "Returns only the subcategories assigned to the selected business. Each item includes its parent category id, name, and logo.",
         "operationId": "f62f820e5d606b4b60cd341d618e37e7",
         "parameters": [
           {
@@ -4393,6 +4525,2520 @@
           }
         ]
       }
+    },
+    "/service-provider/service-form-template": {
+      "get": {
+        "tags": ["Service Provider Service Templates"],
+        "summary": "Get resolved service form template",
+        "description": "Returns frontend-ready flat fields merged from generic, category, and optional matching child templates. Each field includes field_scope and submit_as so clients know whether to send top-level multipart keys, answers_json, dynamic_files, pricing_fields, certificate_bundle values, or display-only fields. The address field is display-only: render the provider default address from GET /service-provider/addresses/default and do not submit address_id. Dynamic textarea values in answers_json are stored verbatim. The only acknowledgement checkbox is the generic information_accuracy_acknowledgement field on the final screen; file-upload fields do not expose separate document-consent checkboxes. Use label for display, is_required/required_when for required indicators, and fulfillment codes for conditions. Individual currency country comes from the provider default customer_addresses.country_id. Business currency country comes from the selected business country_id, and the requested subcategory must be assigned to that business. Currency is fetched through currencies.country_id. Submit service_radius and service_radius_unit separately. Charge in USD is frontend-only: show it only for online_remote when currency_context.can_charge_in_usd is true, and submit only the final currency code.",
+        "operationId": "getResolvedServiceFormTemplate",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Active, non-deleted services_categories.id.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 6
+            }
+          },
+          {
+            "name": "subcategory_id",
+            "in": "query",
+            "description": "Active, non-deleted services_sub_categories.id belonging to category_id.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 41
+            }
+          },
+          {
+            "name": "provider_type",
+            "in": "query",
+            "description": "Selects the approved currency country source.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "business",
+              "enum": ["individual", "business"]
+            }
+          },
+          {
+            "name": "business_id",
+            "in": "query",
+            "description": "Required when provider_type=business. Must be active, non-deleted, owned by the authenticated provider, and assigned to subcategory_id. Omit for individual services.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12,
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service form template fetched successfully. Generic fields are always merged with the applicable dynamic fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceFormTemplateResponse"
+                },
+                "examples": {
+                  "generic_fields": {
+                    "summary": "Generic frontend-ready fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 1,
+                          "name": "Automotive"
+                        },
+                        "subcategory": {
+                          "id": 5,
+                          "category_id": 1,
+                          "name": "Car Detailing"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 1,
+                          "template_chain": [1]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "title",
+                            "label": "Service Title",
+                            "field_type": "text",
+                            "is_required": true,
+                            "section": "Service Information",
+                            "placeholder": "Enter your service title",
+                            "value_key": "title",
+                            "validation": {
+                              "data_type": "string",
+                              "minimum_length": 3,
+                              "maximum_length": 150
+                            }
+                          },
+                          {
+                            "field_key": "fulfillment_types",
+                            "label": "Fulfillment Type",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "section": "Service Information",
+                            "value_key": "fulfillment_types",
+                            "options": [
+                              {
+                                "label": "At my location",
+                                "value": 1,
+                                "code": "provider_location"
+                              },
+                              {
+                                "label": "Online / Remote",
+                                "value": 4,
+                                "code": "online_remote"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "service_radius",
+                            "label": "Service Area Radius",
+                            "field_type": "number",
+                            "is_required": false,
+                            "section": "Service Information",
+                            "value_key": "service_radius",
+                            "unit_value_key": "service_radius_unit",
+                            "unit_options": [
+                              {
+                                "label": "mile",
+                                "value": "mile"
+                              },
+                              {
+                                "label": "km",
+                                "value": "km"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "pricing",
+                            "label": "Service Price",
+                            "field_type": "pricing",
+                            "is_required": true,
+                            "section": "Pricing",
+                            "price_units": [
+                              {
+                                "label": "Per service",
+                                "value": 1,
+                                "code": "per_service"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "caregiving_dynamic": {
+                    "summary": "Caregiving dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 3,
+                          "name": "Caregiving"
+                        },
+                        "subcategory": {
+                          "id": 20,
+                          "category_id": 3,
+                          "name": "Babysitting"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 3,
+                          "template_chain": [1, 3]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "years_of_experience",
+                            "label": "Years of Experience",
+                            "field_type": "number",
+                            "is_required": false,
+                            "section": "Caregiving Details",
+                            "value_key": "years_of_experience"
+                          },
+                          {
+                            "field_key": "client_types_served",
+                            "label": "Client types served",
+                            "field_type": "multi_select",
+                            "is_required": false,
+                            "section": "Caregiving Details",
+                            "options": [
+                              {
+                                "label": "Children",
+                                "value": "children"
+                              },
+                              {
+                                "label": "Seniors / Elderly",
+                                "value": "seniors_elderly"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "specialized_care_experience",
+                            "label": "Specialized Care Experience",
+                            "field_type": "multi_select",
+                            "is_required": false,
+                            "section": "Caregiving Details",
+                            "options": [
+                              {
+                                "label": "Autism Support",
+                                "value": "autism_support"
+                              },
+                              {
+                                "label": "Dementia / Alzheimer's Care",
+                                "value": "dementia_alzheimers_care"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "trained_for_emergencies",
+                            "label": "Are you trained for emergencies?",
+                            "field_type": "yes_no",
+                            "is_required": false
+                          },
+                          {
+                            "field_key": "provide_transportation",
+                            "label": "Can you provide transportation if needed?",
+                            "field_type": "yes_no",
+                            "is_required": false
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background Check Consent",
+                            "field_type": "file_upload",
+                            "is_required": false
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_tutoring": {
+                    "summary": "Education: Tutoring dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 41,
+                          "category_id": 6,
+                          "name": "Tutoring"
+                        },
+                        "currency_context": {
+                          "provider_type": "business",
+                          "business_id": 12,
+                          "country_id": 101,
+                          "default_currency": {
+                            "code": "INR",
+                            "symbol": "?"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 9,
+                          "template_chain": [1, 5, 9]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "qualifications",
+                            "label": "Qualifications",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "student_types_served",
+                            "label": "Student types Served",
+                            "field_type": "multi_select",
+                            "is_required": false,
+                            "options": [
+                              {
+                                "label": "High School",
+                                "value": "high_school"
+                              },
+                              {
+                                "label": "Adults / Professionals",
+                                "value": "adults_professionals"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "subjects_taught",
+                            "label": "Subjects Taught",
+                            "field_type": "multi_select",
+                            "is_required": false,
+                            "options": [
+                              {
+                                "label": "Math",
+                                "value": "math"
+                              },
+                              {
+                                "label": "Computer Science",
+                                "value": "computer_science"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_language": {
+                    "summary": "Education: Language dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 31,
+                          "category_id": 6,
+                          "name": "Language"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 10,
+                          "template_chain": [1, 5, 10]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "qualifications",
+                            "label": "Qualifications",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "languages_offered",
+                            "label": "Languages Offered",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 2000
+                            }
+                          },
+                          {
+                            "field_key": "teaching_level",
+                            "label": "Teaching Level",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 3
+                            },
+                            "options": [
+                              {
+                                "label": "Beginner",
+                                "value": "beginner"
+                              },
+                              {
+                                "label": "Intermediate",
+                                "value": "intermediate"
+                              },
+                              {
+                                "label": "Advanced",
+                                "value": "advanced"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_test_prep": {
+                    "summary": "Education: Test Prep dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 32,
+                          "category_id": 6,
+                          "name": "Test Prep"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 11,
+                          "template_chain": [1, 5, 11]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "qualifications",
+                            "label": "Qualifications",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "exams_covered",
+                            "label": "Exam Covered",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 8
+                            },
+                            "options": [
+                              {
+                                "label": "SAT",
+                                "value": "sat"
+                              },
+                              {
+                                "label": "IELTS",
+                                "value": "ielts"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "test_prep_format",
+                            "label": "Test Prep Format",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 3
+                            },
+                            "options": [
+                              {
+                                "label": "Practice Tests",
+                                "value": "practice_tests"
+                              },
+                              {
+                                "label": "Full Course",
+                                "value": "full_course"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background Check Consent",
+                            "field_type": "file_upload",
+                            "is_required": true,
+                            "minimum_files": 1,
+                            "maximum_files": 10
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_consulting": {
+                    "summary": "Education: Consulting (no subcategory-specific dynamic fields)",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 44,
+                          "category_id": 6,
+                          "name": "Consulting"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 12,
+                          "template_chain": [1, 5, 12]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "title",
+                            "label": "Service Title",
+                            "field_type": "text",
+                            "is_required": true
+                          },
+                          {
+                            "field_key": "pricing",
+                            "label": "Service Price",
+                            "field_type": "pricing",
+                            "is_required": true,
+                            "quote_required_fields": {
+                              "amount": {
+                                "label": "Base Price",
+                                "required": false,
+                                "visible": true
+                              },
+                              "currency": {
+                                "required": false,
+                                "visible": true
+                              },
+                              "price_unit_id": {
+                                "label": "Price Unit",
+                                "required": false,
+                                "visible": true
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_skill_based": {
+                    "summary": "Education: Skill-Based dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 34,
+                          "category_id": 6,
+                          "name": "Skill-Based"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 13,
+                          "template_chain": [1, 5, 13]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "qualifications",
+                            "label": "Qualifications",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "skills_taught",
+                            "label": "Skills Taught",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "software_tools_used",
+                            "label": "Software/Tools Used",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background Check Consent",
+                            "field_type": "file_upload",
+                            "is_required": true,
+                            "minimum_files": 1,
+                            "maximum_files": 10
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "education_careers": {
+                    "summary": "Education: Careers dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 6,
+                          "name": "Education"
+                        },
+                        "subcategory": {
+                          "id": 33,
+                          "category_id": 6,
+                          "name": "Careers"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 14,
+                          "template_chain": [1, 5, 14]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "qualifications",
+                            "label": "Qualifications",
+                            "field_type": "textarea",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_length": 1,
+                              "maximum_length": 3000
+                            }
+                          },
+                          {
+                            "field_key": "career_services_offered",
+                            "label": "Career Services Offered",
+                            "field_type": "multi_select",
+                            "is_required": false,
+                            "options": [
+                              {
+                                "label": "Resume Review",
+                                "value": "resume_review"
+                              },
+                              {
+                                "label": "Interview Prep",
+                                "value": "interview_prep"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background Check Consent",
+                            "field_type": "file_upload",
+                            "is_required": true,
+                            "minimum_files": 1,
+                            "maximum_files": 10
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "fitness_general": {
+                    "summary": "Fitness general dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 8,
+                          "name": "Fitness"
+                        },
+                        "subcategory": {
+                          "id": 60,
+                          "category_id": 8,
+                          "name": "Trainers"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 15,
+                          "template_chain": [1, 15]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "client_types_served",
+                            "label": "Client types served",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 6
+                            },
+                            "options": [
+                              {
+                                "label": "Beginners",
+                                "value": "beginners"
+                              },
+                              {
+                                "label": "Advanced Athletes",
+                                "value": "advanced_athletes"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "special_training_experience",
+                            "label": "Special training experience",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 5
+                            },
+                            "options": [
+                              {
+                                "label": "Injury Aware Training",
+                                "value": "injury_aware_training"
+                              },
+                              {
+                                "label": "Prenatal / Postnatal Fitness",
+                                "value": "prenatal_postnatal_fitness"
+                              },
+                              {
+                                "label": "Senior Fitness",
+                                "value": "senior_fitness"
+                              },
+                              {
+                                "label": "Youth Coaching",
+                                "value": "youth_coaching"
+                              },
+                              {
+                                "label": "Adaptive Fitness / Disability Support",
+                                "value": "adaptive_fitness_disability_support"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background check consent",
+                            "field_type": "file_upload",
+                            "is_required": true,
+                            "section": "Verification & Compliance (Mandatory)",
+                            "minimum_files": 1,
+                            "maximum_files": 10
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "fitness_boxing_crossfit": {
+                    "summary": "Fitness Boxing/CrossFit reduced training options",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 8,
+                          "name": "Fitness"
+                        },
+                        "subcategory": {
+                          "id": 61,
+                          "category_id": 8,
+                          "name": "Boxing"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 16,
+                          "template_chain": [1, 15, 16]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "special_training_experience",
+                            "label": "Special training experience",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 3
+                            },
+                            "options": [
+                              {
+                                "label": "Injury Aware Training",
+                                "value": "injury_aware_training"
+                              },
+                              {
+                                "label": "Youth Coaching",
+                                "value": "youth_coaching"
+                              },
+                              {
+                                "label": "Adaptive Fitness / Disability Support",
+                                "value": "adaptive_fitness_disability_support"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "fitness_coaching": {
+                    "summary": "Fitness Coaching training options",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 8,
+                          "name": "Fitness"
+                        },
+                        "subcategory": {
+                          "id": 63,
+                          "category_id": 8,
+                          "name": "Coaching"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 17,
+                          "template_chain": [1, 15, 17]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "special_training_experience",
+                            "label": "Special training experience",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 4
+                            },
+                            "options": [
+                              {
+                                "label": "Injury Aware Training",
+                                "value": "injury_aware_training"
+                              },
+                              {
+                                "label": "Senior Fitness",
+                                "value": "senior_fitness"
+                              },
+                              {
+                                "label": "Youth Coaching",
+                                "value": "youth_coaching"
+                              },
+                              {
+                                "label": "Adaptive Fitness / Disability Support",
+                                "value": "adaptive_fitness_disability_support"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  },
+                  "personal_dynamic": {
+                    "summary": "Personal category dynamic fields",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service form template fetched successfully.",
+                      "data": {
+                        "category": {
+                          "id": 14,
+                          "name": "Personal"
+                        },
+                        "subcategory": {
+                          "id": 90,
+                          "category_id": 14,
+                          "name": "Holistic"
+                        },
+                        "currency_context": {
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "country_id": 39,
+                          "default_currency": {
+                            "code": "CAD",
+                            "symbol": "$"
+                          },
+                          "is_usd_currency": false,
+                          "can_charge_in_usd": true
+                        },
+                        "resolved_template": {
+                          "id": 18,
+                          "template_chain": [1, 18]
+                        },
+                        "fields": [
+                          {
+                            "field_key": "program_details",
+                            "label": "Program details (if any)",
+                            "field_type": "textarea",
+                            "is_required": false
+                          },
+                          {
+                            "field_key": "conditions_worked_with",
+                            "label": "Do you work with",
+                            "field_type": "multi_select",
+                            "is_required": true,
+                            "validation": {
+                              "minimum_selections": 1,
+                              "maximum_selections": 5
+                            },
+                            "options": [
+                              {
+                                "label": "Injuries",
+                                "value": "injuries"
+                              },
+                              {
+                                "label": "Mental Health Cases",
+                                "value": "mental_health_cases"
+                              },
+                              {
+                                "label": "NA",
+                                "value": "na"
+                              }
+                            ]
+                          },
+                          {
+                            "field_key": "cori_background_check",
+                            "label": "CORI background check consent",
+                            "field_type": "file_upload",
+                            "is_required": true,
+                            "section": "Verification & Compliance (Mandatory)",
+                            "minimum_files": 1,
+                            "maximum_files": 10
+                          },
+                          {
+                            "field_key": "business_verification",
+                            "label": "Business verification (if agency)",
+                            "field_type": "file_upload",
+                            "is_required": false,
+                            "section": "Verification & Compliance (Mandatory)",
+                            "visible_when": {
+                              "field_key": "provider_type",
+                              "operator": "equals",
+                              "value": "business"
+                            }
+                          }
+                        ]
+                      },
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Selected category or subcategory is inactive, deleted, or not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceFormTemplateNotFoundError"
+                },
+                "examples": {
+                  "category_not_found": {
+                    "summary": "Category not found",
+                    "value": {
+                      "status": "Error",
+                      "message": "Service category not found.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "subcategory_not_found": {
+                    "summary": "Subcategory not found",
+                    "value": {
+                      "status": "Error",
+                      "message": "Service subcategory not found.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request context, ownership, or currency-country configuration is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceFormTemplateValidationError"
+                },
+                "examples": {
+                  "category_required": {
+                    "summary": "Missing required category",
+                    "value": {
+                      "status": "Error",
+                      "message": "The category id field is required.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "provider_type_invalid": {
+                    "summary": "Invalid provider type",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected provider type is invalid.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "business_not_allowed_for_individual": {
+                    "summary": "Business ID sent for individual service",
+                    "value": {
+                      "status": "Error",
+                      "message": "The business id must be omitted when provider type is individual.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "provider_profile_missing": {
+                    "summary": "Authenticated user has no provider profile",
+                    "value": {
+                      "status": "Error",
+                      "message": "Provider profile not found.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "subcategory_required": {
+                    "summary": "Missing required subcategory",
+                    "value": {
+                      "status": "Error",
+                      "message": "The subcategory id field is required.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "provider_type_required": {
+                    "summary": "Missing provider type",
+                    "value": {
+                      "status": "Error",
+                      "message": "The provider type field is required.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "business_required": {
+                    "summary": "Business context is required",
+                    "value": {
+                      "status": "Error",
+                      "message": "The business id field is required when provider type is business.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "subcategory_mismatch": {
+                    "summary": "Subcategory belongs to another category",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected subcategory does not belong to the selected category.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "business_ownership": {
+                    "summary": "Business is not owned by provider",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected business does not belong to the authenticated provider.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "business_subcategory_mismatch": {
+                    "summary": "Subcategory is not assigned to business",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected subcategory is not assigned to the selected business.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "individual_default_address_missing": {
+                    "summary": "Individual default-address country is unavailable",
+                    "value": {
+                      "status": "Error",
+                      "message": "Please add a default address with a valid country before creating an individual service.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "currency_not_configured": {
+                    "summary": "Country has no configured currency",
+                    "value": {
+                      "status": "Error",
+                      "message": "Currency is not configured for the selected country.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Template configuration or unexpected resolution error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceFormTemplateServerError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/categories": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "List active service categories",
+        "description": "Without business_id, returns all active, non-deleted service categories. With business_id, returns only categories containing at least one active subcategory assigned to that owned active business. The response shape is unchanged and does not include subcategories.",
+        "operationId": "listProviderServiceCategories",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "description": "Optional owned active provider_businesses.id. When supplied, only categories derived from that business's assigned subcategories are returned.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active service categories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Service categories retrieved successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "properties": {
+                          "category_id": {
+                            "type": "integer",
+                            "example": 15
+                          },
+                          "category_name": {
+                            "type": "string",
+                            "example": "Pet Care"
+                          },
+                          "category_logo": {
+                            "type": "string",
+                            "example": "/storage/service-categories/icons/pet-care.png",
+                            "nullable": true
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "meta": {
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or unowned business filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/categories/{categoryId}/subcategories": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "List active subcategories for one category",
+        "description": "Without business_id, returns all active, non-deleted subcategories belonging to the supplied active category. With business_id, returns only subcategories in that category which are assigned to the owned active business. The response shape is unchanged.",
+        "operationId": "listProviderServiceSubcategories",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "description": "services_categories.id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 15,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "business_id",
+            "in": "query",
+            "description": "Optional owned active provider_businesses.id. When supplied, only this business's assigned subcategories are returned.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subcategories for the selected category.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Service sub categories retrieved successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "properties": {
+                          "sub_category_id": {
+                            "type": "integer",
+                            "example": 104
+                          },
+                          "sub_category_name": {
+                            "type": "string",
+                            "example": "Pet Sitting"
+                          },
+                          "sub_category_logo": {
+                            "type": "string",
+                            "example": "/storage/service-sub-categories/icons/pet-sitting.png",
+                            "nullable": true
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "meta": {
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Active category not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or unowned business filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "List lightweight My Services cards",
+        "description": "Returns only card data: required IDs, category/subcategory names, service title, first portfolio image, provider type, optional business name, and status. It intentionally does not return nested category objects, descriptions, fulfillment, pricing, certificates, or dynamic answers. Use GET /services/{id} after the user opens Service Details.",
+        "operationId": "listProviderServices",
+        "parameters": [
+          {
+            "name": "tab",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "enum": ["all", "independent", "affiliated"]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "inactive", "pending_review"]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 15,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated lightweight list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceListResponse"
+                },
+                "examples": {
+                  "cards": {
+                    "summary": "Individual and business cards",
+                    "value": {
+                      "status": "Success",
+                      "message": "Services retrieved successfully.",
+                      "data": [
+                        {
+                          "service_id": 91,
+                          "category_id": 15,
+                          "category_name": "Pet Care",
+                          "subcategory_id": 104,
+                          "subcategory_name": "Pet Sitting",
+                          "title": "In-Home Dog Sitting",
+                          "provider_type": "individual",
+                          "business_id": null,
+                          "business_name": null,
+                          "status": 1,
+                          "status_label": "active",
+                          "portfolio": {
+                            "id": 301,
+                            "url": "/storage/service_portfolios/91/dog.jpg"
+                          }
+                        },
+                        {
+                          "service_id": 92,
+                          "category_id": 15,
+                          "category_name": "Pet Care",
+                          "subcategory_id": 105,
+                          "subcategory_name": "Dog Walking",
+                          "title": "Dog Walking",
+                          "provider_type": "business",
+                          "business_id": 12,
+                          "business_name": "Happy Tails Walk Co.",
+                          "status": 0,
+                          "status_label": "inactive",
+                          "portfolio": {
+                            "id": 302,
+                            "url": "/storage/service_portfolios/92/walk.jpg"
+                          }
+                        }
+                      ],
+                      "meta": {
+                        "current_page": 1,
+                        "last_page": 1,
+                        "per_page": 15,
+                        "total": 2
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "422": {
+            "description": "Invalid list filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Service Provider Services"],
+        "summary": "Create a service from the resolved template",
+        "description": "CREATION FLOW: First call GET /service-provider/service-form-template with category_id, subcategory_id, provider_type, and business_id when applicable. Render its merged Generic -> Category -> optional Subcategory fields. Submit generic configuration.value_key values at the multipart top level, dynamic non-file values in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. When fulfillment includes provider_location or pickup_delivery, the backend snapshots the provider's default customer_addresses record into service_info. category_id and subcategory_id are fixed after creation. New services use status=3 pending_review. Individual currency comes from the provider default address country; business currency comes from the selected owned business country. Submit the final currency code. charge_in_usd is never stored.",
+        "operationId": "createProviderService",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCreateRequest"
+              },
+              "examples": {
+                "individual": {
+                  "summary": "Individual online service",
+                  "value": {
+                    "category_id": 6,
+                    "subcategory_id": 41,
+                    "provider_type": "individual",
+                    "title": "Online algebra tutoring",
+                    "fulfillment_type_ids": [4],
+                    "description": "One-to-one algebra tutoring with guided practice and lesson notes.",
+                    "pricing_type": "fixed_price",
+                    "amount": 50,
+                    "currency": "CAD",
+                    "price_unit_id": 1,
+                    "answers_json": {
+                      "student_types_served": ["college"],
+                      "subjects_taught": ["math"]
+                    },
+                    "portfolio_images": ["portfolio.jpg"]
+                  }
+                },
+                "business": {
+                  "summary": "Business location service",
+                  "value": {
+                    "category_id": 6,
+                    "subcategory_id": 41,
+                    "provider_type": "business",
+                    "business_id": 12,
+                    "title": "Business tutoring program",
+                    "fulfillment_type_ids": [1],
+                    "description": "Structured tutoring delivered at the selected business location.",
+                    "pricing_type": "fixed_price",
+                    "amount": 2500,
+                    "currency": "INR",
+                    "price_unit_id": 3,
+                    "answers_json": {
+                      "student_types_served": ["high_school"]
+                    },
+                    "portfolio_images": ["classroom.jpg"]
+                  }
+                },
+                "dynamic_files": {
+                  "summary": "One certificate description with multiple files",
+                  "value": {
+                    "category_id": 3,
+                    "subcategory_id": 20,
+                    "provider_type": "individual",
+                    "title": "Experienced senior caregiver",
+                    "fulfillment_type_ids": [4],
+                    "description": "Compassionate support with verified credentials and background documentation.",
+                    "pricing_type": "fixed_price",
+                    "amount": 35,
+                    "currency": "CAD",
+                    "price_unit_id": 2,
+                    "certificate_description": "First aid and training certificates",
+                    "certificate_files": ["first-aid.pdf", "training.pdf"],
+                    "dynamic_file_keys": ["cori_background_check"],
+                    "dynamic_files": ["cori-check.pdf"],
+                    "portfolio_images": ["caregiving.jpg"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service created as pending_review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "422": {
+            "description": "Template, ownership, fulfillment, file, or pricing validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                },
+                "examples": {
+                  "subcategory": {
+                    "summary": "Category/subcategory mismatch",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected subcategory does not belong to the selected category.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "business_assignment": {
+                    "summary": "Business does not offer subcategory",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected subcategory is not assigned to the selected business.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "radius": {
+                    "summary": "Conditional radius missing",
+                    "value": {
+                      "status": "Error",
+                      "message": "The service radius field is required for the selected fulfillment types.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "default_address": {
+                    "summary": "Default provider address missing for location fulfillment",
+                    "value": {
+                      "status": "Error",
+                      "message": "Please add a default provider address before saving a service with the selected fulfillment types.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "dynamic_key": {
+                    "summary": "Dynamic upload key is not in template",
+                    "value": {
+                      "status": "Error",
+                      "message": "The dynamic file field string is not available in the resolved template.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "Get complete read-only service details",
+        "description": "Returns all persisted service details for the Service Details screen. Relations are eager loaded with selected columns to avoid N+1 queries: category/subcategory, provider/business context, service information and location, fulfillment, portfolios, certificates, pricing, and labeled dynamic template answers.",
+        "operationId": "getProviderServiceDetails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceDetailsResponse"
+                },
+                "examples": {
+                  "details": {
+                    "summary": "Business service details",
+                    "value": {
+                      "status": "Success",
+                      "message": "Service details retrieved successfully.",
+                      "data": {
+                        "service_id": 91,
+                        "status": 1,
+                        "status_label": "active",
+                        "provider_type": "business",
+                        "category": {
+                          "id": 15,
+                          "name": "Pet Care"
+                        },
+                        "subcategory": {
+                          "id": 104,
+                          "name": "Pet Sitting"
+                        },
+                        "business": {
+                          "id": 12,
+                          "name": "Happy Tails Walk Co.",
+                          "address": "1234 Chipmunk Lane"
+                        },
+                        "service_info": {
+                          "title": "Overnight boarding with Smith Jones",
+                          "description": "Personalized in-home dog sitting designed around your pet's routine.",
+                          "additional_information": "Fresh food and water refills.",
+                          "tagline": "Peace of mind while you are away",
+                          "address_id": 56,
+                          "address": {
+                            "id": 56,
+                            "address": "47 W 13th Street",
+                            "country_id": 233,
+                            "state_id": 1452,
+                            "city_id": 122795,
+                            "latitude": "40.736039",
+                            "longitude": "-73.996705",
+                            "is_default": true
+                          },
+                          "service_radius": 5,
+                          "service_radius_unit": "mile"
+                        },
+                        "location_context": {
+                          "source": "provider_address",
+                          "address_id": 56,
+                          "business_id": 12,
+                          "address": "47 W 13th Street",
+                          "country_id": 233,
+                          "state_id": 1452,
+                          "city_id": 122795
+                        },
+                        "fulfillment_types": [
+                          {
+                            "id": 1,
+                            "label": "At my location",
+                            "code": "provider_location"
+                          }
+                        ],
+                        "portfolio_images": [
+                          {
+                            "id": 301,
+                            "url": "/storage/service_portfolios/91/dog.jpg",
+                            "sort_order": 1
+                          }
+                        ],
+                        "certificate": {
+                          "id": 71,
+                          "description": "Certified Dog Trainer",
+                          "files": [
+                            {
+                              "id": 99,
+                              "url": "/storage/service_certificates/91/trainer.pdf"
+                            },
+                            {
+                              "id": 100,
+                              "url": "/storage/service_certificates/91/first-aid.pdf"
+                            }
+                          ]
+                        },
+                        "pricing": {
+                          "pricing_type": "fixed_price",
+                          "amount": "50.00",
+                          "currency": "USD",
+                          "price_unit": {
+                            "id": 1,
+                            "label": "Per service",
+                            "code": "per_service"
+                          }
+                        },
+                        "dynamic_answers": [
+                          {
+                            "field_key": "special_training_experience",
+                            "label": "Special Training Experience",
+                            "value": ["pet_first_aid"]
+                          }
+                        ],
+                        "answers_json": {
+                          "special_training_experience": ["pet_first_aid"]
+                        }
+                      },
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service is deleted, missing, or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Service Provider Services"],
+        "summary": "Logically delete a service with reasons",
+        "description": "Stores selected reasons and sets status=2. Other requires other_reason. Service records and files remain for history.",
+        "operationId": "deleteProviderService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceDeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service marked deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Delete reason validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/edit": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "Get Edit Service overview",
+        "description": "Small payload for the first Edit Service screen. search_setting.is_active mirrors status=1. can_update is true only for active/inactive services. Use the existing status endpoint for the Active toggle. Follow the section endpoints for category, information, and pricing.",
+        "operationId": "getProviderServiceEditOverview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Edit overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceEditOverviewResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/category": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "Get immutable service category and subcategory",
+        "description": "Read-only. Category and subcategory are fixed when the service is created. There is intentionally no category update endpoint. To use another category/subcategory, create a new service.",
+        "operationId": "getProviderServiceCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stored category context.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCategoryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/information": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "Get template-driven service information for editing",
+        "description": "Returns the current merged template without the pricing field and the saved form values. Render template.fields in order. Generic values come from current_values; category/subcategory dynamic values come from current_values.answers_json. Existing portfolio/certificate IDs are used for optional deletion. Category, subcategory, provider type, business, and pricing are not editable here.",
+        "operationId": "getProviderServiceInformation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Information template and current values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceInformationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Stored service context can no longer resolve its template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Service Provider Services"],
+        "summary": "Update generic and dynamic service information",
+        "description": "Updates only the fields returned by GET /services/{id}/information. The backend resolves category, subcategory, provider type, business, and template from the stored service. Those fields and all pricing fields are prohibited. Existing files remain unless their IDs are listed for deletion; at least one portfolio image must remain. Dynamic values and files are validated against the currently resolved template.",
+        "operationId": "updateProviderServiceInformation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceInformationUpdateRequest"
+              },
+              "examples": {
+                "update": {
+                  "summary": "Update information and replace one portfolio",
+                  "value": {
+                    "title": "Updated overnight dog sitting",
+                    "fulfillment_type_ids": [1],
+                    "description": "Updated personalized overnight care with scheduled walks and feeding.",
+                    "additional_information": "Medication can be administered when instructions are provided.",
+                    "tagline": "Trusted overnight care",
+                    "answers_json": {
+                      "special_training_experience": ["pet_first_aid"]
+                    },
+                    "delete_portfolio_ids": [301],
+                    "portfolio_images": ["replacement.jpg"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated information and same editable template.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceInformationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Template validation failed or immutable/pricing field was submitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                },
+                "examples": {
+                  "immutable": {
+                    "summary": "Category cannot be changed",
+                    "value": {
+                      "status": "Error",
+                      "message": "The category id field is prohibited.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "portfolio": {
+                    "summary": "At least one portfolio must remain",
+                    "value": {
+                      "status": "Error",
+                      "message": "At least one portfolio image is required.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "dynamic": {
+                    "summary": "Dynamic answer failed template rules",
+                    "value": {
+                      "status": "Error",
+                      "message": "The Special Training Experience contains an invalid selection.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/pricing": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "Get saved service pricing",
+        "description": "Returns the stored pricing record only. The pricing edit form is fixed on the frontend. fulfillment_codes and charge_in_usd are included as edit hints for USD override display.",
+        "operationId": "getProviderServicePricing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved pricing record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicePricingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Service Provider Services"],
+        "summary": "Update service pricing only",
+        "description": "For fixed_price submit amount, final currency code, and a price_unit_id returned by GET /services/{id}/pricing. For quote_required these fields are optional; any supplied values are validated and stored. Category/subcategory/provider/business and charge_in_usd are prohibited and never changed here. USD is accepted only when the stored service fulfillment and currency context permit it.",
+        "operationId": "updateProviderServicePricing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServicePricingUpdateRequest"
+              },
+              "examples": {
+                "fixed_price": {
+                  "summary": "Fixed price",
+                  "value": {
+                    "pricing_type": "fixed_price",
+                    "amount": 65,
+                    "currency": "CAD",
+                    "price_unit_id": 1
+                  }
+                },
+                "quote_required": {
+                  "summary": "Quote required",
+                  "value": {
+                    "pricing_type": "quote_required",
+                    "amount": null,
+                    "currency": null,
+                    "price_unit_id": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated pricing record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicePricingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Pricing validation, unsupported unit/currency, or prohibited context field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                },
+                "examples": {
+                  "unit": {
+                    "summary": "Unsupported price unit",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected price unit is not allowed for the selected subcategory.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "currency": {
+                    "summary": "Unsupported currency",
+                    "value": {
+                      "status": "Error",
+                      "message": "The selected currency is not allowed for this service context.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/status": {
+      "post": {
+        "tags": ["Service Provider Services"],
+        "summary": "Toggle the Edit Service Active/Search Setting",
+        "description": "This endpoint has no request body. It reads the stored service status and toggles 1 (active) to 0 (inactive), or 0 to 1. Pending-review services cannot be changed manually, and deleted services are not accessible through this route.",
+        "operationId": "changeProviderServiceStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Pending-review status cannot be changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/{id}/files": {
+      "delete": {
+        "tags": ["Service Provider Services"],
+        "summary": "Delete one file from an existing service",
+        "description": "Deletes one database reference and its physical public-disk file without recreating the service. Use file_type=portfolio or certificate with file_id. Use file_type=dynamic with the exact resolved field_key and stored file_path. The service must belong to the authenticated provider. At least one portfolio image must remain, and a dynamic field cannot be reduced below its active required/minimum_files rule.",
+        "operationId": "deleteProviderServiceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Owned services.id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceFileDeleteRequest"
+              },
+              "examples": {
+                "portfolio": {
+                  "summary": "Delete one portfolio image",
+                  "value": {
+                    "file_type": "portfolio",
+                    "file_id": 301
+                  }
+                },
+                "certificate": {
+                  "summary": "Delete one certificate file",
+                  "value": {
+                    "file_type": "certificate",
+                    "file_id": 99
+                  }
+                },
+                "dynamic": {
+                  "summary": "Delete one dynamic template file",
+                  "value": {
+                    "file_type": "dynamic",
+                    "field_key": "cori_background_check",
+                    "file_path": "/storage/service_dynamic_files/91/cori_background_check/check.pdf"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Database reference and stored file deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceFileDeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Owned service or matching file not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid discriminator/identifier, last portfolio image, or dynamic minimum-file rule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceManagementErrorResponse"
+                },
+                "examples": {
+                  "portfolio_minimum": {
+                    "summary": "Last portfolio image is protected",
+                    "value": {
+                      "status": "Error",
+                      "message": "At least one portfolio image is required.",
+                      "data": null,
+                      "meta": []
+                    }
+                  },
+                  "dynamic_minimum": {
+                    "summary": "Dynamic field minimum is protected",
+                    "value": {
+                      "status": "Error",
+                      "message": "At least 1 file(s) must remain for CORI background Check Consent.",
+                      "data": null,
+                      "meta": []
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/service-provider/services/delete-reasons": {
+      "get": {
+        "tags": ["Service Provider Services"],
+        "summary": "List service deletion reasons",
+        "operationId": "getProviderServiceDeleteReasons",
+        "responses": {
+          "200": {
+            "description": "Active reasons.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ServiceDeleteReason"
+                      }
+                    },
+                    "meta": {
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4752,6 +7398,36 @@
           "is_default": {
             "type": "boolean",
             "example": true
+          },
+          "country_name": {
+            "type": "string",
+            "example": "United States",
+            "nullable": true,
+            "maxLength": 100
+          },
+          "country_short_name": {
+            "type": "string",
+            "example": "US",
+            "nullable": true,
+            "maxLength": 10
+          },
+          "state_name": {
+            "type": "string",
+            "example": "Texas",
+            "nullable": true,
+            "maxLength": 100
+          },
+          "state_code": {
+            "type": "string",
+            "example": "TX",
+            "nullable": true,
+            "maxLength": 20
+          },
+          "city_name": {
+            "type": "string",
+            "example": "Houston",
+            "nullable": true,
+            "maxLength": 100
           }
         },
         "type": "object"
@@ -6780,6 +9456,110 @@
         },
         "type": "object"
       },
+      "ProviderServiceCategorySummaryItem": {
+        "properties": {
+          "category_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "category_name": {
+            "type": "string",
+            "example": "Home Services"
+          },
+          "category_logo": {
+            "type": "string",
+            "example": "/storage/category/logo.png",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ProviderServiceCategorySummaryListResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service categories retrieved successfully"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderServiceCategorySummaryItem"
+            }
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ProviderServiceSubCategoryListResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service sub categories retrieved successfully"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderBusinessServiceItem"
+            }
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ProviderBusinessAssignedSubCategoryItem": {
+        "properties": {
+          "sub_category_id": {
+            "type": "integer",
+            "example": 12
+          },
+          "sub_category_name": {
+            "type": "string",
+            "example": "LashTech"
+          },
+          "sub_category_logo": {
+            "type": "string",
+            "example": "/storage/service-sub-categories/icons/lash-tech.png",
+            "nullable": true
+          },
+          "category": {
+            "description": "Parent category of the assigned subcategory.",
+            "properties": {
+              "category_id": {
+                "type": "integer",
+                "example": 2
+              },
+              "category_name": {
+                "type": "string",
+                "example": "Beauty"
+              },
+              "category_logo": {
+                "type": "string",
+                "example": "/storage/service-categories/icons/beauty.png",
+                "nullable": true
+              }
+            },
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
       "ProviderBusinessSubCategoriesResponse": {
         "properties": {
           "status": {
@@ -6793,7 +9573,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ProviderBusinessServiceItem"
+              "$ref": "#/components/schemas/ProviderBusinessAssignedSubCategoryItem"
             }
           },
           "meta": {
@@ -8127,6 +10907,1700 @@
           }
         },
         "type": "object"
+      },
+      "ServiceFormTemplateCategory": {
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 6
+          },
+          "name": {
+            "type": "string",
+            "example": "Education"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplateSubcategory": {
+        "required": ["id", "category_id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 41
+          },
+          "category_id": {
+            "type": "integer",
+            "example": 6
+          },
+          "name": {
+            "type": "string",
+            "example": "Tutoring"
+          }
+        },
+        "type": "object"
+      },
+      "ResolvedTemplateInformation": {
+        "required": ["id", "template_chain"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 9
+          },
+          "template_chain": {
+            "description": "Template IDs from generic root through category and optional matching subcategory child.",
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [1, 5, 9]
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormValueOption": {
+        "required": ["label", "value"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "mile"
+          },
+          "value": {
+            "type": "string",
+            "example": "mile"
+          }
+        },
+        "type": "object"
+      },
+      "FulfillmentTypeOption": {
+        "required": ["label", "value", "code"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Online / Remote"
+          },
+          "value": {
+            "description": "Submit this fulfillment_type_id.",
+            "type": "integer",
+            "example": 4
+          },
+          "code": {
+            "description": "Use this code for visible_when and required_when.",
+            "type": "string",
+            "example": "online_remote"
+          }
+        },
+        "type": "object"
+      },
+      "ServicePriceUnitOption": {
+        "required": ["label", "value", "code"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Per hour"
+          },
+          "value": {
+            "description": "Submit this as price_unit_id.",
+            "type": "integer",
+            "example": 2
+          },
+          "code": {
+            "type": "string",
+            "example": "per_hour"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDefaultCurrency": {
+        "required": ["code", "symbol"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "INR",
+            "maxLength": 3,
+            "minLength": 3
+          },
+          "symbol": {
+            "type": "string",
+            "example": "?"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceCurrencyContext": {
+        "description": "Individual country comes from the provider default customer_addresses.country_id. Business country comes only from the selected owned ProviderBusiness::country_id. Currency is matched using currencies.country_id.",
+        "required": [
+          "provider_type",
+          "business_id",
+          "country_id",
+          "default_currency",
+          "is_usd_currency",
+          "can_charge_in_usd"
+        ],
+        "properties": {
+          "provider_type": {
+            "type": "string",
+            "example": "business",
+            "enum": ["individual", "business"]
+          },
+          "business_id": {
+            "type": "integer",
+            "example": 12,
+            "nullable": true
+          },
+          "country_id": {
+            "type": "integer",
+            "example": 101
+          },
+          "default_currency": {
+            "$ref": "#/components/schemas/ServiceDefaultCurrency"
+          },
+          "is_usd_currency": {
+            "type": "boolean",
+            "example": false
+          },
+          "can_charge_in_usd": {
+            "description": "True only when the resolved default code is not USD.",
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormSubmitAs": {
+        "description": "Frontend submit routing hint. Use this instead of value_key for special fields such as pricing, certificates, and dynamic uploads.",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "top_level",
+            "enum": [
+              "top_level",
+              "answers_json",
+              "dynamic_files",
+              "pricing_fields",
+              "certificate_bundle",
+              "display_only"
+            ]
+          },
+          "key": {
+            "description": "Used when type=top_level or answers_json.",
+            "type": "string",
+            "example": "title",
+            "nullable": true
+          },
+          "source": {
+            "description": "Used when type=display_only.",
+            "type": "string",
+            "example": "provider_default_address",
+            "nullable": true
+          },
+          "keys": {
+            "description": "Used when type=pricing_fields.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["pricing_type", "amount", "currency", "price_unit_id"],
+            "nullable": true
+          },
+          "key_field": {
+            "description": "Used when type=dynamic_files.",
+            "type": "string",
+            "example": "dynamic_file_keys",
+            "nullable": true
+          },
+          "file_field": {
+            "description": "Used when type=dynamic_files.",
+            "type": "string",
+            "example": "dynamic_files",
+            "nullable": true
+          },
+          "field_key": {
+            "description": "Used when type=dynamic_files.",
+            "type": "string",
+            "example": "cori_background_check",
+            "nullable": true
+          },
+          "description_key": {
+            "description": "Used when type=certificate_bundle.",
+            "type": "string",
+            "example": "certificate_description",
+            "nullable": true
+          },
+          "files_key": {
+            "description": "Used when type=certificate_bundle.",
+            "type": "string",
+            "example": "certificate_files",
+            "nullable": true
+          },
+          "multiple_files": {
+            "description": "Used when type=certificate_bundle.",
+            "type": "boolean",
+            "example": true,
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormQuoteRequiredFields": {
+        "description": "Optional pricing inputs shown when pricing_type=quote_required.",
+        "properties": {
+          "amount": {
+            "properties": {
+              "label": {
+                "type": "string",
+                "example": "Base Price"
+              },
+              "required": {
+                "type": "boolean",
+                "example": false
+              },
+              "visible": {
+                "type": "boolean",
+                "example": true
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "currency": {
+            "properties": {
+              "required": {
+                "type": "boolean",
+                "example": false
+              },
+              "visible": {
+                "type": "boolean",
+                "example": true
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "price_unit_id": {
+            "properties": {
+              "label": {
+                "type": "string",
+                "example": "Price Unit"
+              },
+              "required": {
+                "type": "boolean",
+                "example": false
+              },
+              "visible": {
+                "type": "boolean",
+                "example": true
+              }
+            },
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplateField": {
+        "description": "Frontend-ready flat field. Render from this object directly. submit_as overrides value_key for pricing, certificates, and dynamic files.",
+        "required": [
+          "field_key",
+          "label",
+          "field_type",
+          "field_scope",
+          "is_required",
+          "submit_as"
+        ],
+        "properties": {
+          "field_key": {
+            "type": "string",
+            "example": "service_radius"
+          },
+          "label": {
+            "type": "string",
+            "example": "Service Area Radius"
+          },
+          "field_type": {
+            "type": "string",
+            "example": "number",
+            "enum": [
+              "text",
+              "textarea",
+              "number",
+              "multi_select",
+              "yes_no",
+              "address",
+              "file_upload",
+              "pricing"
+            ]
+          },
+          "field_scope": {
+            "type": "string",
+            "example": "generic",
+            "enum": ["generic", "dynamic"]
+          },
+          "submit_as": {
+            "$ref": "#/components/schemas/ServiceFormSubmitAs"
+          },
+          "is_required": {
+            "description": "Render the required indicator from this value or required_when. When true, textarea fields use validation.minimum_length >= 1, multi_select fields use validation.minimum_selections >= 1, and file_upload fields use minimum_files >= 1.",
+            "type": "boolean",
+            "example": true
+          },
+          "section": {
+            "type": "string",
+            "example": "Service Information"
+          },
+          "placeholder": {
+            "type": "string",
+            "example": "Enter your service area radius",
+            "nullable": true
+          },
+          "help_text": {
+            "type": "string",
+            "example": "Enter how far you are willing to travel to provide this service.",
+            "nullable": true
+          },
+          "value_key": {
+            "type": "string",
+            "example": "service_radius"
+          },
+          "visible_when": {
+            "type": "object",
+            "example": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["customer_location", "pickup_delivery"]
+            },
+            "nullable": true
+          },
+          "required_when": {
+            "type": "object",
+            "example": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["customer_location", "pickup_delivery"]
+            },
+            "nullable": true
+          },
+          "validation": {
+            "type": "object",
+            "example": {
+              "data_type": "number",
+              "minimum": 0.01,
+              "maximum": 99999999.99
+            },
+            "nullable": true
+          },
+          "options": {
+            "description": "Resolved options. Master-backed options use label, value, and code; static dynamic options use label and value.",
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "unit_value_key": {
+            "type": "string",
+            "example": "service_radius_unit",
+            "nullable": true
+          },
+          "unit_placeholder": {
+            "type": "string",
+            "example": "Select unit",
+            "nullable": true
+          },
+          "unit_options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceFormValueOption"
+            }
+          },
+          "unit_validation": {
+            "type": "object",
+            "example": {
+              "data_type": "string",
+              "allowed_values": ["mile", "km"],
+              "minimum_length": 2,
+              "maximum_length": 4
+            },
+            "nullable": true
+          },
+          "multiple": {
+            "type": "boolean",
+            "example": true,
+            "nullable": true
+          },
+          "minimum_files": {
+            "type": "integer",
+            "example": 0,
+            "nullable": true
+          },
+          "maximum_files": {
+            "type": "integer",
+            "example": 10,
+            "nullable": true
+          },
+          "allowed_file_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowed_extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description_key": {
+            "type": "string",
+            "example": "certificate_description",
+            "nullable": true
+          },
+          "files_key": {
+            "type": "string",
+            "example": "certificate_files",
+            "nullable": true
+          },
+          "pricing_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceFormValueOption"
+            }
+          },
+          "fixed_price_fields": {
+            "type": "object",
+            "nullable": true
+          },
+          "quote_required_fields": {
+            "$ref": "#/components/schemas/ServiceFormQuoteRequiredFields"
+          },
+          "charge_in_usd": {
+            "description": "Frontend-only. Submit the final currency code, not this toggle.",
+            "type": "object",
+            "nullable": true
+          },
+          "base_price": {
+            "type": "object",
+            "nullable": true
+          },
+          "currency": {
+            "type": "object",
+            "nullable": true
+          },
+          "price_units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServicePriceUnitOption"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplatePayload": {
+        "required": [
+          "category",
+          "subcategory",
+          "currency_context",
+          "resolved_template",
+          "fields"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ServiceFormTemplateCategory"
+          },
+          "subcategory": {
+            "$ref": "#/components/schemas/ServiceFormTemplateSubcategory"
+          },
+          "currency_context": {
+            "$ref": "#/components/schemas/ServiceCurrencyContext"
+          },
+          "resolved_template": {
+            "$ref": "#/components/schemas/ResolvedTemplateInformation"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceFormTemplateField"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplateResponse": {
+        "required": ["status", "message", "data", "meta"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service form template fetched successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/ServiceFormTemplatePayload"
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object",
+        "example": {
+          "status": "Success",
+          "message": "Service form template fetched successfully.",
+          "data": {
+            "category": {
+              "id": 6,
+              "name": "Education"
+            },
+            "subcategory": {
+              "id": 41,
+              "category_id": 6,
+              "name": "Tutoring"
+            },
+            "currency_context": {
+              "provider_type": "business",
+              "business_id": 12,
+              "country_id": 101,
+              "default_currency": {
+                "code": "INR",
+                "symbol": "?"
+              },
+              "is_usd_currency": false,
+              "can_charge_in_usd": true
+            },
+            "resolved_template": {
+              "id": 9,
+              "template_chain": [1, 5, 9]
+            },
+            "fields": [
+              {
+                "field_key": "service_radius",
+                "label": "Service Area Radius",
+                "field_type": "number",
+                "is_required": false,
+                "section": "Service Information",
+                "value_key": "service_radius",
+                "unit_value_key": "service_radius_unit",
+                "unit_options": [
+                  {
+                    "label": "mile",
+                    "value": "mile"
+                  },
+                  {
+                    "label": "km",
+                    "value": "km"
+                  }
+                ],
+                "required_when": {
+                  "field_key": "fulfillment_types",
+                  "operator": "contains_any",
+                  "values": ["customer_location", "pickup_delivery"]
+                },
+                "validation": {
+                  "data_type": "number",
+                  "minimum": 0.01,
+                  "maximum": 99999999.99
+                }
+              },
+              {
+                "field_key": "pricing",
+                "label": "Service Price",
+                "field_type": "pricing",
+                "is_required": true,
+                "section": "Pricing",
+                "charge_in_usd": {
+                  "label": "Charge in USD",
+                  "default": false
+                },
+                "base_price": {
+                  "label": "Base Price",
+                  "minimum": 0.01,
+                  "maximum": 9999999999.99
+                },
+                "currency": {
+                  "value_key": "currency",
+                  "source": "currency_context.default_currency",
+                  "allow_usd_override": true
+                },
+                "price_units": [
+                  {
+                    "label": "Per hour",
+                    "value": 2,
+                    "code": "per_hour"
+                  }
+                ]
+              }
+            ]
+          },
+          "meta": []
+        }
+      },
+      "ServiceFormTemplateValidationError": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "The selected business does not belong to the authenticated provider."
+          },
+          "data": {
+            "example": null,
+            "nullable": true
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplateNotFoundError": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service category not found."
+          },
+          "data": {
+            "example": null,
+            "nullable": true
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFormTemplateServerError": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service form template configuration is not available."
+          },
+          "data": {
+            "example": null,
+            "nullable": true
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ServiceWritePayload": {
+        "description": "CREATE ONLY. Resolve GET /service-provider/service-form-template first. Generic fields are top-level; dynamic non-file values use answers_json; dynamic files use matching dynamic_file_keys[n] and dynamic_files[n].",
+        "properties": {
+          "category_id": {
+            "type": "integer",
+            "example": 6
+          },
+          "subcategory_id": {
+            "type": "integer",
+            "example": 41
+          },
+          "provider_type": {
+            "type": "string",
+            "example": "individual",
+            "enum": ["individual", "business"]
+          },
+          "business_id": {
+            "type": "integer",
+            "example": 12,
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "example": "Online algebra tutoring",
+            "maxLength": 150,
+            "minLength": 3
+          },
+          "fulfillment_type_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [4],
+            "minItems": 1
+          },
+          "description": {
+            "description": "Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved.",
+            "type": "string",
+            "example": "One-to-one algebra tutoring with guided practice and lesson notes.",
+            "maxLength": 5000,
+            "minLength": 20
+          },
+          "additional_information": {
+            "description": "Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved.",
+            "type": "string",
+            "nullable": true,
+            "maxLength": 3000
+          },
+          "tagline": {
+            "type": "string",
+            "example": "Peace of mind while you are away",
+            "nullable": true,
+            "maxLength": 150
+          },
+          "service_radius": {
+            "description": "Required when fulfillment includes customer_location or pickup_delivery.",
+            "type": "number",
+            "format": "float",
+            "example": 15,
+            "nullable": true,
+            "maximum": 99999999.99,
+            "minimum": 0.01
+          },
+          "service_radius_unit": {
+            "type": "string",
+            "example": "mile",
+            "nullable": true,
+            "enum": ["mile", "km"]
+          },
+          "pricing_type": {
+            "type": "string",
+            "example": "fixed_price",
+            "enum": ["fixed_price", "quote_required"]
+          },
+          "amount": {
+            "description": "Required for fixed_price; optional for quote_required.",
+            "type": "number",
+            "format": "float",
+            "example": 50,
+            "nullable": true,
+            "maximum": 9999999999.99,
+            "minimum": 0.01
+          },
+          "currency": {
+            "description": "Required for fixed_price; optional for quote_required. Submit the final currency code. USD is allowed only when currency_context and online_remote permit it.",
+            "type": "string",
+            "example": "CAD",
+            "nullable": true,
+            "maxLength": 3,
+            "minLength": 3
+          },
+          "price_unit_id": {
+            "description": "Required for fixed_price; optional for quote_required.",
+            "type": "integer",
+            "example": 1,
+            "nullable": true
+          },
+          "charge_in_usd": {
+            "description": "Frontend-only toggle. It is never stored; submit the final currency code.",
+            "type": "boolean",
+            "nullable": true,
+            "deprecated": true
+          },
+          "answers_json": {
+            "description": "Only field_scope=dynamic non-file values from the resolved template. Textarea values such as qualifications are stored verbatim with original line breaks and spacing. In multipart requests, send this as a JSON string; the backend decodes it before validation.",
+            "type": "object",
+            "example": {
+              "student_types_served": ["college"],
+              "subjects_taught": ["math", "physics"],
+              "qualifications": "B.Ed.\\n\\n- Math\\n- Physics"
+            },
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "portfolio_images": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 10,
+            "minItems": 1
+          },
+          "certificate_description": {
+            "description": "One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.",
+            "type": "string",
+            "example": "Certified tutor credential",
+            "nullable": true,
+            "maxLength": 3000
+          },
+          "certificate_files": {
+            "description": "Multiple files using the single certificate_description. Total stored certificate files cannot exceed 10.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 10
+          },
+          "dynamic_file_keys": {
+            "description": "Exact resolved dynamic file_upload field_key values, for example cori_background_check. Never send the placeholder string.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["cori_background_check"],
+            "maxItems": 20
+          },
+          "dynamic_files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 20
+          },
+          "information_accuracy_acknowledgement": {
+            "description": "Required generic confirmation for every service on the final screen. Must be true on create. This is the only acknowledgement checkbox; category-specific document consent checkboxes are not used. Stored in service_template_answers.answers_json and also returned on edit current_values.",
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceCreateRequest": {
+        "required": [
+          "category_id",
+          "subcategory_id",
+          "provider_type",
+          "title",
+          "fulfillment_type_ids",
+          "description",
+          "pricing_type",
+          "portfolio_images",
+          "information_accuracy_acknowledgement"
+        ],
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ServiceWritePayload"
+          }
+        ]
+      },
+      "ServiceInformationUpdateRequest": {
+        "description": "Updates service information only. category_id, subcategory_id, provider_type, business_id, pricing_type, amount, currency, price_unit_id, and charge_in_usd are prohibited.",
+        "required": ["title", "fulfillment_type_ids", "description"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Updated online algebra tutoring",
+            "maxLength": 150,
+            "minLength": 3
+          },
+          "fulfillment_type_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [4],
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 20
+          },
+          "additional_information": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 3000
+          },
+          "tagline": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 150
+          },
+          "service_radius": {
+            "description": "Required when fulfillment includes customer_location or pickup_delivery.",
+            "type": "number",
+            "nullable": true,
+            "maximum": 99999999.99,
+            "minimum": 0.01
+          },
+          "service_radius_unit": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["mile", "km"]
+          },
+          "answers_json": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "portfolio_images": {
+            "description": "New images. Existing images remain unless their IDs are sent in delete_portfolio_ids. Total stored portfolio images cannot exceed 10.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 10
+          },
+          "delete_portfolio_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [301]
+          },
+          "certificate_description": {
+            "description": "Updates the one shared certificate description. Existing files remain unless deleted.",
+            "type": "string",
+            "nullable": true,
+            "maxLength": 3000
+          },
+          "certificate_files": {
+            "description": "New files added under the service's single certificate description. Total stored certificate files cannot exceed 10.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 10
+          },
+          "delete_certificate_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [99]
+          },
+          "dynamic_file_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20
+          },
+          "dynamic_files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "maxItems": 20
+          },
+          "information_accuracy_acknowledgement": {
+            "description": "Optional on information update. When supplied it must be true.",
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServicePricingUpdateRequest": {
+        "description": "Updates pricing only. For fixed_price, amount, currency, and price_unit_id are required. For quote_required these fields are optional; supplied values are validated and stored, while omitted values are stored as null. Context/category fields and charge_in_usd are prohibited.",
+        "required": ["pricing_type"],
+        "properties": {
+          "pricing_type": {
+            "type": "string",
+            "example": "fixed_price",
+            "enum": ["fixed_price", "quote_required"]
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "example": 65,
+            "nullable": true,
+            "maximum": 9999999999.99,
+            "minimum": 0.01
+          },
+          "currency": {
+            "type": "string",
+            "example": "CAD",
+            "nullable": true,
+            "maxLength": 3,
+            "minLength": 3
+          },
+          "price_unit_id": {
+            "type": "integer",
+            "example": 1,
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDeleteRequest": {
+        "required": ["reason_ids"],
+        "properties": {
+          "reason_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [1, 4],
+            "minItems": 1
+          },
+          "other_reason": {
+            "description": "Required only when an is_other=true reason is selected.",
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500,
+            "minLength": 3
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDeleteReason": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "reason": {
+            "type": "string",
+            "example": "I'm no longer offering this service."
+          },
+          "is_other": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFileDeleteRequest": {
+        "description": "Delete one existing file from an owned service. Portfolio and certificate files use their response file ID. Dynamic template files use the exact field_key and file_path returned by the information/details API. Paths are matched to the service and cannot target arbitrary storage files.",
+        "required": ["file_type"],
+        "properties": {
+          "file_type": {
+            "type": "string",
+            "example": "portfolio",
+            "enum": ["portfolio", "certificate", "dynamic"]
+          },
+          "file_id": {
+            "description": "Required for portfolio or certificate. Use that file object's id from the service response.",
+            "type": "integer",
+            "example": 301,
+            "nullable": true,
+            "minimum": 1
+          },
+          "field_key": {
+            "description": "Required for dynamic. Must be an active dynamic file_upload field in the service's resolved template.",
+            "type": "string",
+            "example": "cori_background_check",
+            "nullable": true,
+            "maxLength": 100
+          },
+          "file_path": {
+            "description": "Required for dynamic. Send the exact stored path returned under answers_json/dynamic_answers.",
+            "type": "string",
+            "example": "/storage/service_dynamic_files/91/cori_background_check/check.pdf",
+            "nullable": true,
+            "maxLength": 2048
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFulfillmentOption": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 4
+          },
+          "label": {
+            "type": "string",
+            "example": "Online / Remote"
+          },
+          "code": {
+            "type": "string",
+            "example": "online_remote"
+          }
+        },
+        "type": "object"
+      },
+      "ServicePricingData": {
+        "properties": {
+          "pricing_type": {
+            "type": "string",
+            "example": "fixed_price"
+          },
+          "amount": {
+            "type": "string",
+            "example": "50.00",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "example": "CAD",
+            "nullable": true
+          },
+          "price_unit": {
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "label": {
+                "type": "string",
+                "example": "Per service"
+              },
+              "code": {
+                "type": "string",
+                "example": "per_service"
+              }
+            },
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDynamicAnswerLabeledValue": {
+        "required": ["label", "value"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "example": "Math"
+          },
+          "value": {
+            "type": "string",
+            "example": "math"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDynamicAnswer": {
+        "description": "Human-readable dynamic answer for detail screens. Raw value is preserved for edit flows.",
+        "required": ["field_key", "label", "field_type", "value"],
+        "properties": {
+          "field_key": {
+            "type": "string",
+            "example": "subjects_taught"
+          },
+          "label": {
+            "type": "string",
+            "example": "Subjects Taught"
+          },
+          "field_type": {
+            "type": "string",
+            "example": "multi_select"
+          },
+          "value": {
+            "description": "Raw stored answer value.",
+            "example": ["math", "physics"]
+          },
+          "display_value": {
+            "type": "string",
+            "example": "Math, Physics",
+            "nullable": true
+          },
+          "labeled_values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceDynamicAnswerLabeledValue"
+            },
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceListItem": {
+        "description": "Small payload for My Services cards. Fetch GET /services/{id} only after the user opens details.",
+        "properties": {
+          "service_id": {
+            "type": "integer",
+            "example": 91
+          },
+          "category_id": {
+            "type": "integer",
+            "example": 15
+          },
+          "category_name": {
+            "type": "string",
+            "example": "Pet Care",
+            "nullable": true
+          },
+          "subcategory_id": {
+            "type": "integer",
+            "example": 104
+          },
+          "subcategory_name": {
+            "type": "string",
+            "example": "Pet Sitting",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "example": "In-Home Dog Sitting"
+          },
+          "provider_type": {
+            "type": "string",
+            "example": "business",
+            "enum": ["individual", "business"]
+          },
+          "business_id": {
+            "type": "integer",
+            "example": 12,
+            "nullable": true
+          },
+          "business_name": {
+            "type": "string",
+            "example": "Happy Tails Walk Co.",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "example": 1,
+            "enum": [0, 1, 3]
+          },
+          "status_label": {
+            "type": "string",
+            "example": "active",
+            "enum": ["inactive", "active", "pending_review"]
+          },
+          "portfolio": {
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 301
+              },
+              "url": {
+                "type": "string",
+                "example": "/storage/service_portfolios/91/dog-sitting.jpg"
+              }
+            },
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDetailsData": {
+        "description": "Complete read-only service details: ownership context, service information, location, fulfillment, files, pricing, and dynamic answers.",
+        "properties": {
+          "service_id": {
+            "type": "integer",
+            "example": 91
+          },
+          "status": {
+            "type": "integer",
+            "example": 1,
+            "enum": [0, 1, 2, 3]
+          },
+          "status_label": {
+            "type": "string",
+            "example": "active"
+          },
+          "provider_type": {
+            "type": "string",
+            "enum": ["individual", "business"]
+          },
+          "category": {
+            "type": "object"
+          },
+          "subcategory": {
+            "type": "object"
+          },
+          "business": {
+            "type": "object",
+            "nullable": true
+          },
+          "service_info": {
+            "type": "object"
+          },
+          "location_context": {
+            "type": "object",
+            "nullable": true
+          },
+          "fulfillment_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceFulfillmentOption"
+            }
+          },
+          "portfolio_images": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "certificate": {
+            "description": "One certificate description with multiple files.",
+            "type": "object",
+            "nullable": true
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/ServicePricingData"
+          },
+          "dynamic_answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceDynamicAnswer"
+            }
+          },
+          "answers_json": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceDetailsResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ServiceDetailsData"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceListResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Services retrieved successfully."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceListItem"
+            }
+          },
+          "meta": {
+            "properties": {
+              "current_page": {
+                "type": "integer",
+                "example": 1
+              },
+              "last_page": {
+                "type": "integer",
+                "example": 1
+              },
+              "per_page": {
+                "type": "integer",
+                "example": 15
+              },
+              "total": {
+                "type": "integer",
+                "example": 2
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceEditOverviewResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service edit overview retrieved successfully."
+          },
+          "data": {
+            "properties": {
+              "service_id": {
+                "type": "integer",
+                "example": 91
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer",
+                "example": 1
+              },
+              "status_label": {
+                "type": "string",
+                "example": "active"
+              },
+              "service_type": {
+                "type": "object"
+              },
+              "business_id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "business_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "search_setting": {
+                "type": "object"
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceCategoryResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "properties": {
+              "service_id": {
+                "type": "integer"
+              },
+              "category": {
+                "type": "object"
+              },
+              "subcategory": {
+                "type": "object"
+              },
+              "is_editable": {
+                "type": "boolean",
+                "example": false
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceInformationResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "properties": {
+              "service_id": {
+                "type": "integer"
+              },
+              "template": {
+                "description": "Merged generic/category/subcategory fields except pricing. Contains field labels, controls, options, visibility, required rules, and validation.",
+                "type": "object"
+              },
+              "current_values": {
+                "description": "Saved generic information, answers_json, portfolios, and certificates keyed for form prefill.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServicePricingRecord": {
+        "description": "Saved service pricing record for edit screens. Pricing form UI is fixed on the client; use GET /service-form-template only during create.",
+        "properties": {
+          "service_id": {
+            "type": "integer",
+            "example": 91
+          },
+          "title": {
+            "type": "string",
+            "example": "Overnight boarding with Smith Jones"
+          },
+          "fulfillment_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["online_remote"]
+          },
+          "pricing_type": {
+            "type": "string",
+            "example": "fixed_price",
+            "enum": ["fixed_price", "quote_required"]
+          },
+          "amount": {
+            "type": "string",
+            "example": "50.00",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "example": "CAD",
+            "nullable": true
+          },
+          "price_unit_id": {
+            "type": "integer",
+            "example": 1,
+            "nullable": true
+          },
+          "price_unit": {
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "label": {
+                "type": "string",
+                "example": "Per service"
+              },
+              "code": {
+                "type": "string",
+                "example": "per_service"
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "charge_in_usd": {
+            "description": "Derived edit hint when stored currency is USD for an online/remote service whose default currency is not USD.",
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "type": "object"
+      },
+      "ServicePricingResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ServicePricingRecord"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "properties": {
+              "service_id": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "status_label": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceManagementErrorResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "nullable": true
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ServiceFileDeleteResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Service file deleted successfully."
+          },
+          "data": {
+            "properties": {
+              "service_id": {
+                "type": "integer",
+                "example": 91
+              },
+              "file_type": {
+                "type": "string",
+                "example": "dynamic",
+                "enum": ["portfolio", "certificate", "dynamic"]
+              },
+              "file_id": {
+                "type": "integer",
+                "example": null,
+                "nullable": true
+              },
+              "field_key": {
+                "type": "string",
+                "example": "cori_background_check",
+                "nullable": true
+              },
+              "file_path": {
+                "type": "string",
+                "example": "/storage/service_dynamic_files/91/cori_background_check/check.pdf"
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -8168,12 +12642,20 @@
       "description": "Country, state, and city listing endpoints for service providers."
     },
     {
+      "name": "Service Provider Services",
+      "description": "Mobile service management. provider_type=individual is shown as Freelance; provider_type=business is shown as Business. Status values: 0 inactive, 1 active, 2 deleted, 3 pending_review."
+    },
+    {
       "name": "Service Provider Availability",
       "description": "Availability and schedule endpoints for service providers."
     },
     {
       "name": "Service Provider Date Availability",
       "description": "Single-date availability override endpoints for service providers."
+    },
+    {
+      "name": "Service Provider Service Templates",
+      "description": "Resolved mobile service-form configuration for authenticated service providers."
     }
   ],
   "security": [

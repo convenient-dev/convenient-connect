@@ -26,18 +26,11 @@ interface UserProfile {
   lastName: string | null;
   email: string | null;
   phoneNumber: string | null;
-  isPersonVerified: boolean;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   avatarUrl: string | null;
-  accountType: "individual" | "business" | string;
-  backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
+  backgroundVerification: "Pending" | "Verified" | "Not Verified";
   aboutMe?: string | null;
-  // Set after the user starts the background-check flow. The Stripe Connect
-  // account is the source of truth for "background check complete" — if
-  // present, we fetch its live status below instead of trusting any cached
-  // field on the user row.
-  stripeAccountId?: string | null;
 }
 
 interface UserCategory {
@@ -123,13 +116,11 @@ export default function ProfileScreen() {
         lastName: authUser.user.user_lname ?? null,
         email: authUser.user.user_email ?? null,
         phoneNumber: authUser.user.user_contact ?? null,
-        isPersonVerified: authUser.backgroundVerification,
         emailVerified: authUser.user.email_verified,
         phoneVerified: authUser.user.phone_verified,
         avatarUrl: authUser.profileImage,
-        accountType: authUser.providerType ?? "individual",
+        backgroundVerification: authUser.backgroundVerification,
         aboutMe,
-        stripeAccountId: null,
       }
     : null;
 
@@ -184,11 +175,17 @@ export default function ProfileScreen() {
     );
   }
 
-  const backgroundComplete = authUser?.backgroundVerification ?? false;
+  const backgroundStatus = user?.backgroundVerification ?? "Pending";
 
-  const backgroundLabel = backgroundComplete
-    ? "Background check complete"
-    : "Please complete your background check";
+  const backgroundLabel =
+    backgroundStatus === "Verified"
+      ? "Background check verified"
+      : backgroundStatus === "Pending"
+        ? "Background check pending"
+        : "Background check not verified";
+
+  const backgroundIcon =
+    backgroundStatus === "Verified" ? "verified" : ("warning" as const);
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -196,7 +193,7 @@ export default function ProfileScreen() {
         title="My Profile"
         onBack={handleBack}
         titleAccessory={
-          user?.isPersonVerified ? (
+          user?.backgroundVerification === "Verified" ? (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
@@ -299,7 +296,7 @@ export default function ProfileScreen() {
             label="Background Check"
             value={backgroundLabel}
             valueMuted
-            trailingIcon={backgroundComplete ? "verified" : "warning"}
+            trailingIcon={backgroundIcon}
             onPress={() => router.push("/background-check/step-1")}
           />
           <View style={styles.rowDivider} />

@@ -239,7 +239,7 @@ export interface paths {
         put?: never;
         /**
          * Mark background verification complete.
-         * @description Sets provider profile background_verification to true for authenticated provider.
+         * @description Sets provider profile background_verification to 'Verified' for authenticated provider.
          */
         post: operations["cd5bc6566711ab808fc9a83b78c2c7d8"];
         delete?: never;
@@ -500,6 +500,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/auth/send-permanent-delete-otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send OTP for permanent account deletion.
+         * @description Sends OTP to email for an account already in deleted state and waiting for permanent deletion confirmation.
+         */
+        post: operations["e76a4e32221dba9028b68e60c53e9528"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/auth/confirm-permanent-delete-otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm OTP and permanently delete account.
+         * @description Confirms OTP for a deleted provider account and finalizes permanent deletion by setting provider status to deleted.
+         */
+        post: operations["3ae25e4b0ec1fef3abd1ca9b653a1080"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/auth/logout": {
         parameters: {
             query?: never;
@@ -520,7 +560,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/service-provider/account-settings/business/provider-type": {
+    "/service-provider/availability/save": {
         parameters: {
             query?: never;
             header?: never;
@@ -530,17 +570,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Set provider type and business profile payload.
-         * @description Switches provider_type between individual and business. Validation rules are conditional: when provider_type=individual, first_name and last_name are required. When provider_type=business, business_name, business_address, country_id, state_id, and city_id are required. For business type, this endpoint creates/updates ProviderBusiness record. For individual type, it updates first/last name and resets ID verification if changed.
+         * Save provider availability (create/update).
+         * @description Creates or updates provider availability in a single endpoint. Existing availability and slots are replaced with request payload.
          */
-        post: operations["5e8578f4b8e487e429c98a461b1fdfaf"];
+        post: operations["ca8bbb9099bb2659d84fba82270d07a9"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/service-provider/account-settings/business/profile": {
+    "/service-provider/availability": {
         parameters: {
             query?: never;
             header?: never;
@@ -548,10 +588,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get business profile.
-         * @description Returns provider_type and business profile object used for business form prefill.
+         * Get provider availability.
+         * @description Returns timezone, is_available, apply_to_all, selected days, and day slots.
          */
-        get: operations["7e839464a998eca028990cb4ce3a2870"];
+        get: operations["6af364a4a6a82f85213afe26997525e8"];
         put?: never;
         post?: never;
         delete?: never;
@@ -560,31 +600,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/service-provider/account-settings/business/about": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get business about text.
-         * @description Returns current business about text. If profile does not exist yet, about is null.
-         */
-        get: operations["1c981be34710c06542b83399343a8ab2"];
-        put?: never;
-        /**
-         * Update business about text.
-         * @description Updates ProviderBusiness.about for authenticated provider business account.
-         */
-        post: operations["5a5cdbf94f37170ce5bc0f16927385e8"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/service-provider/account-settings/business/name": {
+    "/service-provider/availability/toggle-status": {
         parameters: {
             query?: never;
             header?: never;
@@ -594,17 +610,57 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Update business name.
-         * @description Updates business_name in ProviderBusiness record for authenticated provider.
+         * Toggle availability status.
+         * @description Toggles provider profile is_available value. No request body required.
          */
-        post: operations["76d434a85a92e0030dba921114a629f0"];
+        post: operations["f3aff94c7dda86b4abe9836dd28cba7d"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/service-provider/account-settings/business/address": {
+    "/service-provider/availability/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get days list.
+         * @description Returns day master list with id, day_name and short_name.
+         */
+        get: operations["7502aa5f2965e7cb73766c328abd680f"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/availability/timezones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get timezone list.
+         * @description Returns timezone list with id and timezone name.
+         */
+        get: operations["bde88369a6ccd1508c570c5135ca4ce1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-members/invite": {
         parameters: {
             query?: never;
             header?: never;
@@ -614,17 +670,61 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Update business address.
-         * @description Updates business address text only for existing ProviderBusiness profile.
+         * Invite a business member.
+         * @description Creates a pending business member invitation for an existing role_id=3 user, assigns service sub-categories, and sends a signed invitation URL that expires in 7 days.
          */
-        post: operations["1e3ae342165a653d94872df393483209"];
+        post: operations["2aabc461bc1236b9c777497ed83e95a8"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/service-provider/account-settings/business/verify-business-account": {
+    "/service-provider/business-members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active, pending and archive business members.
+         * @description Returns members for the requested business_id with active_count, pending_count, archive_count and members arrays grouped by status.
+         */
+        get: operations["191d8ebe38ce674dcacd2fa54afc535c"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get business member details.
+         * @description Returns one member with joined_at and assigned service sub-categories for the provided business_id.
+         */
+        get: operations["5796f2c4118ddf19ffd555245b23bb84"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove business member.
+         * @description Soft-removes a member by updating status to deleted for the provided business_id.
+         */
+        delete: operations["8039815b4ea8bb39c5530036f3371e0b"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-members/{memberId}/resend-invitation": {
         parameters: {
             query?: never;
             header?: never;
@@ -634,10 +734,274 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Mark business verification complete.
-         * @description Sets ProviderBusiness.business_verification to true for authenticated provider business account.
+         * Resend business member invitation.
+         * @description Resends invitation email for a pending member and extends invitation expiry by 7 days.
          */
-        post: operations["c590e94545c94236dbdb0ba4d1d92357"];
+        post: operations["1e5d1d2af3d406c45c362bc3fbfb107a"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-members/{memberId}/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add one service to member.
+         * @description Assigns one service sub-category to selected business member for the provided business_id.
+         */
+        post: operations["77fbbf99d20de449b55fbd9228fc1a2c"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-members/{memberId}/services/{serviceSubCategoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove one service from member.
+         * @description Removes one assigned service sub-category from selected business member for the provided business_id.
+         */
+        delete: operations["18f30792a29fa650c80d6409fce227bf"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create business profile.
+         * @description Creates a business record for authenticated provider profile and assigns service sub-categories.
+         */
+        post: operations["bc7e1760f2d320fed82c6ef9dd6795fc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/update/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update business profile.
+         * @description Updates business details and assigned service sub-categories for the authenticated provider.
+         */
+        post: operations["623ecccb95052ed19b6a986e69169bcd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List businesses.
+         * @description Returns businesses with business id, business name, and assigned service name/logo.
+         */
+        get: operations["4d74fa6bbd6b1001116c42fe2a4c8df2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/edit/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get business for update.
+         * @description Returns full business record with assigned service sub-categories for update form prefill.
+         */
+        get: operations["e815a530df7c7ba8185ba5a156d1c714"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/delete/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete business.
+         * @description Soft deletes selected business for authenticated provider.
+         */
+        delete: operations["39be735c46242adcf9d0dd1d8027c176"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/status/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle business status.
+         * @description Toggles business status true/false without request payload.
+         */
+        post: operations["548159782d05aefe7c8eedcae62c6da0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * General API for listing service categories and subcategories.
+         * @description Returns every active category with its active sub_category_list by default. There is no default category limit. Optional search filters by category or sub-category name.
+         */
+        get: operations["3b80ceb71a4f941bbc759fd5b27c52bf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/services/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active service categories only.
+         * @description Returns all active, non-deleted service categories using category_id, category_name, and category_logo. This endpoint has no search or pagination parameters and does not include subcategories.
+         */
+        get: operations["fad65df9b807a3f4effae4dbfb5fe5a7"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/services/categories/{categoryId}/subcategories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active subcategories for one category.
+         * @description Pass one active category ID. Returns only its active, non-deleted subcategories using sub_category_id, sub_category_name, and sub_category_logo. This endpoint has no search or pagination parameters.
+         */
+        get: operations["f2e93a7cf3b6e19aaf20f0c8d51b1783"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business/{id}/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get business services.
+         * @description Returns only the subcategories assigned to the selected business. Each item includes its parent category id, name, and logo.
+         */
+        get: operations["f62f820e5d606b4b60cd341d618e37e7"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/date-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get provider date availability override.
+         * @description Returns availability override for a single date. If no override exists, returns is_override=false payload.
+         */
+        get: operations["77ccf845f74523131fe242fd0ced9675"];
+        put?: never;
+        /**
+         * Create or update provider date availability override.
+         * @description Creates or updates single-date availability override without modifying weekly availability.
+         */
+        post: operations["9c35d72333b190df15955dd2f7419062"];
         delete?: never;
         options?: never;
         head?: never;
@@ -715,7 +1079,7 @@ export interface paths {
         put?: never;
         /**
          * Complete service provider profile setup.
-         * @description Saves personal profile details and provider type. For business providers, business name and location references are required. If the email is not yet verified, this endpoint sends a verification email and still returns saved profile data.
+         * @description Saves provider personal details (name, email, optional phone). If the email is not yet verified, this endpoint sends a verification email and returns saved profile data.
          */
         post: operations["8827ba91ebd9357ddb9c93dcd0ec7730"];
         delete?: never;
@@ -733,7 +1097,7 @@ export interface paths {
         };
         /**
          * Get authenticated provider profile summary.
-         * @description Returns authenticated user details along with provider_type, profile_image, profile verification flags, and business summary when the provider type is business.
+         * @description Returns authenticated user details along with profile image and background verification status.
          */
         get: operations["196658d5fd4c5949852048a09979e245"];
         put?: never;
@@ -778,6 +1142,259 @@ export interface paths {
          * @description Verifies the OTP received from send-delete-account-otp and permanently deactivates the account. Requires no active orders. Revokes all tokens and removes device tokens on success.
          */
         post: operations["401438c3915898fee9d2914b92e978cd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/service-form-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get resolved service form template
+         * @description Returns frontend-ready flat fields merged from generic, category, and optional matching child templates. Each field includes field_scope and submit_as so clients know whether to send top-level multipart keys, answers_json, dynamic_files, pricing_fields, certificate_bundle values, or display-only fields. The address field is display-only: render the provider default address from GET /service-provider/addresses/default and do not submit address_id. Dynamic textarea values in answers_json are stored verbatim. The only acknowledgement checkbox is the generic information_accuracy_acknowledgement field on the final screen; file-upload fields do not expose separate document-consent checkboxes. Use label for display, is_required/required_when for required indicators, and fulfillment codes for conditions. Individual currency country comes from the provider default customer_addresses.country_id. Business currency country comes from the selected business country_id, and the requested subcategory must be assigned to that business. Currency is fetched through currencies.country_id. Submit service_radius and service_radius_unit separately. Charge in USD is frontend-only: show it only for online_remote when currency_context.can_charge_in_usd is true, and submit only the final currency code.
+         */
+        get: operations["getResolvedServiceFormTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active service categories
+         * @description Without business_id, returns all active, non-deleted service categories. With business_id, returns only categories containing at least one active subcategory assigned to that owned active business. The response shape is unchanged and does not include subcategories.
+         */
+        get: operations["listProviderServiceCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/categories/{categoryId}/subcategories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active subcategories for one category
+         * @description Without business_id, returns all active, non-deleted subcategories belonging to the supplied active category. With business_id, returns only subcategories in that category which are assigned to the owned active business. The response shape is unchanged.
+         */
+        get: operations["listProviderServiceSubcategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List lightweight My Services cards
+         * @description Returns only card data: required IDs, category/subcategory names, service title, first portfolio image, provider type, optional business name, and status. It intentionally does not return nested category objects, descriptions, fulfillment, pricing, certificates, or dynamic answers. Use GET /services/{id} after the user opens Service Details.
+         */
+        get: operations["listProviderServices"];
+        put?: never;
+        /**
+         * Create a service from the resolved template
+         * @description CREATION FLOW: First call GET /service-provider/service-form-template with category_id, subcategory_id, provider_type, and business_id when applicable. Render its merged Generic -> Category -> optional Subcategory fields. Submit generic configuration.value_key values at the multipart top level, dynamic non-file values in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. When fulfillment includes provider_location or pickup_delivery, the backend snapshots the provider's default customer_addresses record into service_info. category_id and subcategory_id are fixed after creation. New services use status=3 pending_review. Individual currency comes from the provider default address country; business currency comes from the selected owned business country. Submit the final currency code. charge_in_usd is never stored.
+         */
+        post: operations["createProviderService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get complete read-only service details
+         * @description Returns all persisted service details for the Service Details screen. Relations are eager loaded with selected columns to avoid N+1 queries: category/subcategory, provider/business context, service information and location, fulfillment, portfolios, certificates, pricing, and labeled dynamic template answers.
+         */
+        get: operations["getProviderServiceDetails"];
+        put?: never;
+        post?: never;
+        /**
+         * Logically delete a service with reasons
+         * @description Stores selected reasons and sets status=2. Other requires other_reason. Service records and files remain for history.
+         */
+        delete: operations["deleteProviderService"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Edit Service overview
+         * @description Small payload for the first Edit Service screen. search_setting.is_active mirrors status=1. can_update is true only for active/inactive services. Use the existing status endpoint for the Active toggle. Follow the section endpoints for category, information, and pricing.
+         */
+        get: operations["getProviderServiceEditOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get immutable service category and subcategory
+         * @description Read-only. Category and subcategory are fixed when the service is created. There is intentionally no category update endpoint. To use another category/subcategory, create a new service.
+         */
+        get: operations["getProviderServiceCategory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/information": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get template-driven service information for editing
+         * @description Returns the current merged template without the pricing field and the saved form values. Render template.fields in order. Generic values come from current_values; category/subcategory dynamic values come from current_values.answers_json. Existing portfolio/certificate IDs are used for optional deletion. Category, subcategory, provider type, business, and pricing are not editable here.
+         */
+        get: operations["getProviderServiceInformation"];
+        put?: never;
+        /**
+         * Update generic and dynamic service information
+         * @description Updates only the fields returned by GET /services/{id}/information. The backend resolves category, subcategory, provider type, business, and template from the stored service. Those fields and all pricing fields are prohibited. Existing files remain unless their IDs are listed for deletion; at least one portfolio image must remain. Dynamic values and files are validated against the currently resolved template.
+         */
+        post: operations["updateProviderServiceInformation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get saved service pricing
+         * @description Returns the stored pricing record only. The pricing edit form is fixed on the frontend. fulfillment_codes and charge_in_usd are included as edit hints for USD override display.
+         */
+        get: operations["getProviderServicePricing"];
+        put?: never;
+        /**
+         * Update service pricing only
+         * @description For fixed_price submit amount, final currency code, and a price_unit_id returned by GET /services/{id}/pricing. For quote_required these fields are optional; any supplied values are validated and stored. Category/subcategory/provider/business and charge_in_usd are prohibited and never changed here. USD is accepted only when the stored service fulfillment and currency context permit it.
+         */
+        post: operations["updateProviderServicePricing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle the Edit Service Active/Search Setting
+         * @description This endpoint has no request body. It reads the stored service status and toggles 1 (active) to 0 (inactive), or 0 to 1. Pending-review services cannot be changed manually, and deleted services are not accessible through this route.
+         */
+        post: operations["changeProviderServiceStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete one file from an existing service
+         * @description Deletes one database reference and its physical public-disk file without recreating the service. Use file_type=portfolio or certificate with file_id. Use file_type=dynamic with the exact resolved field_key and stored file_path. The service must belong to the authenticated provider. At least one portfolio image must remain, and a dynamic field cannot be reduced below its active required/minimum_files rule.
+         */
+        delete: operations["deleteProviderServiceFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/delete-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List service deletion reasons */
+        get: operations["getProviderServiceDeleteReasons"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -871,8 +1488,11 @@ export interface components {
             /** @example Profile verification updated successfully */
             message?: string;
             data?: {
-                /** @example true */
-                background_verification?: boolean;
+                /**
+                 * @example Verified
+                 * @enum {string}
+                 */
+                background_verification?: "Pending" | "Verified" | "Not Verified";
             };
             /** @example [] */
             meta?: unknown[];
@@ -955,6 +1575,16 @@ export interface components {
             longitude: number;
             /** @example true */
             is_default?: boolean;
+            /** @example United States */
+            country_name?: string | null;
+            /** @example US */
+            country_short_name?: string | null;
+            /** @example Texas */
+            state_name?: string | null;
+            /** @example TX */
+            state_code?: string | null;
+            /** @example Houston */
+            city_name?: string | null;
         };
         ProviderAddressListResponse: {
             /** @example Success */
@@ -982,6 +1612,11 @@ export interface components {
              */
             email: string;
             /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
+            /**
              * @description Optional device token used for push notifications.
              * @example abc123-device-token
              */
@@ -1004,6 +1639,11 @@ export interface components {
              * @example +15551234567
              */
             phone: string;
+            /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
             /**
              * @description Optional device token used for push notifications.
              * @example abc123-device-token
@@ -1033,6 +1673,11 @@ export interface components {
              * @example 1234
              */
             otp: string;
+            /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
         };
         ConfirmNumberRequest: {
             /**
@@ -1045,6 +1690,11 @@ export interface components {
              * @example 1234
              */
             otp: string;
+            /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
         };
         FacebookLoginRequest: {
             /**
@@ -1063,6 +1713,11 @@ export interface components {
              * @example Doe
              */
             last_name: string;
+            /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
             /**
              * @description Optional device token used for push notifications.
              * @example abc123-device-token
@@ -1097,6 +1752,11 @@ export interface components {
              */
             last_name: string;
             /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
+            /**
              * @description Optional device token used for push notifications.
              * @example abc123-device-token
              */
@@ -1119,6 +1779,11 @@ export interface components {
              */
             apple_user_id: string;
             /**
+             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
+             * @example true
+             */
+            restore?: boolean | null;
+            /**
              * @description Optional device token used for push notifications.
              * @example abc123-device-token
              */
@@ -1133,6 +1798,27 @@ export interface components {
              * @example REF123
              */
             referral_code?: string;
+        };
+        SendPermanentDeleteOtpRequest: {
+            /**
+             * Format: email
+             * @description Email for a previously deleted provider account.
+             * @example provider@example.com
+             */
+            email: string;
+        };
+        ConfirmPermanentDeleteOtpRequest: {
+            /**
+             * Format: email
+             * @description Email for the deleted provider account.
+             * @example provider@example.com
+             */
+            email: string;
+            /**
+             * @description Four-digit OTP received on email.
+             * @example 1234
+             */
+            otp: string;
         };
         ResendOtpEmailRequest: {
             /**
@@ -1209,26 +1895,16 @@ export interface components {
              */
             device_token?: unknown;
             /**
-             * @description Existing service provider type when the user has completed a provider profile.
-             * @example individual
-             * @enum {string|null}
-             */
-            provider_type?: "individual" | "business" | null;
-            /**
              * @description Provider profile image URL.
              * @example /storage/profile/1710000000_abcd.jpg
              */
             profile_image?: string | null;
             /**
-             * @description True when profile background check was approved.
-             * @example false
+             * @description Provider profile background verification status.
+             * @example Pending
+             * @enum {string}
              */
-            background_verification?: boolean;
-            /**
-             * @description True when business verification was approved.
-             * @example false
-             */
-            business_verification?: boolean;
+            background_verification?: "Pending" | "Verified" | "Not Verified";
         };
         OtpLoginResponse: {
             /** @example Success */
@@ -1252,56 +1928,637 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
-        ProviderBusinessTypeRequest: {
+        ProviderAvailabilitySlotInput: {
+            /** @example 09:00 */
+            start_time: string;
+            /** @example 17:00 */
+            end_time: string;
+        };
+        ProviderAvailabilityApplyToAllDayInput: {
+            /** @example 1 */
+            day_id: number;
+        };
+        ProviderAvailabilityDayInput: {
+            /** @example 1 */
+            day_id: number;
+            slots: components["schemas"]["ProviderAvailabilitySlotInput"][];
+        };
+        /**
+         * @example {
+         *       "timezone_id": 4,
+         *       "is_available": true,
+         *       "apply_to_all": true,
+         *       "days": [
+         *         {
+         *           "day_id": 1
+         *         },
+         *         {
+         *           "day_id": 2
+         *         }
+         *       ],
+         *       "slots": [
+         *         {
+         *           "start_time": "09:00",
+         *           "end_time": "17:00"
+         *         }
+         *       ]
+         *     }
+         */
+        ProviderAvailabilitySaveApplyToAllRequest: {
+            /** @example 4 */
+            timezone_id: number;
+            /** @example true */
+            is_available: boolean;
+            /** @example true */
+            apply_to_all: boolean;
+            days: components["schemas"]["ProviderAvailabilityApplyToAllDayInput"][];
+            slots: components["schemas"]["ProviderAvailabilitySlotInput"][];
+        };
+        /**
+         * @example {
+         *       "timezone_id": 4,
+         *       "is_available": true,
+         *       "apply_to_all": false,
+         *       "days": [
+         *         {
+         *           "day_id": 1,
+         *           "slots": [
+         *             {
+         *               "start_time": "09:00",
+         *               "end_time": "17:00"
+         *             },
+         *             {
+         *               "start_time": "18:00",
+         *               "end_time": "20:00"
+         *             }
+         *           ]
+         *         },
+         *         {
+         *           "day_id": 2,
+         *           "slots": [
+         *             {
+         *               "start_time": "10:00",
+         *               "end_time": "15:00"
+         *             }
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        ProviderAvailabilitySaveByDaysRequest: {
+            /** @example 4 */
+            timezone_id: number;
+            /** @example true */
+            is_available: boolean;
+            /** @example false */
+            apply_to_all: boolean;
+            days: components["schemas"]["ProviderAvailabilityDayInput"][];
+        };
+        ProviderAvailabilitySlot: {
+            /** @example 1 */
+            id?: number;
+            /** @example 09:00 */
+            start_time?: string;
+            /** @example 17:00 */
+            end_time?: string;
+        };
+        ProviderAvailabilityDay: {
+            /** @example 1 */
+            day_id?: number;
+            /** @example Monday */
+            day_name?: string;
+            /** @example Mon */
+            short_name?: string;
+            slots?: components["schemas"]["ProviderAvailabilitySlot"][] | null;
+        };
+        ProviderAvailabilityPayload: {
+            timezone?: {
+                /** @example 4 */
+                id?: number | null;
+                /** @example America/New_York */
+                name?: string | null;
+            };
+            /** @example true */
+            is_available?: boolean;
+            /** @example false */
+            apply_to_all?: boolean;
+            /** @description Shared slots only when apply_to_all=true; otherwise empty array. */
+            slots?: components["schemas"]["ProviderAvailabilitySlot"][];
+            days?: components["schemas"]["ProviderAvailabilityDay"][];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Availability fetched successfully.",
+         *       "data": {
+         *         "timezone": {
+         *           "id": 4,
+         *           "name": "America/New_York"
+         *         },
+         *         "is_available": true,
+         *         "apply_to_all": true,
+         *         "slots": [
+         *           {
+         *             "id": 1,
+         *             "start_time": "09:00",
+         *             "end_time": "17:00"
+         *           }
+         *         ],
+         *         "days": [
+         *           {
+         *             "day_id": 1,
+         *             "day_name": "Monday",
+         *             "short_name": "Mon"
+         *           },
+         *           {
+         *             "day_id": 2,
+         *             "day_name": "Tuesday",
+         *             "short_name": "Tue"
+         *           }
+         *         ]
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ProviderAvailabilityResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Availability fetched successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderAvailabilityPayload"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Availability saved successfully.",
+         *       "data": {
+         *         "timezone": {
+         *           "id": 4,
+         *           "name": "America/New_York"
+         *         },
+         *         "is_available": true,
+         *         "apply_to_all": false,
+         *         "slots": [],
+         *         "days": [
+         *           {
+         *             "day_id": 1,
+         *             "day_name": "Monday",
+         *             "short_name": "Mon",
+         *             "slots": [
+         *               {
+         *                 "id": 1,
+         *                 "start_time": "09:00",
+         *                 "end_time": "17:00"
+         *               },
+         *               {
+         *                 "id": 2,
+         *                 "start_time": "18:00",
+         *                 "end_time": "20:00"
+         *               }
+         *             ]
+         *           }
+         *         ]
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ProviderAvailabilitySaveSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Availability saved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderAvailabilityPayload"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Availability status updated successfully.",
+         *       "data": {
+         *         "is_available": false
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ProviderAvailabilityToggleStatusSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Availability status updated successfully. */
+            message?: string;
+            data?: {
+                /** @example false */
+                is_available?: boolean;
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Days list fetched successfully.",
+         *       "data": [
+         *         {
+         *           "id": 1,
+         *           "day_name": "Monday",
+         *           "short_name": "Mon"
+         *         },
+         *         {
+         *           "id": 2,
+         *           "day_name": "Tuesday",
+         *           "short_name": "Tue"
+         *         }
+         *       ],
+         *       "meta": []
+         *     }
+         */
+        ProviderAvailabilityDaysListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Days list fetched successfully. */
+            message?: string;
+            data?: {
+                /** @example 1 */
+                id?: number;
+                /** @example Monday */
+                day_name?: string;
+                /** @example Mon */
+                short_name?: string;
+            }[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Timezones list fetched successfully.",
+         *       "data": [
+         *         {
+         *           "id": 1,
+         *           "timezone": "America/New_York",
+         *           "country_name": "United States"
+         *         },
+         *         {
+         *           "id": 2,
+         *           "timezone": "America/Chicago",
+         *           "country_name": "United States"
+         *         }
+         *       ],
+         *       "meta": []
+         *     }
+         */
+        ProviderAvailabilityTimezoneListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Timezones list fetched successfully. */
+            message?: string;
+            data?: {
+                /** @example 1 */
+                id?: number;
+                /** @example America/New_York */
+                timezone?: string;
+                /** @example United States */
+                country_name?: string | null;
+            }[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityValidationErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example End time must be greater than start time. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityUnauthorizedErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Unauthenticated. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityForbiddenErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Forbidden. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityNotFoundErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Provider profile not found. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityTooManyRequestsErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Too Many Attempts. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderAvailabilityServerErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Something went wrong */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberInviteRequest: {
+            /** @example 10 */
+            business_id: number;
             /**
-             * @description When provider_type is individual: first_name and last_name are required. When provider_type is business: business_name, business_address, country_id, state_id, and city_id are required.
-             * @example business
+             * Format: email
+             * @example member@example.com
+             */
+            email: string;
+            /** @description Service sub-categories assigned to the invited member. */
+            service_sub_category_ids: number[];
+            /** @example Please join our business workspace. */
+            message?: string | null;
+        };
+        BusinessMemberAcceptRequest: {
+            /** @description Encrypted invitation token from email redirect URL. */
+            invite_token: string;
+        };
+        BusinessMemberServiceAssignRequest: {
+            /** @example 10 */
+            business_id: number;
+            /** @example 12 */
+            service_sub_category_id: number;
+        };
+        BusinessMemberStatusUpdateRequest: {
+            /** @example 10 */
+            business_id: number;
+            /**
+             * @example active
              * @enum {string}
              */
-            provider_type: "individual" | "business";
+            status: "pending" | "active" | "deleted";
+        };
+        BusinessMemberSubCategoryModel: {
+            /** @example 12 */
+            sub_category_id?: number;
+            /** @example Plumbing */
+            sub_category_name?: string;
+            /** @example true */
+            sub_category_status?: boolean;
+            /** @example services/icons/plumbing.png */
+            sub_category_icon?: string | null;
+            /** @example services/banners/plumbing.png */
+            sub_category_banner?: string | null;
+            /** @example 3 */
+            category_id?: number;
+        };
+        BusinessMemberModel: {
+            /** @example 5 */
+            id?: number;
+            /** @example John Doe */
+            name?: string | null;
             /**
-             * @description Required when provider_type=individual.
-             * @example John
+             * Format: email
+             * @example member@example.com
              */
-            first_name?: string | null;
+            email?: string;
             /**
-             * @description Required when provider_type=individual.
-             * @example Doe
+             * @example pending
+             * @enum {string}
              */
-            last_name?: string | null;
-            /**
-             * @description Required when provider_type=business.
-             * @example Acme Services
-             */
-            business_name?: string | null;
-            /**
-             * @description Required when provider_type=business.
-             * @example 123 Business Rd
-             */
-            business_address?: string | null;
-            /**
-             * @description Required when provider_type=business.
-             * @example 233
-             */
-            country_id?: number | null;
-            /**
-             * @description Required when provider_type=business.
-             * @example 3925
-             */
-            state_id?: number | null;
-            /**
-             * @description Required when provider_type=business.
-             * @example 125878
-             */
-            city_id?: number | null;
+            status?: "pending" | "active" | "deleted";
+            /** Format: date-time */
+            joined_at?: string | null;
+            assigned_service_sub_categories?: components["schemas"]["BusinessMemberSubCategoryModel"][];
+        };
+        BusinessMembersListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Members retrieved successfully */
+            message?: string;
+            data?: {
+                /** @example 2 */
+                active_count?: number;
+                /** @example 1 */
+                pending_count?: number;
+                /** @example 0 */
+                archive_count?: number;
+                active_members?: components["schemas"]["BusinessMemberModel"][];
+                archive_members?: components["schemas"]["BusinessMemberModel"][];
+                pending_members?: components["schemas"]["BusinessMemberModel"][];
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Member retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["BusinessMemberModel"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberServiceMutationResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Member service added successfully */
+            message?: string;
+            data?: {
+                /** @example 5 */
+                member_id?: number;
+                /** @example 12 */
+                service_sub_category_id?: number;
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberStatusMutationResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Member status updated successfully */
+            message?: string;
+            data?: {
+                /** @example 5 */
+                member_id?: number;
+                /** @example active */
+                status?: string;
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberInviteSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Invitation sent successfully. */
+            message?: string;
+            /** @example [] */
+            data?: unknown[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberAcceptSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Invitation accepted successfully. */
+            message?: string;
+            /** @example  */
+            data?: string;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberResendSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Invitation resent successfully. */
+            message?: string;
+            /** @example [] */
+            data?: unknown[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberRemoveSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Member removed successfully. */
+            message?: string;
+            /** @example [] */
+            data?: unknown[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberValidationErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example The email field must be a valid email address. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberNotFoundErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Business profile not found. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberUnauthorizedErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Unauthenticated. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberExpiredInvitationErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Invitation has expired. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        BusinessMemberServerErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Something went wrong */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessCreateRequest: {
+            /** @example Acme Services */
+            business_name: string;
+            /** @example 123 Business Rd */
+            business_address: string;
+            /** @example Reliable local business */
+            about: string | null;
+            /** @example 233 */
+            country_id: number;
+            /** @example 3925 */
+            state_id: number;
+            /** @example 125878 */
+            city_id: number;
             /** @example 77494 */
             zipcode?: string | null;
+            /**
+             * Format: binary
+             * @description Upload file (pdf/png/jpg/jpeg), max 5MB.
+             */
+            business_documents?: string | null;
+            /**
+             * Format: binary
+             * @description Upload file (pdf/png/jpg/jpeg), max 5MB.
+             */
+            government_issued_id?: string | null;
+            /** @example 12-3456789 */
+            business_ein?: string | null;
+            service_sub_category_ids: number[];
+        };
+        ProviderBusinessUpdateRequest: components["schemas"]["ProviderBusinessCreateRequest"];
+        ProviderBusinessServiceItem: {
+            /** @example 12 */
+            sub_category_id?: number;
+            /** @example Pet Care */
+            sub_category_name?: string;
+            /** @example /storage/sub-category/logo.png */
+            sub_category_logo?: string | null;
+        };
+        ProviderBusinessUpsertData: {
+            /** @example 31 */
+            business_id?: number;
+            /** @example Acme Services */
+            business_name?: string;
+            /** @example Reliable local business */
+            about?: string | null;
+            services?: components["schemas"]["ProviderBusinessServiceItem"][];
+        };
+        ProviderBusinessUpsertResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Business created successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderBusinessUpsertData"];
+            /** @example [] */
+            meta?: unknown[];
         };
         ProviderBusinessModel: {
             /** @example 31 */
             id?: number;
             /** @example 12 */
             user_id?: number;
+            /** @example 7 */
+            provider_profile_id?: number | null;
             /** @example Acme Services */
             business_name?: string;
             /** @example 123 Business Rd */
@@ -1314,10 +2571,151 @@ export interface components {
             city_id?: number;
             /** @example 77494 */
             zipcode?: string | null;
+            /** @example uploads/business-doc.pdf */
+            business_documents?: string | null;
+            /** @example uploads/government-id.pdf */
+            government_issued_id?: string | null;
+            /** @example 12-3456789 */
+            business_ein?: string | null;
+            /** @example true */
+            status?: boolean;
             /** @example false */
             business_verification?: boolean;
             /** @example Reliable local business */
             about?: string | null;
+        };
+        ProviderBusinessListItem: {
+            /** @example 31 */
+            business_id?: number;
+            /** @example Acme Services */
+            business_name?: string;
+            /** @example Reliable local business */
+            about?: string | null;
+            /** @example true */
+            status?: boolean;
+            /** @example false */
+            business_verification?: boolean;
+            services?: components["schemas"]["ProviderBusinessServiceItem"][];
+        };
+        ProviderBusinessListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Businesses retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderBusinessListItem"][];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessEditData: {
+            /** @example 31 */
+            business_id?: number;
+            /** @example 7 */
+            provider_profile_id?: number | null;
+            /** @example Acme Services */
+            business_name?: string;
+            /** @example Reliable local business */
+            about?: string | null;
+            /** @example 123 Business Rd */
+            business_address?: string;
+            /** @example 233 */
+            country_id?: number;
+            /** @example 3925 */
+            state_id?: number;
+            /** @example 125878 */
+            city_id?: number;
+            /** @example 77494 */
+            zipcode?: string | null;
+            /** @example uploads/business-doc.pdf */
+            business_documents?: string | null;
+            /** @example uploads/government-id.pdf */
+            government_issued_id?: string | null;
+            /** @example 12-3456789 */
+            business_ein?: string | null;
+            /** @example true */
+            status?: boolean;
+            /** @example false */
+            business_verification?: boolean;
+            services?: components["schemas"]["ProviderBusinessServiceItem"][];
+            service_sub_category_ids?: number[];
+        };
+        ProviderBusinessEditResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Business retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderBusinessEditData"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderServiceCategoryItem: {
+            /** @example 1 */
+            category_id?: number;
+            /** @example Home Services */
+            category_name?: string;
+            /** @example /storage/category/logo.png */
+            category_logo?: string | null;
+            sub_category_list?: components["schemas"]["ProviderBusinessServiceItem"][];
+        };
+        ProviderServiceCategoryListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Services retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderServiceCategoryItem"][];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderServiceCategorySummaryItem: {
+            /** @example 1 */
+            category_id?: number;
+            /** @example Home Services */
+            category_name?: string;
+            /** @example /storage/category/logo.png */
+            category_logo?: string | null;
+        };
+        ProviderServiceCategorySummaryListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Service categories retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderServiceCategorySummaryItem"][];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderServiceSubCategoryListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Service sub categories retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderBusinessServiceItem"][];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessAssignedSubCategoryItem: {
+            /** @example 12 */
+            sub_category_id?: number;
+            /** @example LashTech */
+            sub_category_name?: string;
+            /** @example /storage/service-sub-categories/icons/lash-tech.png */
+            sub_category_logo?: string | null;
+            /** @description Parent category of the assigned subcategory. */
+            category?: {
+                /** @example 2 */
+                category_id?: number;
+                /** @example Beauty */
+                category_name?: string;
+                /** @example /storage/service-categories/icons/beauty.png */
+                category_logo?: string | null;
+            } | null;
+        };
+        ProviderBusinessSubCategoriesResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Business sub categories retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["ProviderBusinessAssignedSubCategoryItem"][];
+            /** @example [] */
+            meta?: unknown[];
         };
         ProviderBusinessProfileResponse: {
             /** @example Success */
@@ -1392,6 +2790,70 @@ export interface components {
                 /** @example true */
                 business_verification?: boolean;
             };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessStatusToggleResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Business status updated successfully */
+            message?: string;
+            data?: {
+                /** @example 31 */
+                business_id?: number;
+                /** @example false */
+                status?: boolean;
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessDeleteSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Business deleted successfully */
+            message?: string;
+            /** @example [] */
+            data?: unknown[];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessValidationErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example The about field is required. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessNotFoundErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Business profile not found. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessUnauthorizedErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Unauthenticated. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderBusinessServerErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Something went wrong */
+            message?: string;
+            /** @example null */
+            data?: string | null;
             /** @example [] */
             meta?: unknown[];
         };
@@ -1552,6 +3014,174 @@ export interface components {
             /** @example 5 */
             last_page?: number;
         };
+        ProviderDateAvailabilitySlotInput: {
+            /** @example 17:00 */
+            start_time: string;
+            /** @example 18:30 */
+            end_time: string;
+        };
+        /**
+         * @example {
+         *       "available_date": "2026-02-17",
+         *       "is_available": true,
+         *       "timezone_id": 2,
+         *       "slots": [
+         *         {
+         *           "start_time": "17:00",
+         *           "end_time": "18:30"
+         *         }
+         *       ]
+         *     }
+         */
+        ProviderDateAvailabilityUpsertRequest: {
+            /**
+             * Format: date
+             * @example 2026-02-17
+             */
+            available_date: string;
+            /** @example true */
+            is_available: boolean;
+            /** @example 2 */
+            timezone_id: number;
+            slots?: components["schemas"]["ProviderDateAvailabilitySlotInput"][];
+        };
+        ProviderDateAvailabilitySlot: {
+            /** @example 1 */
+            id?: number;
+            /** @example 5:00 PM */
+            start_time?: string;
+            /** @example 6:30 PM */
+            end_time?: string;
+        };
+        ProviderDateAvailabilityPayload: {
+            /**
+             * Format: date
+             * @example 2026-02-17
+             */
+            date?: string;
+            timezone?: {
+                /** @example 2 */
+                id?: number | null;
+                /** @example America/Chicago */
+                name?: string | null;
+            };
+            /** @example true */
+            is_override?: boolean;
+            /** @example true */
+            is_available?: boolean | null;
+            slots?: components["schemas"]["ProviderDateAvailabilitySlot"][];
+            /** @example [] */
+            bookings?: Record<string, never>[];
+        };
+        ProviderDateAvailabilitySuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Date availability saved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderDateAvailabilityPayload"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Date availability fetched successfully.",
+         *       "data": {
+         *         "date": "2026-02-17",
+         *         "timezone": {
+         *           "id": 2,
+         *           "name": "America/Chicago"
+         *         },
+         *         "is_override": true,
+         *         "is_available": true,
+         *         "slots": [
+         *           {
+         *             "id": 1,
+         *             "start_time": "5:00 PM",
+         *             "end_time": "6:30 PM"
+         *           }
+         *         ],
+         *         "bookings": []
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ProviderDateAvailabilityGetSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Date availability fetched successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderDateAvailabilityPayload"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Date availability fetched successfully.",
+         *       "data": {
+         *         "date": "2026-02-17",
+         *         "timezone": {
+         *           "id": 2,
+         *           "name": "America/Chicago"
+         *         },
+         *         "is_override": false,
+         *         "is_available": null,
+         *         "slots": [],
+         *         "bookings": []
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ProviderDateAvailabilityGetNoOverrideSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Date availability fetched successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderDateAvailabilityPayload"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderDateAvailabilityValidationErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example The available date field must be a date after or equal to today. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderDateAvailabilityNotFoundErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Provider profile not found. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderDateAvailabilityUnauthorizedErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Unauthenticated. */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ProviderDateAvailabilityServerErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Something went wrong */
+            message?: string;
+            /** @example null */
+            data?: string | null;
+            /** @example [] */
+            meta?: unknown[];
+        };
         ProviderCountryItem: {
             /** @example 233 */
             id?: number;
@@ -1605,12 +3235,6 @@ export interface components {
         };
         ProviderProfileSaveRequest: {
             /**
-             * @description Determines whether the provider operates as an individual or registered business.
-             * @example individual
-             * @enum {string}
-             */
-            provider_type: "individual" | "business";
-            /**
              * @description Provider first name saved on the user record.
              * @example John
              */
@@ -1622,53 +3246,18 @@ export interface components {
             last_name: string;
             /**
              * Format: email
-             * @description Provider email address. It must be unique except for the authenticated user's own email. If the user's current email is already verified, this endpoint does not overwrite it; use update-email for an email change.
+             * @description Provider email address. It must be unique except for the authenticated user's own email.
              * @example provider@example.com
              */
             email: string;
             /**
-             * @description Optional provider phone number. Must be unique and match the phone pattern when supplied. If the user's current phone is already verified, this endpoint does not overwrite it.
+             * @description Optional provider phone number. Must be unique and match the phone pattern when supplied.
              * @example +15551234567
              */
             phone_number?: string | null;
-            /**
-             * @description Legal business name. Required when provider_type is business.
-             * @example Acme Services
-             */
-            business_name?: string;
-            /**
-             * @description Business street address. Required when provider_type is business.
-             * @example 123 Business Rd
-             */
-            business_address?: string;
-            /**
-             * @description Existing country ID. Required when provider_type is business.
-             * @example 1
-             */
-            country_id?: number;
-            /**
-             * @description Existing state ID. Required when provider_type is business.
-             * @example 10
-             */
-            state_id?: number;
-            /**
-             * @description Existing city ID. Required when provider_type is business.
-             * @example 100
-             */
-            city_id?: number;
-            /**
-             * @description Optional five-digit ZIP code saved on the user and business records.
-             * @example 12345
-             */
-            zipcode?: string | null;
         };
         ProviderProfileData: {
             user?: components["schemas"]["AuthUser"];
-            /**
-             * @example business
-             * @enum {string}
-             */
-            provider_type?: "individual" | "business";
         };
         ProviderProfileResponse: {
             /** @example Success */
@@ -1743,18 +3332,13 @@ export interface components {
         };
         AuthUserProfileData: {
             user?: components["schemas"]["AuthUser"];
-            /**
-             * @example business
-             * @enum {string|null}
-             */
-            provider_type?: "individual" | "business" | null;
             /** @example /storage/profile/1710000000_abcd.jpg */
             profile_image?: string | null;
-            /** @example false */
-            background_verification?: boolean;
-            /** @example false */
-            business_verification?: boolean;
-            business?: components["schemas"]["AuthUserBusinessSummary"];
+            /**
+             * @example Pending
+             * @enum {string}
+             */
+            background_verification?: "Pending" | "Verified" | "Not Verified";
         };
         AuthUserProfileResponse: {
             /** @example Success */
@@ -1764,6 +3348,921 @@ export interface components {
             data?: components["schemas"]["AuthUserProfileData"];
             /** @example [] */
             meta?: unknown[];
+        };
+        MyAffiliationItem: {
+            /** @example 7 */
+            business_member_id?: number;
+            /** @example Boston Pet Care Co. */
+            business_name?: string | null;
+            /** @example Mar 12, 2026 */
+            joined_at?: string | null;
+            sub_categories?: string[];
+        };
+        MyAffiliationsResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Affiliations retrieved successfully */
+            message?: string;
+            data?: components["schemas"]["MyAffiliationItem"][];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ServiceFormTemplateCategory: {
+            /** @example 6 */
+            id: number;
+            /** @example Education */
+            name: string;
+        };
+        ServiceFormTemplateSubcategory: {
+            /** @example 41 */
+            id: number;
+            /** @example 6 */
+            category_id: number;
+            /** @example Tutoring */
+            name: string;
+        };
+        ResolvedTemplateInformation: {
+            /** @example 9 */
+            id: number;
+            /**
+             * @description Template IDs from generic root through category and optional matching subcategory child.
+             * @example [
+             *       1,
+             *       5,
+             *       9
+             *     ]
+             */
+            template_chain: number[];
+        };
+        ServiceFormValueOption: {
+            /** @example mile */
+            label: string;
+            /** @example mile */
+            value: string;
+        };
+        FulfillmentTypeOption: {
+            /** @example Online / Remote */
+            label: string;
+            /**
+             * @description Submit this fulfillment_type_id.
+             * @example 4
+             */
+            value: number;
+            /**
+             * @description Use this code for visible_when and required_when.
+             * @example online_remote
+             */
+            code: string;
+        };
+        ServicePriceUnitOption: {
+            /** @example Per hour */
+            label: string;
+            /**
+             * @description Submit this as price_unit_id.
+             * @example 2
+             */
+            value: number;
+            /** @example per_hour */
+            code: string;
+        };
+        ServiceDefaultCurrency: {
+            /** @example INR */
+            code: string;
+            /** @example ? */
+            symbol: string;
+        };
+        /** @description Individual country comes from the provider default customer_addresses.country_id. Business country comes only from the selected owned ProviderBusiness::country_id. Currency is matched using currencies.country_id. */
+        ServiceCurrencyContext: {
+            /**
+             * @example business
+             * @enum {string}
+             */
+            provider_type: "individual" | "business";
+            /** @example 12 */
+            business_id: number | null;
+            /** @example 101 */
+            country_id: number;
+            default_currency: components["schemas"]["ServiceDefaultCurrency"];
+            /** @example false */
+            is_usd_currency: boolean;
+            /**
+             * @description True only when the resolved default code is not USD.
+             * @example true
+             */
+            can_charge_in_usd: boolean;
+        };
+        /** @description Frontend submit routing hint. Use this instead of value_key for special fields such as pricing, certificates, and dynamic uploads. */
+        ServiceFormSubmitAs: {
+            /**
+             * @example top_level
+             * @enum {string}
+             */
+            type: "top_level" | "answers_json" | "dynamic_files" | "pricing_fields" | "certificate_bundle" | "display_only";
+            /**
+             * @description Used when type=top_level or answers_json.
+             * @example title
+             */
+            key?: string | null;
+            /**
+             * @description Used when type=display_only.
+             * @example provider_default_address
+             */
+            source?: string | null;
+            /**
+             * @description Used when type=pricing_fields.
+             * @example [
+             *       "pricing_type",
+             *       "amount",
+             *       "currency",
+             *       "price_unit_id"
+             *     ]
+             */
+            keys?: string[] | null;
+            /**
+             * @description Used when type=dynamic_files.
+             * @example dynamic_file_keys
+             */
+            key_field?: string | null;
+            /**
+             * @description Used when type=dynamic_files.
+             * @example dynamic_files
+             */
+            file_field?: string | null;
+            /**
+             * @description Used when type=dynamic_files.
+             * @example cori_background_check
+             */
+            field_key?: string | null;
+            /**
+             * @description Used when type=certificate_bundle.
+             * @example certificate_description
+             */
+            description_key?: string | null;
+            /**
+             * @description Used when type=certificate_bundle.
+             * @example certificate_files
+             */
+            files_key?: string | null;
+            /**
+             * @description Used when type=certificate_bundle.
+             * @example true
+             */
+            multiple_files?: boolean | null;
+        };
+        /** @description Optional pricing inputs shown when pricing_type=quote_required. */
+        ServiceFormQuoteRequiredFields: {
+            amount?: {
+                /** @example Base Price */
+                label?: string;
+                /** @example false */
+                required?: boolean;
+                /** @example true */
+                visible?: boolean;
+            } | null;
+            currency?: {
+                /** @example false */
+                required?: boolean;
+                /** @example true */
+                visible?: boolean;
+            } | null;
+            price_unit_id?: {
+                /** @example Price Unit */
+                label?: string;
+                /** @example false */
+                required?: boolean;
+                /** @example true */
+                visible?: boolean;
+            } | null;
+        };
+        /** @description Frontend-ready flat field. Render from this object directly. submit_as overrides value_key for pricing, certificates, and dynamic files. */
+        ServiceFormTemplateField: {
+            /** @example service_radius */
+            field_key: string;
+            /** @example Service Area Radius */
+            label: string;
+            /**
+             * @example number
+             * @enum {string}
+             */
+            field_type: "text" | "textarea" | "number" | "multi_select" | "yes_no" | "address" | "file_upload" | "pricing";
+            /**
+             * @example generic
+             * @enum {string}
+             */
+            field_scope: "generic" | "dynamic";
+            submit_as: components["schemas"]["ServiceFormSubmitAs"];
+            /**
+             * @description Render the required indicator from this value or required_when. When true, textarea fields use validation.minimum_length >= 1, multi_select fields use validation.minimum_selections >= 1, and file_upload fields use minimum_files >= 1.
+             * @example true
+             */
+            is_required: boolean;
+            /** @example Service Information */
+            section?: string;
+            /** @example Enter your service area radius */
+            placeholder?: string | null;
+            /** @example Enter how far you are willing to travel to provide this service. */
+            help_text?: string | null;
+            /** @example service_radius */
+            value_key?: string;
+            /**
+             * @example {
+             *       "field_key": "fulfillment_types",
+             *       "operator": "contains_any",
+             *       "values": [
+             *         "customer_location",
+             *         "pickup_delivery"
+             *       ]
+             *     }
+             */
+            visible_when?: Record<string, never> | null;
+            /**
+             * @example {
+             *       "field_key": "fulfillment_types",
+             *       "operator": "contains_any",
+             *       "values": [
+             *         "customer_location",
+             *         "pickup_delivery"
+             *       ]
+             *     }
+             */
+            required_when?: Record<string, never> | null;
+            /**
+             * @example {
+             *       "data_type": "number",
+             *       "minimum": 0.01,
+             *       "maximum": 99999999.99
+             *     }
+             */
+            validation?: Record<string, never> | null;
+            /** @description Resolved options. Master-backed options use label, value, and code; static dynamic options use label and value. */
+            options?: Record<string, never>[];
+            /** @example service_radius_unit */
+            unit_value_key?: string | null;
+            /** @example Select unit */
+            unit_placeholder?: string | null;
+            unit_options?: components["schemas"]["ServiceFormValueOption"][];
+            /**
+             * @example {
+             *       "data_type": "string",
+             *       "allowed_values": [
+             *         "mile",
+             *         "km"
+             *       ],
+             *       "minimum_length": 2,
+             *       "maximum_length": 4
+             *     }
+             */
+            unit_validation?: Record<string, never> | null;
+            /** @example true */
+            multiple?: boolean | null;
+            /** @example 0 */
+            minimum_files?: number | null;
+            /** @example 10 */
+            maximum_files?: number | null;
+            allowed_file_types?: string[];
+            allowed_extensions?: string[];
+            /** @example certificate_description */
+            description_key?: string | null;
+            /** @example certificate_files */
+            files_key?: string | null;
+            pricing_types?: components["schemas"]["ServiceFormValueOption"][];
+            fixed_price_fields?: Record<string, never> | null;
+            quote_required_fields?: components["schemas"]["ServiceFormQuoteRequiredFields"];
+            /** @description Frontend-only. Submit the final currency code, not this toggle. */
+            charge_in_usd?: Record<string, never> | null;
+            base_price?: Record<string, never> | null;
+            currency?: Record<string, never> | null;
+            price_units?: components["schemas"]["ServicePriceUnitOption"][];
+        };
+        ServiceFormTemplatePayload: {
+            category: components["schemas"]["ServiceFormTemplateCategory"];
+            subcategory: components["schemas"]["ServiceFormTemplateSubcategory"];
+            currency_context: components["schemas"]["ServiceCurrencyContext"];
+            resolved_template: components["schemas"]["ResolvedTemplateInformation"];
+            fields: components["schemas"]["ServiceFormTemplateField"][];
+        };
+        /**
+         * @example {
+         *       "status": "Success",
+         *       "message": "Service form template fetched successfully.",
+         *       "data": {
+         *         "category": {
+         *           "id": 6,
+         *           "name": "Education"
+         *         },
+         *         "subcategory": {
+         *           "id": 41,
+         *           "category_id": 6,
+         *           "name": "Tutoring"
+         *         },
+         *         "currency_context": {
+         *           "provider_type": "business",
+         *           "business_id": 12,
+         *           "country_id": 101,
+         *           "default_currency": {
+         *             "code": "INR",
+         *             "symbol": "?"
+         *           },
+         *           "is_usd_currency": false,
+         *           "can_charge_in_usd": true
+         *         },
+         *         "resolved_template": {
+         *           "id": 9,
+         *           "template_chain": [
+         *             1,
+         *             5,
+         *             9
+         *           ]
+         *         },
+         *         "fields": [
+         *           {
+         *             "field_key": "service_radius",
+         *             "label": "Service Area Radius",
+         *             "field_type": "number",
+         *             "is_required": false,
+         *             "section": "Service Information",
+         *             "value_key": "service_radius",
+         *             "unit_value_key": "service_radius_unit",
+         *             "unit_options": [
+         *               {
+         *                 "label": "mile",
+         *                 "value": "mile"
+         *               },
+         *               {
+         *                 "label": "km",
+         *                 "value": "km"
+         *               }
+         *             ],
+         *             "required_when": {
+         *               "field_key": "fulfillment_types",
+         *               "operator": "contains_any",
+         *               "values": [
+         *                 "customer_location",
+         *                 "pickup_delivery"
+         *               ]
+         *             },
+         *             "validation": {
+         *               "data_type": "number",
+         *               "minimum": 0.01,
+         *               "maximum": 99999999.99
+         *             }
+         *           },
+         *           {
+         *             "field_key": "pricing",
+         *             "label": "Service Price",
+         *             "field_type": "pricing",
+         *             "is_required": true,
+         *             "section": "Pricing",
+         *             "charge_in_usd": {
+         *               "label": "Charge in USD",
+         *               "default": false
+         *             },
+         *             "base_price": {
+         *               "label": "Base Price",
+         *               "minimum": 0.01,
+         *               "maximum": 9999999999.99
+         *             },
+         *             "currency": {
+         *               "value_key": "currency",
+         *               "source": "currency_context.default_currency",
+         *               "allow_usd_override": true
+         *             },
+         *             "price_units": [
+         *               {
+         *                 "label": "Per hour",
+         *                 "value": 2,
+         *                 "code": "per_hour"
+         *               }
+         *             ]
+         *           }
+         *         ]
+         *       },
+         *       "meta": []
+         *     }
+         */
+        ServiceFormTemplateResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Service form template fetched successfully. */
+            message: string;
+            data: components["schemas"]["ServiceFormTemplatePayload"];
+            /** @example [] */
+            meta: unknown[];
+        };
+        ServiceFormTemplateValidationError: {
+            /** @example Error */
+            status?: string;
+            /** @example The selected business does not belong to the authenticated provider. */
+            message?: string;
+            /** @example null */
+            data?: unknown;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ServiceFormTemplateNotFoundError: {
+            /** @example Error */
+            status?: string;
+            /** @example Service category not found. */
+            message?: string;
+            /** @example null */
+            data?: unknown;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        ServiceFormTemplateServerError: {
+            /** @example Error */
+            status?: string;
+            /** @example Service form template configuration is not available. */
+            message?: string;
+            /** @example null */
+            data?: unknown;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /** @description CREATE ONLY. Resolve GET /service-provider/service-form-template first. Generic fields are top-level; dynamic non-file values use answers_json; dynamic files use matching dynamic_file_keys[n] and dynamic_files[n]. */
+        ServiceWritePayload: {
+            /** @example 6 */
+            category_id?: number;
+            /** @example 41 */
+            subcategory_id?: number;
+            /**
+             * @example individual
+             * @enum {string}
+             */
+            provider_type?: "individual" | "business";
+            /** @example 12 */
+            business_id?: number | null;
+            /** @example Online algebra tutoring */
+            title?: string;
+            /**
+             * @example [
+             *       4
+             *     ]
+             */
+            fulfillment_type_ids?: number[];
+            /**
+             * @description Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved.
+             * @example One-to-one algebra tutoring with guided practice and lesson notes.
+             */
+            description?: string;
+            /** @description Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved. */
+            additional_information?: string | null;
+            /** @example Peace of mind while you are away */
+            tagline?: string | null;
+            /**
+             * Format: float
+             * @description Required when fulfillment includes customer_location or pickup_delivery.
+             * @example 15
+             */
+            service_radius?: number | null;
+            /**
+             * @example mile
+             * @enum {string|null}
+             */
+            service_radius_unit?: "mile" | "km" | null;
+            /**
+             * @example fixed_price
+             * @enum {string}
+             */
+            pricing_type?: "fixed_price" | "quote_required";
+            /**
+             * Format: float
+             * @description Required for fixed_price; optional for quote_required.
+             * @example 50
+             */
+            amount?: number | null;
+            /**
+             * @description Required for fixed_price; optional for quote_required. Submit the final currency code. USD is allowed only when currency_context and online_remote permit it.
+             * @example CAD
+             */
+            currency?: string | null;
+            /**
+             * @description Required for fixed_price; optional for quote_required.
+             * @example 1
+             */
+            price_unit_id?: number | null;
+            /**
+             * @deprecated
+             * @description Frontend-only toggle. It is never stored; submit the final currency code.
+             */
+            charge_in_usd?: boolean | null;
+            /**
+             * @description Only field_scope=dynamic non-file values from the resolved template. Textarea values such as qualifications are stored verbatim with original line breaks and spacing. In multipart requests, send this as a JSON string; the backend decodes it before validation.
+             * @example {
+             *       "student_types_served": [
+             *         "college"
+             *       ],
+             *       "subjects_taught": [
+             *         "math",
+             *         "physics"
+             *       ],
+             *       "qualifications": "B.Ed.\\n\\n- Math\\n- Physics"
+             *     }
+             */
+            answers_json?: {
+                [key: string]: unknown;
+            } | null;
+            portfolio_images?: string[];
+            /**
+             * @description One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.
+             * @example Certified tutor credential
+             */
+            certificate_description?: string | null;
+            /** @description Multiple files using the single certificate_description. Total stored certificate files cannot exceed 10. */
+            certificate_files?: string[];
+            /**
+             * @description Exact resolved dynamic file_upload field_key values, for example cori_background_check. Never send the placeholder string.
+             * @example [
+             *       "cori_background_check"
+             *     ]
+             */
+            dynamic_file_keys?: string[];
+            dynamic_files?: string[];
+            /**
+             * @description Required generic confirmation for every service on the final screen. Must be true on create. This is the only acknowledgement checkbox; category-specific document consent checkboxes are not used. Stored in service_template_answers.answers_json and also returned on edit current_values.
+             * @example true
+             */
+            information_accuracy_acknowledgement?: boolean;
+        };
+        ServiceCreateRequest: WithRequired<components["schemas"]["ServiceWritePayload"], "category_id" | "subcategory_id" | "provider_type" | "title" | "fulfillment_type_ids" | "description" | "pricing_type" | "portfolio_images" | "information_accuracy_acknowledgement">;
+        /** @description Updates service information only. category_id, subcategory_id, provider_type, business_id, pricing_type, amount, currency, price_unit_id, and charge_in_usd are prohibited. */
+        ServiceInformationUpdateRequest: {
+            /** @example Updated online algebra tutoring */
+            title: string;
+            /**
+             * @example [
+             *       4
+             *     ]
+             */
+            fulfillment_type_ids: number[];
+            description: string;
+            additional_information?: string | null;
+            tagline?: string | null;
+            /** @description Required when fulfillment includes customer_location or pickup_delivery. */
+            service_radius?: number | null;
+            /** @enum {string|null} */
+            service_radius_unit?: "mile" | "km" | null;
+            answers_json?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description New images. Existing images remain unless their IDs are sent in delete_portfolio_ids. Total stored portfolio images cannot exceed 10. */
+            portfolio_images?: string[];
+            /**
+             * @example [
+             *       301
+             *     ]
+             */
+            delete_portfolio_ids?: number[];
+            /** @description Updates the one shared certificate description. Existing files remain unless deleted. */
+            certificate_description?: string | null;
+            /** @description New files added under the service's single certificate description. Total stored certificate files cannot exceed 10. */
+            certificate_files?: string[];
+            /**
+             * @example [
+             *       99
+             *     ]
+             */
+            delete_certificate_ids?: number[];
+            dynamic_file_keys?: string[];
+            dynamic_files?: string[];
+            /** @description Optional on information update. When supplied it must be true. */
+            information_accuracy_acknowledgement?: boolean | null;
+        };
+        /** @description Updates pricing only. For fixed_price, amount, currency, and price_unit_id are required. For quote_required these fields are optional; supplied values are validated and stored, while omitted values are stored as null. Context/category fields and charge_in_usd are prohibited. */
+        ServicePricingUpdateRequest: {
+            /**
+             * @example fixed_price
+             * @enum {string}
+             */
+            pricing_type: "fixed_price" | "quote_required";
+            /**
+             * Format: float
+             * @example 65
+             */
+            amount?: number | null;
+            /** @example CAD */
+            currency?: string | null;
+            /** @example 1 */
+            price_unit_id?: number | null;
+        };
+        ServiceDeleteRequest: {
+            /**
+             * @example [
+             *       1,
+             *       4
+             *     ]
+             */
+            reason_ids: number[];
+            /** @description Required only when an is_other=true reason is selected. */
+            other_reason?: string | null;
+        };
+        ServiceDeleteReason: {
+            /** @example 1 */
+            id?: number;
+            /** @example I'm no longer offering this service. */
+            reason?: string;
+            /** @example false */
+            is_other?: boolean;
+        };
+        /** @description Delete one existing file from an owned service. Portfolio and certificate files use their response file ID. Dynamic template files use the exact field_key and file_path returned by the information/details API. Paths are matched to the service and cannot target arbitrary storage files. */
+        ServiceFileDeleteRequest: {
+            /**
+             * @example portfolio
+             * @enum {string}
+             */
+            file_type: "portfolio" | "certificate" | "dynamic";
+            /**
+             * @description Required for portfolio or certificate. Use that file object's id from the service response.
+             * @example 301
+             */
+            file_id?: number | null;
+            /**
+             * @description Required for dynamic. Must be an active dynamic file_upload field in the service's resolved template.
+             * @example cori_background_check
+             */
+            field_key?: string | null;
+            /**
+             * @description Required for dynamic. Send the exact stored path returned under answers_json/dynamic_answers.
+             * @example /storage/service_dynamic_files/91/cori_background_check/check.pdf
+             */
+            file_path?: string | null;
+        };
+        ServiceFulfillmentOption: {
+            /** @example 4 */
+            id?: number;
+            /** @example Online / Remote */
+            label?: string;
+            /** @example online_remote */
+            code?: string;
+        };
+        ServicePricingData: {
+            /** @example fixed_price */
+            pricing_type?: string;
+            /** @example 50.00 */
+            amount?: string | null;
+            /** @example CAD */
+            currency?: string | null;
+            price_unit?: {
+                /** @example 1 */
+                id?: number;
+                /** @example Per service */
+                label?: string;
+                /** @example per_service */
+                code?: string;
+            } | null;
+        };
+        ServiceDynamicAnswerLabeledValue: {
+            /** @example Math */
+            label: string;
+            /** @example math */
+            value: string;
+        };
+        /** @description Human-readable dynamic answer for detail screens. Raw value is preserved for edit flows. */
+        ServiceDynamicAnswer: {
+            /** @example subjects_taught */
+            field_key: string;
+            /** @example Subjects Taught */
+            label: string;
+            /** @example multi_select */
+            field_type: string;
+            /**
+             * @description Raw stored answer value.
+             * @example [
+             *       "math",
+             *       "physics"
+             *     ]
+             */
+            value: unknown;
+            /** @example Math, Physics */
+            display_value?: string | null;
+            labeled_values?: components["schemas"]["ServiceDynamicAnswerLabeledValue"][] | null;
+        };
+        /** @description Small payload for My Services cards. Fetch GET /services/{id} only after the user opens details. */
+        ServiceListItem: {
+            /** @example 91 */
+            service_id?: number;
+            /** @example 15 */
+            category_id?: number;
+            /** @example Pet Care */
+            category_name?: string | null;
+            /** @example 104 */
+            subcategory_id?: number;
+            /** @example Pet Sitting */
+            subcategory_name?: string | null;
+            /** @example In-Home Dog Sitting */
+            title?: string;
+            /**
+             * @example business
+             * @enum {string}
+             */
+            provider_type?: "individual" | "business";
+            /** @example 12 */
+            business_id?: number | null;
+            /** @example Happy Tails Walk Co. */
+            business_name?: string | null;
+            /**
+             * @example 1
+             * @enum {integer}
+             */
+            status?: 0 | 1 | 3;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status_label?: "inactive" | "active" | "pending_review";
+            portfolio?: {
+                /** @example 301 */
+                id?: number;
+                /** @example /storage/service_portfolios/91/dog-sitting.jpg */
+                url?: string;
+            } | null;
+        };
+        /** @description Complete read-only service details: ownership context, service information, location, fulfillment, files, pricing, and dynamic answers. */
+        ServiceDetailsData: {
+            /** @example 91 */
+            service_id?: number;
+            /**
+             * @example 1
+             * @enum {integer}
+             */
+            status?: 0 | 1 | 2 | 3;
+            /** @example active */
+            status_label?: string;
+            /** @enum {string} */
+            provider_type?: "individual" | "business";
+            category?: Record<string, never>;
+            subcategory?: Record<string, never>;
+            business?: Record<string, never> | null;
+            service_info?: Record<string, never>;
+            location_context?: Record<string, never> | null;
+            fulfillment_types?: components["schemas"]["ServiceFulfillmentOption"][];
+            portfolio_images?: Record<string, never>[];
+            /** @description One certificate description with multiple files. */
+            certificate?: Record<string, never> | null;
+            pricing?: components["schemas"]["ServicePricingData"];
+            dynamic_answers?: components["schemas"]["ServiceDynamicAnswer"][];
+            answers_json?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ServiceDetailsResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: components["schemas"]["ServiceDetailsData"];
+            meta?: Record<string, never>;
+        };
+        ServiceListResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Services retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ServiceListItem"][];
+            meta?: {
+                /** @example 1 */
+                current_page?: number;
+                /** @example 1 */
+                last_page?: number;
+                /** @example 15 */
+                per_page?: number;
+                /** @example 2 */
+                total?: number;
+            };
+        };
+        ServiceEditOverviewResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Service edit overview retrieved successfully. */
+            message?: string;
+            data?: {
+                /** @example 91 */
+                service_id?: number;
+                title?: string;
+                /** @example 1 */
+                status?: number;
+                /** @example active */
+                status_label?: string;
+                service_type?: Record<string, never>;
+                business_id?: number | null;
+                business_name?: string | null;
+                search_setting?: Record<string, never>;
+                sections?: Record<string, never>[];
+            };
+            meta?: Record<string, never>;
+        };
+        ServiceCategoryResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: {
+                service_id?: number;
+                category?: Record<string, never>;
+                subcategory?: Record<string, never>;
+                /** @example false */
+                is_editable?: boolean;
+            };
+            meta?: Record<string, never>;
+        };
+        ServiceInformationResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: {
+                service_id?: number;
+                /** @description Merged generic/category/subcategory fields except pricing. Contains field labels, controls, options, visibility, required rules, and validation. */
+                template?: Record<string, never>;
+                /** @description Saved generic information, answers_json, portfolios, and certificates keyed for form prefill. */
+                current_values?: Record<string, never>;
+            };
+            meta?: Record<string, never>;
+        };
+        /** @description Saved service pricing record for edit screens. Pricing form UI is fixed on the client; use GET /service-form-template only during create. */
+        ServicePricingRecord: {
+            /** @example 91 */
+            service_id?: number;
+            /** @example Overnight boarding with Smith Jones */
+            title?: string;
+            /**
+             * @example [
+             *       "online_remote"
+             *     ]
+             */
+            fulfillment_codes?: string[];
+            /**
+             * @example fixed_price
+             * @enum {string}
+             */
+            pricing_type?: "fixed_price" | "quote_required";
+            /** @example 50.00 */
+            amount?: string | null;
+            /** @example CAD */
+            currency?: string | null;
+            /** @example 1 */
+            price_unit_id?: number | null;
+            price_unit?: {
+                /** @example 1 */
+                id?: number;
+                /** @example Per service */
+                label?: string;
+                /** @example per_service */
+                code?: string;
+            } | null;
+            /**
+             * @description Derived edit hint when stored currency is USD for an online/remote service whose default currency is not USD.
+             * @example false
+             */
+            charge_in_usd?: boolean;
+        };
+        ServicePricingResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: components["schemas"]["ServicePricingRecord"];
+            meta?: Record<string, never>;
+        };
+        ServiceStatusResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: {
+                service_id?: number;
+                status?: number;
+                status_label?: string;
+            };
+            meta?: Record<string, never>;
+        };
+        ServiceManagementErrorResponse: {
+            /** @example Error */
+            status?: string;
+            message?: string;
+            data?: unknown;
+            meta?: Record<string, never>;
+        };
+        ServiceFileDeleteResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Service file deleted successfully. */
+            message?: string;
+            data?: {
+                /** @example 91 */
+                service_id?: number;
+                /**
+                 * @example dynamic
+                 * @enum {string}
+                 */
+                file_type?: "portfolio" | "certificate" | "dynamic";
+                /** @example null */
+                file_id?: number | null;
+                /** @example cori_background_check */
+                field_key?: string | null;
+                /** @example /storage/service_dynamic_files/91/cori_background_check/check.pdf */
+                file_path?: string;
+            };
+            meta?: Record<string, never>;
         };
     };
     responses: never;
@@ -2825,10 +5324,8 @@ export interface operations {
                      *           "profile_verified": false
                      *         },
                      *         "device_token": null,
-                     *         "provider_type": null,
                      *         "profile_image": null,
-                     *         "background_verification": false,
-                     *         "business_verification": false
+                     *         "background_verification": "Pending"
                      *       },
                      *       "meta": []
                      *     }
@@ -3057,11 +5554,9 @@ export interface operations {
                      *           "name_verified": false,
                      *           "profile_verified": false
                      *         },
-                     *         "device_token": null,
                      *         "provider_type": null,
                      *         "profile_image": null,
-                     *         "background_verification": false,
-                     *         "business_verification": false
+                     *         "background_verification": "Pending"
                      *       },
                      *       "meta": []
                      *     }
@@ -3217,10 +5712,8 @@ export interface operations {
                      *           "profile_verified": false
                      *         },
                      *         "device_token": null,
-                     *         "provider_type": null,
                      *         "profile_image": null,
-                     *         "background_verification": false,
-                     *         "business_verification": false
+                     *         "background_verification": "Pending"
                      *       },
                      *       "meta": []
                      *     }
@@ -3311,10 +5804,8 @@ export interface operations {
                      *           "profile_verified": false
                      *         },
                      *         "device_token": null,
-                     *         "provider_type": null,
                      *         "profile_image": null,
-                     *         "background_verification": false,
-                     *         "business_verification": false
+                     *         "background_verification": "Pending"
                      *       },
                      *       "meta": []
                      *     }
@@ -3405,10 +5896,8 @@ export interface operations {
                      *           "profile_verified": false
                      *         },
                      *         "device_token": null,
-                     *         "provider_type": null,
                      *         "profile_image": null,
-                     *         "background_verification": false,
-                     *         "business_verification": false
+                     *         "background_verification": "Pending"
                      *       },
                      *       "meta": []
                      *     }
@@ -3432,6 +5921,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TooManyRequestsResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    e76a4e32221dba9028b68e60c53e9528: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "provider@example.com"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SendPermanentDeleteOtpRequest"];
+            };
+        };
+        responses: {
+            /** @description OTP sent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponse"];
+                };
+            };
+            /** @description User or profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Validation error or account state does not allow operation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "3ae25e4b0ec1fef3abd1ca9b653a1080": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "provider@example.com",
+                 *       "otp": "1234"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ConfirmPermanentDeleteOtpRequest"];
+            };
+        };
+        responses: {
+            /** @description Account permanently deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponse"];
+                };
+            };
+            /** @description User or profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Invalid OTP or already permanently deleted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -3510,7 +6112,7 @@ export interface operations {
             };
         };
     };
-    "5e8578f4b8e487e429c98a461b1fdfaf": {
+    ca8bbb9099bb2659d84fba82270d07a9: {
         parameters: {
             query?: never;
             header?: never;
@@ -3519,26 +6121,44 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProviderBusinessTypeRequest"];
+                "application/json": components["schemas"]["ProviderAvailabilitySaveApplyToAllRequest"] | components["schemas"]["ProviderAvailabilitySaveByDaysRequest"];
             };
         };
         responses: {
-            /** @description Provider type updated. */
+            /** @description Availability saved successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderBusinessProfileResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilitySaveSuccessResponse"];
                 };
             };
-            /** @description Missing or invalid bearer token. */
+            /** @description Unauthenticated. */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                };
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityNotFoundErrorResponse"];
                 };
             };
             /** @description Validation error. */
@@ -3547,21 +6167,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityValidationErrorResponse"];
                 };
             };
-            /** @description Internal Server Error */
+            /** @description Too many requests. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityTooManyRequestsErrorResponse"];
+                };
+            };
+            /** @description Internal server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityServerErrorResponse"];
                 };
             };
         };
     };
-    "7e839464a998eca028990cb4ce3a2870": {
+    "6af364a4a6a82f85213afe26997525e8": {
         parameters: {
             query?: never;
             header?: never;
@@ -3570,36 +6199,72 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Business profile retrieved. */
+            /** @description Availability fetched successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderBusinessProfileResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityResponse"];
                 };
             };
-            /** @description Missing or invalid bearer token. */
+            /** @description Unauthenticated. */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
                 };
             };
-            /** @description Internal Server Error */
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                };
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityValidationErrorResponse"];
+                };
+            };
+            /** @description Too many requests. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityTooManyRequestsErrorResponse"];
+                };
+            };
+            /** @description Internal server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityServerErrorResponse"];
                 };
             };
         };
     };
-    "1c981be34710c06542b83399343a8ab2": {
+    f3aff94c7dda86b4abe9836dd28cba7d: {
         parameters: {
             query?: never;
             header?: never;
@@ -3608,216 +6273,63 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Business about retrieved. */
+            /** @description Availability status updated successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderBusinessAboutResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityToggleStatusSuccessResponse"];
                 };
             };
-            /** @description Missing or invalid bearer token. */
+            /** @description Unauthenticated. */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
                 };
             };
-            /** @description Internal Server Error */
-            500: {
+            /** @description Forbidden. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
                 };
             };
-        };
-    };
-    "5a5cdbf94f37170ce5bc0f16927385e8": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProviderBusinessAboutRequest"];
-            };
-        };
-        responses: {
-            /** @description Business about updated. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProviderBusinessAboutResponse"];
-                };
-            };
-            /** @description Missing or invalid bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
-                };
-            };
-            /** @description Business profile not found. */
+            /** @description Provider profile not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotFoundResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityNotFoundErrorResponse"];
                 };
             };
-            /** @description Validation error. */
-            422: {
+            /** @description Too many requests. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityTooManyRequestsErrorResponse"];
                 };
             };
-            /** @description Internal Server Error */
+            /** @description Internal server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityServerErrorResponse"];
                 };
             };
         };
     };
-    "76d434a85a92e0030dba921114a629f0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProviderBusinessNameRequest"];
-            };
-        };
-        responses: {
-            /** @description Business name updated. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProviderBusinessNameResponse"];
-                };
-            };
-            /** @description Missing or invalid bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
-                };
-            };
-            /** @description Business profile not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundResponse"];
-                };
-            };
-            /** @description Validation error. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
-                };
-            };
-        };
-    };
-    "1e3ae342165a653d94872df393483209": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProviderBusinessAddressRequest"];
-            };
-        };
-        responses: {
-            /** @description Business address updated. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProviderBusinessAddressResponse"];
-                };
-            };
-            /** @description Missing or invalid bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
-                };
-            };
-            /** @description Business profile not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundResponse"];
-                };
-            };
-            /** @description Validation error. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
-                };
-            };
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
-                };
-            };
-        };
-    };
-    c590e94545c94236dbdb0ba4d1d92357: {
+    "7502aa5f2965e7cb73766c328abd680f": {
         parameters: {
             query?: never;
             header?: never;
@@ -3826,13 +6338,165 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Business verification updated. */
+            /** @description Days list fetched successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderBusinessVerificationResponse"];
+                    "application/json": components["schemas"]["ProviderAvailabilityDaysListResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityValidationErrorResponse"];
+                };
+            };
+            /** @description Too many requests. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityTooManyRequestsErrorResponse"];
+                };
+            };
+            /** @description Internal server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityServerErrorResponse"];
+                };
+            };
+        };
+    };
+    bde88369a6ccd1508c570c5135ca4ce1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Timezones list fetched successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityTimezoneListResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityValidationErrorResponse"];
+                };
+            };
+            /** @description Too many requests. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityTooManyRequestsErrorResponse"];
+                };
+            };
+            /** @description Internal server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAvailabilityServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "2aabc461bc1236b9c777497ed83e95a8": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessMemberInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation sent successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberInviteSuccessResponse"];
                 };
             };
             /** @description Missing or invalid bearer token. */
@@ -3841,7 +6505,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
                 };
             };
             /** @description Business profile not found. */
@@ -3850,7 +6514,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotFoundResponse"];
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error or duplicate invitation. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -3859,7 +6532,968 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerErrorResponse"];
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "191d8ebe38ce674dcacd2fa54afc535c": {
+        parameters: {
+            query: {
+                business_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Members retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMembersListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "5796f2c4118ddf19ffd555245b23bb84": {
+        parameters: {
+            query: {
+                business_id: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Member retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile or member not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "8039815b4ea8bb39c5530036f3371e0b": {
+        parameters: {
+            query: {
+                business_id: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Member removed successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberRemoveSuccessResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile or member not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "1e5d1d2af3d406c45c362bc3fbfb107a": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation resent successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberResendSuccessResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile or member not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Only pending invitations can be resent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "77fbbf99d20de449b55fbd9228fc1a2c": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessMemberServiceAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Member service added successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServiceMutationResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile or member not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error or service not assigned to business. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "18f30792a29fa650c80d6409fce227bf": {
+        parameters: {
+            query: {
+                business_id: number;
+            };
+            header?: never;
+            path: {
+                memberId: number;
+                serviceSubCategoryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Member service removed successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServiceMutationResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile or member not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberNotFoundErrorResponse"];
+                };
+            };
+            /** @description Service is not assigned to this member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessMemberServerErrorResponse"];
+                };
+            };
+        };
+    };
+    bc7e1760f2d320fed82c6ef9dd6795fc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ProviderBusinessCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Business created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUpsertResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Validation error or business already exists. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "623ecccb95052ed19b6a986e69169bcd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ProviderBusinessUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Business updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUpsertResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "4d74fa6bbd6b1001116c42fe2a4c8df2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Businesses retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    e815a530df7c7ba8185ba5a156d1c714: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessEditResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessNotFoundErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "39be735c46242adcf9d0dd1d8027c176": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business deleted successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessDeleteSuccessResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessNotFoundErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "548159782d05aefe7c8eedcae62c6da0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business status updated successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessStatusToggleResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessNotFoundErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "3b80ceb71a4f941bbc759fd5b27c52bf": {
+        parameters: {
+            query?: {
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Services retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderServiceCategoryListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    fad65df9b807a3f4effae4dbfb5fe5a7: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service categories retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderServiceCategorySummaryListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    f2e93a7cf3b6e19aaf20f0c8d51b1783: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Active services_categories.id */
+                categoryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service subcategories retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderServiceSubCategoryListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Service category not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Error */
+                        status?: string;
+                        /** @example Service category not found. */
+                        message?: string;
+                        /** @example null */
+                        data?: unknown;
+                        /** @example [] */
+                        meta?: unknown[];
+                    };
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    f62f820e5d606b4b60cd341d618e37e7: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business services retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessSubCategoriesResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessNotFoundErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBusinessServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "77ccf845f74523131fe242fd0ced9675": {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Date availability fetched successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityGetSuccessResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "9c35d72333b190df15955dd2f7419062": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderDateAvailabilityUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description Date availability saved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilitySuccessResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityNotFoundErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityValidationErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDateAvailabilityServerErrorResponse"];
                 };
             };
         };
@@ -4013,17 +7647,10 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "provider_type": "business",
                  *       "first_name": "John",
                  *       "last_name": "Doe",
                  *       "email": "provider@example.com",
-                 *       "phone_number": "+15551234567",
-                 *       "business_name": "Acme Services",
-                 *       "business_address": "123 Business Rd",
-                 *       "country_id": 1,
-                 *       "state_id": 10,
-                 *       "city_id": 100,
-                 *       "zipcode": "12345"
+                 *       "phone_number": "+15551234567"
                  *     }
                  */
                 "application/json": components["schemas"]["ProviderProfileSaveRequest"];
@@ -4244,4 +7871,686 @@ export interface operations {
             };
         };
     };
+    getResolvedServiceFormTemplate: {
+        parameters: {
+            query: {
+                /** @description Active, non-deleted services_categories.id. */
+                category_id: number;
+                /** @description Active, non-deleted services_sub_categories.id belonging to category_id. */
+                subcategory_id: number;
+                /** @description Selects the approved currency country source. */
+                provider_type: "individual" | "business";
+                /** @description Required when provider_type=business. Must be active, non-deleted, owned by the authenticated provider, and assigned to subcategory_id. Omit for individual services. */
+                business_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service form template fetched successfully. Generic fields are always merged with the applicable dynamic fields. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceFormTemplateResponse"];
+                };
+            };
+            /** @description Bearer token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Selected category or subcategory is inactive, deleted, or not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceFormTemplateNotFoundError"];
+                };
+            };
+            /** @description Request context, ownership, or currency-country configuration is invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceFormTemplateValidationError"];
+                };
+            };
+            /** @description Template configuration or unexpected resolution error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceFormTemplateServerError"];
+                };
+            };
+        };
+    };
+    listProviderServiceCategories: {
+        parameters: {
+            query?: {
+                /** @description Optional owned active provider_businesses.id. When supplied, only categories derived from that business's assigned subcategories are returned. */
+                business_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active service categories. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Success */
+                        status?: string;
+                        /** @example Service categories retrieved successfully. */
+                        message?: string;
+                        data?: {
+                            /** @example 15 */
+                            category_id?: number;
+                            /** @example Pet Care */
+                            category_name?: string;
+                            /** @example /storage/service-categories/icons/pet-care.png */
+                            category_logo?: string | null;
+                        }[];
+                        meta?: Record<string, never>;
+                    };
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or unowned business filter */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    listProviderServiceSubcategories: {
+        parameters: {
+            query?: {
+                /** @description Optional owned active provider_businesses.id. When supplied, only this business's assigned subcategories are returned. */
+                business_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description services_categories.id */
+                categoryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subcategories for the selected category. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Success */
+                        status?: string;
+                        /** @example Service sub categories retrieved successfully. */
+                        message?: string;
+                        data?: {
+                            /** @example 104 */
+                            sub_category_id?: number;
+                            /** @example Pet Sitting */
+                            sub_category_name?: string;
+                            /** @example /storage/service-sub-categories/icons/pet-sitting.png */
+                            sub_category_logo?: string | null;
+                        }[];
+                        meta?: Record<string, never>;
+                    };
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Active category not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Invalid or unowned business filter */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    listProviderServices: {
+        parameters: {
+            query?: {
+                tab?: "all" | "independent" | "affiliated";
+                status?: "active" | "inactive" | "pending_review";
+                search?: string;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated lightweight list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceListResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid list filter */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    createProviderService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ServiceCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Service created as pending_review. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDetailsResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Template, ownership, fulfillment, file, or pricing validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServiceDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Complete details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDetailsResponse"];
+                };
+            };
+            /** @description Service is deleted, missing, or not owned */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteProviderService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceDeleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Service marked deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceStatusResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Delete reason validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServiceEditOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Edit overview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceEditOverviewResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServiceCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stored category context. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceCategoryResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServiceInformation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Information template and current values. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceInformationResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Stored service context can no longer resolve its template */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProviderServiceInformation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ServiceInformationUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated information and same editable template. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceInformationResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Template validation failed or immutable/pricing field was submitted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServicePricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved pricing record. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePricingResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProviderServicePricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServicePricingUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated pricing record. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePricingResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Pricing validation, unsupported unit/currency, or prohibited context field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    changeProviderServiceStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceStatusResponse"];
+                };
+            };
+            /** @description Service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Pending-review status cannot be changed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteProviderServiceFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Owned services.id */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceFileDeleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Database reference and stored file deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceFileDeleteResponse"];
+                };
+            };
+            /** @description Owned service or matching file not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+            /** @description Invalid discriminator/identifier, last portfolio image, or dynamic minimum-file rule. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderServiceDeleteReasons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active reasons. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Success */
+                        status?: string;
+                        message?: string;
+                        data?: components["schemas"]["ServiceDeleteReason"][];
+                        meta?: Record<string, never>;
+                    };
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
 }
+type WithRequired<T, K extends keyof T> = T & {
+    [P in K]-?: T[P];
+};

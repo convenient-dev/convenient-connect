@@ -99,14 +99,11 @@ export default function SignupScreen() {
       });
       await login(result.accessToken, {
         user: result.user,
-        providerType: result.providerType,
         profileImage: result.profileImage,
         backgroundVerification: result.backgroundVerification,
-        businessVerification: result.businessVerification,
       });
 
       // Check if user has completed profile by checking if they have both names.
-      // We can't rely on providerType since the backend doesn't always set it.
       const hasCompletedProfile =
         !!result.user.user_fname?.trim() &&
         !!result.user.user_lname?.trim();
@@ -145,14 +142,11 @@ export default function SignupScreen() {
       });
       await login(result.accessToken, {
         user: result.user,
-        providerType: result.providerType,
         profileImage: result.profileImage,
         backgroundVerification: result.backgroundVerification,
-        businessVerification: result.businessVerification,
       });
 
       // Check if user has completed profile by checking if they have both names.
-      // We can't rely on providerType since the backend doesn't always set it.
       const hasCompletedProfile =
         !!result.user.user_fname?.trim() &&
         !!result.user.user_lname?.trim();

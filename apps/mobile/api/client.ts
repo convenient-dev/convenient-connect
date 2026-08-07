@@ -94,13 +94,33 @@ export async function laravelFetch<T>(
     throw new ApiError("Unauthenticated.", 401);
   }
 
-  const json = await res.json();
+  let json: any;
+  try {
+    json = await res.json();
+  } catch (parseError) {
+    console.error("[laravelFetch] Failed to parse response as JSON:", {
+      url,
+      status: res.status,
+      parseError,
+    });
+    throw new ApiError("Invalid server response", res.status);
+  }
 
   if (!res.ok) {
-    throw new ApiError(
-      json.message ?? "Something went wrong",
-      res.status,
-    );
+    console.error("[laravelFetch] Error response:", {
+      url,
+      status: res.status,
+      json,
+    });
+
+    // Extract error message from various possible formats
+    const errorMessage =
+      json?.message ||
+      json?.error ||
+      json?.errors?.[0]?.message ||
+      "Something went wrong";
+
+    throw new ApiError(errorMessage, res.status);
   }
 
   // Debug logging for business/services endpoint

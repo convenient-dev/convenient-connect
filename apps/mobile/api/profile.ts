@@ -9,19 +9,8 @@ type ProviderProfileData = components["schemas"]["ProviderProfileData"];
 function mapAuthUserProfile(data: AuthUserProfileData): AuthUserProfile {
   return {
     user: data.user!,
-    providerType: (data.provider_type as AuthUserProfile["providerType"]) ?? null,
     profileImage: toAbsoluteUrl(data.profile_image),
-    backgroundVerification: data.background_verification ?? false,
-    businessVerification: data.business_verification ?? false,
-    business: data.business
-      ? {
-          userId: data.business.user_id!,
-          businessName: data.business.business_name!,
-          address: data.business.address!,
-          businessVerification: data.business.business_verification ?? false,
-          about: data.business.about ?? null,
-        }
-      : null,
+    backgroundVerification: (data.background_verification as "Pending" | "Verified" | "Not Verified") ?? "Pending",
   };
 }
 
@@ -32,8 +21,8 @@ export async function getAuthUser(): Promise<AuthUserProfile> {
   console.log("[API] getAuthUser raw response:", {
     hasUser: !!data.user,
     userId: data.user?.user_id,
-    providerType: data.provider_type,
     hasProfileImage: !!data.profile_image,
+    backgroundVerification: data.background_verification,
   });
   return mapAuthUserProfile(data);
 }
@@ -44,6 +33,12 @@ export async function completeProfile(params: {
   email: string;
   phoneNumber?: string;
 }): Promise<{ user: components["schemas"]["AuthUser"] }> {
+  console.log("[API] completeProfile request:", {
+    firstName: params.firstName,
+    lastName: params.lastName,
+    email: params.email,
+    phoneNumber: params.phoneNumber,
+  });
   const data = await laravelFetch<ProviderProfileData>(
     "/service-provider/complete-profile",
     {
@@ -56,6 +51,10 @@ export async function completeProfile(params: {
       },
     },
   );
+  console.log("[API] completeProfile response:", {
+    hasUser: !!data.user,
+    userId: data.user?.user_id,
+  });
   return {
     user: data.user!,
   };

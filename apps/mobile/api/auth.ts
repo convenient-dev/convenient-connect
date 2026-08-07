@@ -6,20 +6,16 @@ type OtpLoginData = components["schemas"]["OtpLoginData"];
 export interface LoginResult {
   accessToken: string;
   user: components["schemas"]["AuthUser"];
-  providerType: "individual" | "business" | null;
   profileImage: string | null;
-  backgroundVerification: boolean;
-  businessVerification: boolean;
+  backgroundVerification: "Pending" | "Verified" | "Not Verified";
 }
 
 function mapLoginData(data: OtpLoginData): LoginResult {
   return {
     accessToken: data.access_token!,
     user: data.user!,
-    providerType: (data.provider_type as LoginResult["providerType"]) ?? null,
     profileImage: toAbsoluteUrl(data.profile_image),
-    backgroundVerification: data.background_verification ?? false,
-    businessVerification: data.business_verification ?? false,
+    backgroundVerification: (data.background_verification as "Pending" | "Verified" | "Not Verified") ?? "Pending",
   };
 }
 

@@ -140,7 +140,9 @@ export default function SelectSubcategoriesScreen() {
 
       <ScreenHeader title={`Select from ${params.categoryName}`} />
 
-      <Text style={styles.subtitle}>Select one or more subcategories</Text>
+      <Text style={styles.subtitle}>
+        Please select the services you are offering
+      </Text>
 
       {loading ? (
         <ActivityIndicator

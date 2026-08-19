@@ -19,18 +19,31 @@ function mapLoginData(data: OtpLoginData): LoginResult {
   };
 }
 
+// The restore fields are not yet in api-doc.json (reported to the backend team):
+// when the account is soft-deleted, number-login/email-signup return 200 with
+// restore_required=true and deletion dates instead of sending an OTP.
+export interface OtpSentData {
+  phone?: string;
+  email?: string;
+  restore_required?: boolean;
+  request_deletion_date?: string;
+  permanent_deletion_date?: string;
+}
+
 export async function emailSignup(params: {
   email: string;
+  restore?: boolean;
   deviceToken?: string;
   deviceType?: "android" | "ios";
   referralCode?: string;
-}): Promise<{ email: string }> {
-  return laravelFetch<{ email: string }>(
+}): Promise<OtpSentData> {
+  return laravelFetch<OtpSentData>(
     "/service-provider/auth/email-signup",
     {
       method: "POST",
       body: {
         email: params.email,
+        restore: params.restore,
         device_token: params.deviceToken,
         device_type: params.deviceType,
         referral_code: params.referralCode,
@@ -68,16 +81,18 @@ export async function resendOtpEmail(email: string): Promise<{ email: string }> 
 
 export async function numberLogin(params: {
   phone: string;
+  restore?: boolean;
   deviceToken?: string;
   deviceType?: "android" | "ios";
   referralCode?: string;
-}): Promise<{ phone: string }> {
-  return laravelFetch<{ phone: string }>(
+}): Promise<OtpSentData> {
+  return laravelFetch<OtpSentData>(
     "/service-provider/auth/number-login",
     {
       method: "POST",
       body: {
         phone: params.phone,
+        restore: params.restore,
         device_token: params.deviceToken,
         device_type: params.deviceType,
         referral_code: params.referralCode,

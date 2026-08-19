@@ -33,22 +33,27 @@ export async function completeProfile(params: {
   email: string;
   phoneNumber?: string;
 }): Promise<{ user: components["schemas"]["AuthUser"] }> {
-  console.log("[API] completeProfile request:", {
-    firstName: params.firstName,
-    lastName: params.lastName,
+  console.log("[API] completeProfile request:", params);
+
+  // Build request body. Only include phone_number if it's a new phone being added.
+  const body: Record<string, string> = {
+    first_name: params.firstName,
+    last_name: params.lastName,
     email: params.email,
-    phoneNumber: params.phoneNumber,
-  });
+  };
+
+  // Only include phone_number if provided (for email signup flow)
+  if (params.phoneNumber) {
+    body.phone_number = params.phoneNumber;
+  }
+
+  console.log("[API] completeProfile body:", body);
+
   const data = await laravelFetch<ProviderProfileData>(
     "/service-provider/complete-profile",
     {
       method: "POST",
-      body: {
-        first_name: params.firstName,
-        last_name: params.lastName,
-        email: params.email,
-        phone_number: params.phoneNumber,
-      },
+      body,
     },
   );
   console.log("[API] completeProfile response:", {

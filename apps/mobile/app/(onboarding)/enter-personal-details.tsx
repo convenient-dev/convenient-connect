@@ -114,8 +114,11 @@ export default function EnterPersonalDetailsScreen() {
       country,
       collectEmail,
       authUserEmail: authUser?.user.user_email,
+      authUserPhone: authUser?.user.user_contact,
     });
 
+    // When signing up via phone (collectEmail=true), DON'T send phone (user already has one).
+    // When signing up via email (collectEmail=false), send the new phone from the form.
     const submitData = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),

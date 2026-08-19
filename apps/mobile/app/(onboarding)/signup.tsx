@@ -211,7 +211,20 @@ export default function SignupScreen() {
               const fullPhone = buildFullPhone(country, phone);
               setLoading(true);
               try {
-                await numberLogin({ phone: fullPhone });
+                const result = await numberLogin({ phone: fullPhone });
+                if (result?.restore_required) {
+                  router.push({
+                    pathname: "/restore-account",
+                    params: {
+                      method: "phone",
+                      identifier: fullPhone,
+                      requestDeletionDate: result.request_deletion_date ?? "",
+                      permanentDeletionDate:
+                        result.permanent_deletion_date ?? "",
+                    },
+                  });
+                  return;
+                }
                 router.push({
                   pathname: "/signup-by-phone",
                   params: { phone: fullPhone },

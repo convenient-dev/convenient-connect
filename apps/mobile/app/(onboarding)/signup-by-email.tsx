@@ -66,7 +66,20 @@ export default function SignupByEmailScreen() {
             onPress={async () => {
               setLoading(true);
               try {
-                await emailSignup({ email });
+                const result = await emailSignup({ email });
+                if (result?.restore_required) {
+                  router.push({
+                    pathname: "/restore-account",
+                    params: {
+                      method: "email",
+                      identifier: email,
+                      requestDeletionDate: result.request_deletion_date ?? "",
+                      permanentDeletionDate:
+                        result.permanent_deletion_date ?? "",
+                    },
+                  });
+                  return;
+                }
                 router.push({
                   pathname: "/confirm-email-otp",
                   params: { email },

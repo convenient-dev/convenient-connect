@@ -4,6 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { facebookSignOutQuietly, signInWithFacebook } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   buildFullPhone,
   Country,
@@ -81,6 +82,7 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const handleGoogleLogin = async () => {
     if (socialLoading) return;
@@ -230,6 +232,14 @@ export default function SignupScreen() {
                   params: { phone: fullPhone },
                 });
               } catch (e) {
+                if (
+                  e instanceof ApiError &&
+                  e.statusCode === 404 &&
+                  /user not found/i.test(e.message)
+                ) {
+                  setShowDeletedModal(true);
+                  return;
+                }
                 const msg =
                   e instanceof ApiError ? e.message : "Failed to send OTP";
                 Alert.alert("Error", msg);
@@ -277,6 +287,15 @@ export default function SignupScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={showDeletedModal}
+        type="error"
+        title="Account permanently deleted"
+        message="This account has been permanently deleted and can no longer be restored. To continue, sign up with a different phone number or email."
+        confirmLabel="OK"
+        onConfirm={() => setShowDeletedModal(false)}
+      />
     </SafeAreaView>
   );
 }

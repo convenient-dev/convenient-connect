@@ -1,4 +1,5 @@
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -25,6 +26,7 @@ export default function SignupByEmailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -85,6 +87,14 @@ export default function SignupByEmailScreen() {
                   params: { email },
                 });
               } catch (e) {
+                if (
+                  e instanceof ApiError &&
+                  e.statusCode === 404 &&
+                  /user not found/i.test(e.message)
+                ) {
+                  setShowDeletedModal(true);
+                  return;
+                }
                 const msg =
                   e instanceof ApiError ? e.message : "Failed to send OTP";
                 Alert.alert("Error", msg);
@@ -95,6 +105,15 @@ export default function SignupByEmailScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={showDeletedModal}
+        type="error"
+        title="Account permanently deleted"
+        message="This account has been permanently deleted and can no longer be restored. To continue, sign up with a different email or phone number."
+        confirmLabel="OK"
+        onConfirm={() => setShowDeletedModal(false)}
+      />
     </SafeAreaView>
   );
 }

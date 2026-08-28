@@ -19,15 +19,17 @@ function mapLoginData(data: OtpLoginData): LoginResult {
   };
 }
 
-// The restore fields are not yet in api-doc.json (reported to the backend team):
-// when the account is soft-deleted, number-login/email-signup return 200 with
-// restore_required=true and deletion dates instead of sending an OTP.
-export interface OtpSentData {
-  phone?: string;
-  email?: string;
-  restore_required?: boolean;
-  request_deletion_date?: string;
-  permanent_deletion_date?: string;
+// email-signup/number-login/social logins return two shapes at HTTP 200:
+// the normal OTP-sent payload, or (for a soft-deleted account) the
+// restore_required payload with deletion dates — branch with isRestoreRequired().
+export type OtpSentData = Partial<
+  components["schemas"]["AccountDeletedRestoreRequiredData"]
+>;
+
+export function isRestoreRequired(
+  result: LoginResult | OtpSentData,
+): result is OtpSentData {
+  return (result as OtpSentData).restore_required === true;
 }
 
 export async function emailSignup(params: {
@@ -132,11 +134,12 @@ export async function facebookLogin(params: {
   email: string;
   firstName: string;
   lastName: string;
+  restore?: boolean;
   deviceToken?: string;
   deviceType?: "android" | "ios";
   referralCode?: string;
-}): Promise<LoginResult> {
-  const data = await laravelFetch<OtpLoginData>(
+}): Promise<LoginResult | OtpSentData> {
+  const data = await laravelFetch<OtpLoginData | OtpSentData>(
     "/service-provider/auth/facebook-login",
     {
       method: "POST",
@@ -144,6 +147,7 @@ export async function facebookLogin(params: {
         email: params.email,
         first_name: params.firstName,
         last_name: params.lastName,
+        restore: params.restore,
         device_token: params.deviceToken,
         device_type: params.deviceType,
         referral_code: params.referralCode,
@@ -151,18 +155,20 @@ export async function facebookLogin(params: {
       skipAuth: true,
     },
   );
-  return mapLoginData(data);
+  if ((data as OtpSentData).restore_required) return data as OtpSentData;
+  return mapLoginData(data as OtpLoginData);
 }
 
 export async function googleLogin(params: {
   email: string;
   firstName: string;
   lastName: string;
+  restore?: boolean;
   deviceToken?: string;
   deviceType?: "android" | "ios";
   referralCode?: string;
-}): Promise<LoginResult> {
-  const data = await laravelFetch<OtpLoginData>(
+}): Promise<LoginResult | OtpSentData> {
+  const data = await laravelFetch<OtpLoginData | OtpSentData>(
     "/service-provider/auth/google-login",
     {
       method: "POST",
@@ -170,6 +176,7 @@ export async function googleLogin(params: {
         email: params.email,
         first_name: params.firstName,
         last_name: params.lastName,
+        restore: params.restore,
         device_token: params.deviceToken,
         device_type: params.deviceType,
         referral_code: params.referralCode,
@@ -177,21 +184,24 @@ export async function googleLogin(params: {
       skipAuth: true,
     },
   );
-  return mapLoginData(data);
+  if ((data as OtpSentData).restore_required) return data as OtpSentData;
+  return mapLoginData(data as OtpLoginData);
 }
 
 export async function appleLogin(params: {
   appleUserId: string;
+  restore?: boolean;
   deviceToken?: string;
   deviceType?: "android" | "ios";
   referralCode?: string;
-}): Promise<LoginResult> {
-  const data = await laravelFetch<OtpLoginData>(
+}): Promise<LoginResult | OtpSentData> {
+  const data = await laravelFetch<OtpLoginData | OtpSentData>(
     "/service-provider/auth/apple-login",
     {
       method: "POST",
       body: {
         apple_user_id: params.appleUserId,
+        restore: params.restore,
         device_token: params.deviceToken,
         device_type: params.deviceType,
         referral_code: params.referralCode,
@@ -199,7 +209,38 @@ export async function appleLogin(params: {
       skipAuth: true,
     },
   );
-  return mapLoginData(data);
+  if ((data as OtpSentData).restore_required) return data as OtpSentData;
+  return mapLoginData(data as OtpLoginData);
+}
+
+// Permanent-delete endpoints are public (no bearer token): they act on a
+// soft-deleted account the user can no longer log into. Email only — the
+// backend has no phone variant.
+export async function sendPermanentDeleteOtp(
+  email: string,
+): Promise<{ sent_to: string }> {
+  return laravelFetch<{ sent_to: string }>(
+    "/service-provider/auth/send-permanent-delete-otp",
+    {
+      method: "POST",
+      body: { email },
+      skipAuth: true,
+    },
+  );
+}
+
+export async function confirmPermanentDeleteOtp(
+  email: string,
+  otp: string,
+): Promise<void> {
+  await laravelFetch<string>(
+    "/service-provider/auth/confirm-permanent-delete-otp",
+    {
+      method: "POST",
+      body: { email, otp },
+      skipAuth: true,
+    },
+  );
 }
 
 export async function logout(deviceToken?: string): Promise<void> {

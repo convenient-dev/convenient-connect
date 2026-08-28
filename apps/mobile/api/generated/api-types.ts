@@ -248,6 +248,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/account-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the authenticated provider account status.
+         * @description Backward-compatible status bootstrap for Convenient Connect. Suspended providers remain authenticated and may use existing read APIs, account settings, support, and logout. Marketplace write operations for services, businesses, business members, recurring availability, and date availability return PROVIDER_ACCOUNT_SUSPENDED until reactivated.
+         */
+        get: operations["df24c6dd6efa34eff400fe8741ebf85d"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/address": {
         parameters: {
             query?: never;
@@ -331,7 +351,16 @@ export interface paths {
         put?: never;
         /**
          * Sign up using email and send OTP.
-         * @description Creates or re-activates a service provider account using email, then sends a 4-digit OTP to verify email ownership. If device token details are provided, they are linked to the account for notifications.
+         * @description Creates or re-activates a service provider account using email, then sends a 4-digit OTP.
+         *      *
+         *      * **Soft-deleted account — two-step flow (both use HTTP 200):**
+         *      *
+         *      * | Step | Request | Response shape | Frontend action |
+         *      * |------|---------|----------------|-----------------|
+         *      * | 1 | `{ email }` or `{ email, restore: false }` | `data.restore_required === true` | Show restore screen with deletion dates. Do NOT go to OTP screen. |
+         *      * | 2 | `{ email, restore: true }` | `message: OTP sent successfully`, no `restore_required` | Go to OTP screen → call confirm-email. |
+         *      *
+         *      * **How to tell the two HTTP 200 responses apart:** check `data.restore_required`. If `true` → Step 1. If missing/undefined and `message` is `OTP sent successfully` → Step 2 (or normal signup).
          */
         post: operations["5647dc31a74fdf7c26bd9d125b565a7d"];
         delete?: never;
@@ -351,7 +380,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm email OTP and login.
-         * @description Validates the latest active OTP for the email, marks email verified, activates account status, and returns bearer token with user/profile verification flags.
+         * @description Validates the latest active OTP for the email, marks email verified, activates account status, clears users.deleted_at, and returns bearer token with user/profile verification flags. Dispatches default provider availability setup job on success.
          */
         post: operations["c5e1efef762a192bbee420c19c24c0c1"];
         delete?: never;
@@ -371,7 +400,7 @@ export interface paths {
         put?: never;
         /**
          * Resend OTP to email.
-         * @description Deactivates previous active OTP records for the user email and sends a fresh OTP email.
+         * @description Deactivates previous active OTP records for the user email and sends a fresh OTP email. Does not run the soft-delete restore guard — only succeeds when an active provider user row exists.
          */
         post: operations["35e4c2393a7e9f64a60bbb5a03d809e4"];
         delete?: never;
@@ -391,7 +420,7 @@ export interface paths {
         put?: never;
         /**
          * Request phone OTP.
-         * @description Starts phone OTP flow. If the phone is not tied to restricted roles, the endpoint creates or reuses the provider account and sends OTP via SMS.
+         * @description Starts phone OTP flow. Same soft-delete two-step pattern as email-signup: Step 1 returns data.restore_required=true (no OTP). Step 2 with restore=true returns OTP sent successfully.
          */
         post: operations["45db26a97f4a625989651c10dfd0694c"];
         delete?: never;
@@ -411,7 +440,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm phone OTP and login.
-         * @description Validates the latest active OTP for the phone number, marks phone verified, activates account status, and returns bearer token with user/profile verification flags.
+         * @description Validates the latest active OTP for the phone number, marks phone verified, activates account status, clears users.deleted_at, and returns bearer token with user/profile verification flags. Dispatches default provider availability setup job on success.
          */
         post: operations["3ea41d7ba74dd55302f48d664fa6c79c"];
         delete?: never;
@@ -451,7 +480,7 @@ export interface paths {
         put?: never;
         /**
          * Login with Facebook identity.
-         * @description Creates or reuses provider account based on Facebook email, ensures active status, links optional device token, and returns bearer token with provider verification flags.
+         * @description Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).
          */
         post: operations["70b97c6e364e984d0db80e179824dcc4"];
         delete?: never;
@@ -471,7 +500,7 @@ export interface paths {
         put?: never;
         /**
          * Login with Google identity.
-         * @description Creates or reuses provider account based on Google email, marks status active, links optional device token, and returns bearer token with provider verification flags.
+         * @description Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).
          */
         post: operations["8462c65c42a46b738d1755340bf982d4"];
         delete?: never;
@@ -491,7 +520,7 @@ export interface paths {
         put?: never;
         /**
          * Login with Apple identity.
-         * @description Creates or reuses provider account based on Apple user ID, links optional device token and referral code, and returns bearer token with provider verification flags.
+         * @description Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).
          */
         post: operations["4ab92d26ee694f2c95caab09064c0f15"];
         delete?: never;
@@ -511,7 +540,7 @@ export interface paths {
         put?: never;
         /**
          * Send OTP for permanent account deletion.
-         * @description Sends OTP to email for an account already in deleted state and waiting for permanent deletion confirmation.
+         * @description Public endpoint (no bearer token). Sends OTP to the provider email for an account that is already in provider soft-deleted state (provider_profiles.deleted_at is set) but not yet permanently deleted (provider_status != 2). Used after the 30-day grace window approach when the user chooses to permanently delete instead of restoring. OTP type=3, valid 5 minutes.
          */
         post: operations["e76a4e32221dba9028b68e60c53e9528"];
         delete?: never;
@@ -531,7 +560,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm OTP and permanently delete account.
-         * @description Confirms OTP for a deleted provider account and finalizes permanent deletion by setting provider status to deleted.
+         * @description Public endpoint (no bearer token). Confirms OTP (type=3) for a soft-deleted provider account and finalizes permanent deletion by setting provider_profiles.provider_status=2 and permanent_delete=now(). If the profile was not yet soft-deleted, it is soft-deleted first. After success the account cannot be restored via restore=true.
          */
         post: operations["3ae25e4b0ec1fef3abd1ca9b653a1080"];
         delete?: never;
@@ -671,7 +700,7 @@ export interface paths {
         put?: never;
         /**
          * Invite a business member.
-         * @description Creates a pending business member invitation for an existing role_id=3 user, assigns service sub-categories, and sends a signed invitation URL that expires in 7 days.
+         * @description Creates a pending business member invitation for an existing role_id=3 user, assigns service sub-categories, and sends a signed invitation URL that expires in 7 days. Internally, if the invited user already has a non-deleted provider profile, the invitation stores provider_profile_id; otherwise it remains null until the invitation is accepted. The API response does not expose provider_profile_id.
          */
         post: operations["2aabc461bc1236b9c777497ed83e95a8"];
         delete?: never;
@@ -689,7 +718,7 @@ export interface paths {
         };
         /**
          * List active, pending and archive business members.
-         * @description Returns members for the requested business_id with active_count, pending_count, archive_count and members arrays grouped by status.
+         * @description Returns members for the requested business_id with active_count, pending_count, archive_count and members arrays grouped by status. Pending members are shown from user/email invitation data. Active members are shown only when their linked provider profile still exists and is not deleted. The response shape is unchanged and does not expose provider_profile_id.
          */
         get: operations["191d8ebe38ce674dcacd2fa54afc535c"];
         put?: never;
@@ -709,7 +738,7 @@ export interface paths {
         };
         /**
          * Get business member details.
-         * @description Returns one member with joined_at and assigned service sub-categories for the provided business_id.
+         * @description Returns one member with joined_at and assigned service sub-categories for the provided business_id. Pending members can be returned from user/email invitation data; active members require a linked provider profile that still exists and is not deleted. The response shape is unchanged.
          */
         get: operations["5796f2c4118ddf19ffd555245b23bb84"];
         put?: never;
@@ -735,7 +764,7 @@ export interface paths {
         put?: never;
         /**
          * Resend business member invitation.
-         * @description Resends invitation email for a pending member and extends invitation expiry by 7 days.
+         * @description Resends invitation email for a pending member and extends invitation expiry by 7 days. If the invited user now has a non-deleted provider profile, the pending invitation is internally linked to it. The response shape is unchanged.
          */
         post: operations["1e5d1d2af3d406c45c362bc3fbfb107a"];
         delete?: never;
@@ -755,7 +784,7 @@ export interface paths {
         put?: never;
         /**
          * Add one service to member.
-         * @description Assigns one service sub-category to selected business member for the provided business_id.
+         * @description Assigns one service sub-category to selected business member for the provided business_id. Pending invitations remain user/email based; active members require a linked provider profile that still exists and is not deleted.
          */
         post: operations["77fbbf99d20de449b55fbd9228fc1a2c"];
         delete?: never;
@@ -776,7 +805,7 @@ export interface paths {
         post?: never;
         /**
          * Remove one service from member.
-         * @description Removes one assigned service sub-category from selected business member for the provided business_id.
+         * @description Removes one assigned service sub-category from selected business member for the provided business_id. Pending invitations remain user/email based; active members require a linked provider profile that still exists and is not deleted.
          */
         delete: operations["18f30792a29fa650c80d6409fce227bf"];
         options?: never;
@@ -1097,7 +1126,7 @@ export interface paths {
         };
         /**
          * Get authenticated provider profile summary.
-         * @description Returns authenticated user details along with profile image and background verification status.
+         * @description Returns authenticated user details along with profile image, background verification, and additive provider suspension status. Existing fields are unchanged.
          */
         get: operations["196658d5fd4c5949852048a09979e245"];
         put?: never;
@@ -1540,6 +1569,61 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        /** @description Current open provider suspension. Null when the provider account is active. */
+        ProviderSuspensionSummary: {
+            /** @example 18 */
+            id?: number;
+            /**
+             * @example standard
+             * @enum {string}
+             */
+            type?: "standard";
+            /** @example Your verification documents require review. */
+            reason?: string;
+            /**
+             * Format: date-time
+             * @example 2026-08-12T10:30:00.000000Z
+             */
+            suspended_at?: string;
+        } | null;
+        ProviderAccountStatusData: {
+            /** @example 54 */
+            profile_id: number;
+            /**
+             * @description 0=suspended, 1=active, 2=deleted.
+             * @example 0
+             * @enum {integer}
+             */
+            provider_status: 0 | 1 | 2;
+            /**
+             * @example suspended
+             * @enum {string}
+             */
+            provider_status_label: "suspended" | "active" | "deleted";
+            suspension: components["schemas"]["ProviderSuspensionSummary"];
+        };
+        ProviderAccountStatusResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Provider account status retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderAccountStatusData"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        /** @description Returned by provider marketplace write APIs while the provider profile is suspended. Existing read APIs remain available. */
+        ProviderSuspendedErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example Your provider account is suspended. */
+            message?: string;
+            data?: components["schemas"]["ProviderAccountStatusData"] & {
+                /** @example PROVIDER_ACCOUNT_SUSPENDED */
+                code?: string;
+            };
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
         ProviderAddressModel: {
             /** @example 17 */
             id?: number;
@@ -1612,8 +1696,8 @@ export interface components {
              */
             email: string;
             /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
+             * @description Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.
+             * @example false
              */
             restore?: boolean | null;
             /**
@@ -1640,8 +1724,8 @@ export interface components {
              */
             phone: string;
             /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
+             * @description Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.
+             * @example false
              */
             restore?: boolean | null;
             /**
@@ -1673,11 +1757,6 @@ export interface components {
              * @example 1234
              */
             otp: string;
-            /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
-             */
-            restore?: boolean | null;
         };
         ConfirmNumberRequest: {
             /**
@@ -1690,11 +1769,6 @@ export interface components {
              * @example 1234
              */
             otp: string;
-            /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
-             */
-            restore?: boolean | null;
         };
         FacebookLoginRequest: {
             /**
@@ -1714,8 +1788,8 @@ export interface components {
              */
             last_name: string;
             /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
+             * @description Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.
+             * @example false
              */
             restore?: boolean | null;
             /**
@@ -1752,8 +1826,8 @@ export interface components {
              */
             last_name: string;
             /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
+             * @description Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.
+             * @example false
              */
             restore?: boolean | null;
             /**
@@ -1779,8 +1853,8 @@ export interface components {
              */
             apple_user_id: string;
             /**
-             * @description Set true to restore a soft-deleted provider profile when still in 30-day grace period.
-             * @example true
+             * @description Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.
+             * @example false
              */
             restore?: boolean | null;
             /**
@@ -1855,6 +1929,10 @@ export interface components {
              */
             phone?: string;
         };
+        /**
+         * Success — OTP sent (proceed to OTP screen)
+         * @description Returned when signup/login continues normally, OR after the user confirmed restore (restore=true) on a previously soft-deleted provider profile. data.restore_required is ABSENT. Next step: call confirm-email / confirm-number with the OTP.
+         */
         EmailOtpSentResponse: {
             /** @example Success */
             status?: string;
@@ -1863,20 +1941,28 @@ export interface components {
             data?: {
                 /**
                  * Format: email
-                 * @example provider@example.com
+                 * @description Email where OTP was sent. data.restore_required is NOT present in this shape.
+                 * @example ray@gmail.com
                  */
                 email?: string;
             };
             /** @example [] */
             meta?: unknown[];
         };
+        /**
+         * Success — OTP sent (proceed to OTP screen)
+         * @description Returned when phone login continues normally, OR after restore=true on a soft-deleted profile. data.restore_required is ABSENT. Next step: call confirm-number.
+         */
         PhoneOtpSentResponse: {
             /** @example Success */
             status?: string;
             /** @example OTP sent successfully */
             message?: string;
             data?: {
-                /** @example +15551234567 */
+                /**
+                 * @description Phone where OTP was sent. data.restore_required is NOT present.
+                 * @example +15551234567
+                 */
                 phone?: string;
             };
             /** @example [] */
@@ -1905,6 +1991,18 @@ export interface components {
              * @enum {string}
              */
             background_verification?: "Pending" | "Verified" | "Not Verified";
+            /**
+             * @description Additive provider profile status: 0=suspended, 1=active, 2=deleted. Existing response fields are unchanged.
+             * @example 1
+             * @enum {integer|null}
+             */
+            provider_status?: 0 | 1 | 2 | null;
+            /**
+             * @example active
+             * @enum {string|null}
+             */
+            provider_status_label?: "suspended" | "active" | "deleted" | null;
+            suspension?: components["schemas"]["ProviderSuspensionSummary"];
         };
         OtpLoginResponse: {
             /** @example Success */
@@ -1925,6 +2023,101 @@ export interface components {
             message?: string;
             /** @example  */
             data?: string;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /** @description Returned when the provider profile was soft-deleted from the provider app (delete account flow) and is still inside the 30-day grace period. OTP is NOT sent until the client retries with restore=true. */
+        AccountDeletedRestoreRequiredData: {
+            /**
+             * Format: email
+             * @description Present when the login identifier is email (email-signup, Google, Facebook).
+             * @example ray@gmail.com
+             */
+            email?: string | null;
+            /**
+             * @description Present when the login identifier is phone (number-login).
+             * @example +15551234567
+             */
+            phone?: string | null;
+            /**
+             * @description Present for Apple login when applicable.
+             * @example apple_user_12345
+             */
+            apple_user_id?: string | null;
+            /**
+             * @description Date the provider requested account deletion (provider_profiles.deleted_at), formatted M j, Y.
+             * @example Aug 24, 2026
+             */
+            request_deletion_date: string;
+            /**
+             * @description Last date the account can be restored (provider_profiles.permanent_delete or deleted_at + 30 days), formatted M j, Y.
+             * @example Sep 23, 2026
+             */
+            permanent_deletion_date: string;
+            /**
+             * @description Always true for this response. Frontend must show restore UI and call the same endpoint again with restore=true to continue login/signup.
+             * @example true
+             */
+            restore_required: boolean;
+        };
+        /**
+         * Success — soft-deleted account (show restore UI first)
+         * @description Step 1 response when provider profile is soft-deleted and the request did NOT include restore=true. HTTP 200 but NO OTP is sent and NO access_token is returned. Frontend MUST check data.restore_required === true, show restore confirmation, then call the SAME endpoint again with restore=true in the request body.
+         */
+        AccountDeletedRestoreRequiredResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example This account has been deleted */
+            message?: string;
+            data?: components["schemas"]["AccountDeletedRestoreRequiredData"];
+            /** @example [] */
+            meta?: unknown[];
+        };
+        PermanentDeleteOtpSentResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example OTP sent successfully. */
+            message?: string;
+            data?: {
+                /**
+                 * Format: email
+                 * @description Email address where the permanent-delete OTP was sent.
+                 * @example provider@example.com
+                 */
+                sent_to?: string;
+            };
+            /** @example [] */
+            meta?: unknown[];
+        };
+        PermanentDeleteSuccessResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Account permanently deleted successfully! */
+            message?: string;
+            /** @example  */
+            data?: string;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /** @description Returned when the email is already registered under a non-provider role (Super Admin, Store Manager, etc.). */
+        SocialLoginBadRequestResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example cannot login using this email, try using other email */
+            message?: string;
+            /** @example null */
+            data?: unknown;
+            /** @example [] */
+            meta?: unknown[];
+        };
+        /** @description Returned when the account exists but is not in the state required for the requested auth action (permanent delete OTP flow). */
+        AuthAccountStateErrorResponse: {
+            /** @example Error */
+            status?: string;
+            /** @example This account is not in deleted state. */
+            message?: string;
+            /** @example null */
+            data?: unknown;
             /** @example [] */
             meta?: unknown[];
         };
@@ -3339,6 +3532,18 @@ export interface components {
              * @enum {string}
              */
             background_verification?: "Pending" | "Verified" | "Not Verified";
+            /**
+             * @description Additive status: 0=suspended, 1=active, 2=deleted.
+             * @example 1
+             * @enum {integer|null}
+             */
+            provider_status?: 0 | 1 | 2 | null;
+            /**
+             * @example active
+             * @enum {string|null}
+             */
+            provider_status_label?: "suspended" | "active" | "deleted" | null;
+            suspension?: components["schemas"]["ProviderSuspensionSummary"];
         };
         AuthUserProfileResponse: {
             /** @example Success */
@@ -3925,7 +4130,7 @@ export interface components {
             delete_certificate_ids?: number[];
             dynamic_file_keys?: string[];
             dynamic_files?: string[];
-            /** @description Optional on information update. When supplied it must be true. */
+            /** @description Prohibited on information update. Required only on create. */
             information_accuracy_acknowledgement?: boolean | null;
         };
         /** @description Updates pricing only. For fixed_price, amount, currency, and price_unit_id are required. For quote_required these fields are optional; supplied values are validated and stored, while omitted values are stored as null. Context/category fields and charge_in_usd are prohibited. */
@@ -4927,6 +5132,53 @@ export interface operations {
             };
         };
     };
+    df24c6dd6efa34eff400fe8741ebf85d: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider account status retrieved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAccountStatusResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
     "38be0d5ac179bbd35d5ee398bde40641": {
         parameters: {
             query?: never;
@@ -5214,34 +5466,35 @@ export interface operations {
         };
         requestBody: {
             content: {
-                /**
-                 * @example {
-                 *       "email": "provider@example.com",
-                 *       "device_token": "abc123-device-token",
-                 *       "device_type": "android",
-                 *       "referral_code": "REF123"
-                 *     }
-                 */
                 "application/json": components["schemas"]["EmailSignupRequest"];
             };
         };
         responses: {
-            /** @description OTP sent to email. */
+            /** @description Two possible success shapes at HTTP 200 — branch on data.restore_required (see endpoint description). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EmailOtpSentResponse"];
+                    "application/json": components["schemas"]["AccountDeletedRestoreRequiredResponse"] | components["schemas"]["EmailOtpSentResponse"];
                 };
             };
-            /** @description Email belongs to a non-provider account. */
+            /** @description Email belongs to a non-provider account (Super Admin, Store Manager, Store Clerk, Customer Support, Inventory User). */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["BadRequestResponse"];
+                };
+            };
+            /** @description User not found. Returned when the user row was soft-deleted from the Convenient/customer side (users.status=2 or users.deleted_at set), or when the provider grace period has expired and the profile was permanently deleted. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5325,7 +5578,10 @@ export interface operations {
                      *         },
                      *         "device_token": null,
                      *         "profile_image": null,
-                     *         "background_verification": "Pending"
+                     *         "background_verification": "Pending",
+                     *         "provider_status": 1,
+                     *         "provider_status_label": "active",
+                     *         "suspension": null
                      *       },
                      *       "meta": []
                      *     }
@@ -5333,7 +5589,7 @@ export interface operations {
                     "application/json": components["schemas"]["OtpLoginResponse"];
                 };
             };
-            /** @description User not found. */
+            /** @description No provider user found for the supplied email (role_id=3). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5398,7 +5654,7 @@ export interface operations {
                     "application/json": components["schemas"]["EmailOtpSentResponse"];
                 };
             };
-            /** @description User not found. */
+            /** @description No provider user found for the supplied email. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5445,34 +5701,35 @@ export interface operations {
         };
         requestBody: {
             content: {
-                /**
-                 * @example {
-                 *       "phone": "+15551234567",
-                 *       "device_token": "abc123-device-token",
-                 *       "device_type": "android",
-                 *       "referral_code": "REF123"
-                 *     }
-                 */
                 "application/json": components["schemas"]["NumberLoginRequest"];
             };
         };
         responses: {
-            /** @description OTP sent to phone. */
+            /** @description Two possible success shapes at HTTP 200 — branch on data.restore_required. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PhoneOtpSentResponse"];
+                    "application/json": components["schemas"]["AccountDeletedRestoreRequiredResponse"] | components["schemas"]["PhoneOtpSentResponse"];
                 };
             };
-            /** @description Phone belongs to another role. */
+            /** @description Phone belongs to Super Admin or Store Manager role. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["BadRequestResponse"];
+                };
+            };
+            /** @description User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5554,9 +5811,12 @@ export interface operations {
                      *           "name_verified": false,
                      *           "profile_verified": false
                      *         },
-                     *         "provider_type": null,
+                     *         "device_token": null,
                      *         "profile_image": null,
-                     *         "background_verification": "Pending"
+                     *         "background_verification": "Pending",
+                     *         "provider_status": 1,
+                     *         "provider_status_label": "active",
+                     *         "suspension": null
                      *       },
                      *       "meta": []
                      *     }
@@ -5564,7 +5824,7 @@ export interface operations {
                     "application/json": components["schemas"]["OtpLoginResponse"];
                 };
             };
-            /** @description User not found. */
+            /** @description No provider user found for the supplied phone. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5629,7 +5889,7 @@ export interface operations {
                     "application/json": components["schemas"]["PhoneOtpSentResponse"];
                 };
             };
-            /** @description User not found. */
+            /** @description No provider user found for the supplied phone. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5680,45 +5940,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Facebook login successful. */
+            /** @description Two possible success shapes at HTTP 200 — branch on data.restore_required. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "status": "Success",
-                     *       "message": "Facebook login successful",
-                     *       "data": {
-                     *         "access_token": "eyJhbGciOi...",
-                     *         "user": {
-                     *           "user_id": 123,
-                     *           "user_fname": "John",
-                     *           "user_lname": "Doe",
-                     *           "user_email": "john.doe@example.com",
-                     *           "user_contact": null,
-                     *           "user_address": null,
-                     *           "user_zipcode": null,
-                     *           "user_status": 1,
-                     *           "role_id": 3,
-                     *           "user_role": "Customer",
-                     *           "full_name": "John Doe",
-                     *           "role_name": "Customer",
-                     *           "email_verified": false,
-                     *           "phone_verified": false,
-                     *           "id_verified": false,
-                     *           "name_verified": false,
-                     *           "profile_verified": false
-                     *         },
-                     *         "device_token": null,
-                     *         "profile_image": null,
-                     *         "background_verification": "Pending"
-                     *       },
-                     *       "meta": []
-                     *     }
-                     */
-                    "application/json": components["schemas"]["OtpLoginResponse"];
+                    "application/json": components["schemas"]["AccountDeletedRestoreRequiredResponse"] | components["schemas"]["OtpLoginResponse"];
                 };
             };
             /** @description Email belongs to a non-provider account. */
@@ -5727,7 +5955,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestResponse"];
+                    "application/json": components["schemas"]["SocialLoginBadRequestResponse"];
+                };
+            };
+            /** @description User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5772,45 +6009,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Google login successful. */
+            /** @description Two possible success shapes at HTTP 200 — branch on data.restore_required. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "status": "Success",
-                     *       "message": "Google login successful",
-                     *       "data": {
-                     *         "access_token": "eyJhbGciOi...",
-                     *         "user": {
-                     *           "user_id": 123,
-                     *           "user_fname": "John",
-                     *           "user_lname": "Doe",
-                     *           "user_email": "john.doe@example.com",
-                     *           "user_contact": null,
-                     *           "user_address": null,
-                     *           "user_zipcode": null,
-                     *           "user_status": 1,
-                     *           "role_id": 3,
-                     *           "user_role": "Customer",
-                     *           "full_name": "John Doe",
-                     *           "role_name": "Customer",
-                     *           "email_verified": true,
-                     *           "phone_verified": false,
-                     *           "id_verified": false,
-                     *           "name_verified": false,
-                     *           "profile_verified": false
-                     *         },
-                     *         "device_token": null,
-                     *         "profile_image": null,
-                     *         "background_verification": "Pending"
-                     *       },
-                     *       "meta": []
-                     *     }
-                     */
-                    "application/json": components["schemas"]["OtpLoginResponse"];
+                    "application/json": components["schemas"]["AccountDeletedRestoreRequiredResponse"] | components["schemas"]["OtpLoginResponse"];
                 };
             };
             /** @description Email belongs to a non-provider account. */
@@ -5819,7 +6024,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestResponse"];
+                    "application/json": components["schemas"]["SocialLoginBadRequestResponse"];
+                };
+            };
+            /** @description User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5864,45 +6078,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Apple login successful. */
+            /** @description Two possible success shapes at HTTP 200 — branch on data.restore_required. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "status": "Success",
-                     *       "message": "Apple login successful",
-                     *       "data": {
-                     *         "access_token": "eyJhbGciOi...",
-                     *         "user": {
-                     *           "user_id": 123,
-                     *           "user_fname": null,
-                     *           "user_lname": null,
-                     *           "user_email": null,
-                     *           "user_contact": null,
-                     *           "user_address": null,
-                     *           "user_zipcode": null,
-                     *           "user_status": 1,
-                     *           "role_id": 3,
-                     *           "user_role": "Customer",
-                     *           "full_name": " ",
-                     *           "role_name": "Customer",
-                     *           "email_verified": false,
-                     *           "phone_verified": false,
-                     *           "id_verified": false,
-                     *           "name_verified": false,
-                     *           "profile_verified": false
-                     *         },
-                     *         "device_token": null,
-                     *         "profile_image": null,
-                     *         "background_verification": "Pending"
-                     *       },
-                     *       "meta": []
-                     *     }
-                     */
-                    "application/json": components["schemas"]["OtpLoginResponse"];
+                    "application/json": components["schemas"]["AccountDeletedRestoreRequiredResponse"] | components["schemas"]["OtpLoginResponse"];
+                };
+            };
+            /** @description User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5952,16 +6143,16 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OTP sent. */
+            /** @description Permanent-delete OTP sent to email. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SuccessResponse"];
+                    "application/json": components["schemas"]["PermanentDeleteOtpSentResponse"];
                 };
             };
-            /** @description User or profile not found. */
+            /** @description User or provider profile not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5970,13 +6161,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
-            /** @description Validation error or account state does not allow operation. */
+            /** @description Validation error or account state does not allow permanent-delete OTP. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                    "application/json": components["schemas"]["AuthAccountStateErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -6015,10 +6206,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SuccessResponse"];
+                    "application/json": components["schemas"]["PermanentDeleteSuccessResponse"];
                 };
             };
-            /** @description User or profile not found. */
+            /** @description User or provider profile not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6027,13 +6218,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundResponse"];
                 };
             };
-            /** @description Invalid OTP or already permanently deleted. */
+            /** @description Invalid OTP, expired OTP, already permanently deleted, or validation error. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                    "application/json": components["schemas"]["AuthAccountStateErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -6143,13 +6334,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Provider account is suspended. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Provider profile not found. */
@@ -6291,13 +6482,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProviderAvailabilityUnauthorizedErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Provider account is suspended. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProviderAvailabilityForbiddenErrorResponse"];
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Provider profile not found. */
@@ -6508,6 +6699,15 @@ export interface operations {
                     "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Business profile not found. */
             404: {
                 headers: {
@@ -6686,6 +6886,15 @@ export interface operations {
                     "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Business profile or member not found. */
             404: {
                 headers: {
@@ -6742,6 +6951,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Business profile or member not found. */
@@ -6806,6 +7024,15 @@ export interface operations {
                     "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Business profile or member not found. */
             404: {
                 headers: {
@@ -6865,6 +7092,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessMemberUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Business profile or member not found. */
@@ -6927,6 +7163,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Validation error or business already exists. */
             422: {
                 headers: {
@@ -6978,6 +7223,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Business profile not found. */
@@ -7125,6 +7379,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Business profile not found. */
             404: {
                 headers: {
@@ -7172,6 +7435,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderBusinessUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Business profile not found. */
@@ -7467,6 +7739,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDateAvailabilityUnauthorizedErrorResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Provider profile not found. */
@@ -8125,6 +8406,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Template, ownership, fulfillment, file, or pricing validation failed. */
             422: {
                 headers: {
@@ -8189,6 +8479,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceStatusResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Service not found */
@@ -8337,6 +8636,15 @@ export interface operations {
                     "application/json": components["schemas"]["ServiceInformationResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Service not found */
             404: {
                 headers: {
@@ -8412,6 +8720,15 @@ export interface operations {
                     "application/json": components["schemas"]["ServicePricingResponse"];
                 };
             };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
+                };
+            };
             /** @description Service not found */
             404: {
                 headers: {
@@ -8450,6 +8767,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceStatusResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Service not found */
@@ -8495,6 +8821,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceFileDeleteResponse"];
+                };
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
             /** @description Owned service or matching file not found. */

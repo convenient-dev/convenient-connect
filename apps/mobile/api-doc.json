@@ -830,6 +830,61 @@
         ]
       }
     },
+    "/service-provider/account-status": {
+      "get": {
+        "tags": ["Service Provider Account Status"],
+        "summary": "Get the authenticated provider account status.",
+        "description": "Backward-compatible status bootstrap for Convenient Connect. Suspended providers remain authenticated and may use existing read APIs, account settings, support, and logout. Marketplace write operations for services, businesses, business members, recurring availability, and date availability return PROVIDER_ACCOUNT_SUSPENDED until reactivated.",
+        "operationId": "df24c6dd6efa34eff400fe8741ebf85d",
+        "responses": {
+          "200": {
+            "description": "Provider account status retrieved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAccountStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Provider profile not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/service-provider/address": {
       "get": {
         "tags": ["Service Provider Address"],
@@ -1191,7 +1246,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Sign up using email and send OTP.",
-        "description": "Creates or re-activates a service provider account using email, then sends a 4-digit OTP to verify email ownership. If device token details are provided, they are linked to the account for notifications.",
+        "description": "Creates or re-activates a service provider account using email, then sends a 4-digit OTP.\n *\n * **Soft-deleted account — two-step flow (both use HTTP 200):**\n *\n * | Step | Request | Response shape | Frontend action |\n * |------|---------|----------------|-----------------|\n * | 1 | `{ email }` or `{ email, restore: false }` | `data.restore_required === true` | Show restore screen with deletion dates. Do NOT go to OTP screen. |\n * | 2 | `{ email, restore: true }` | `message: OTP sent successfully`, no `restore_required` | Go to OTP screen → call confirm-email. |\n *\n * **How to tell the two HTTP 200 responses apart:** check `data.restore_required`. If `true` → Step 1. If missing/undefined and `message` is `OTP sent successfully` → Step 2 (or normal signup).",
         "operationId": "5647dc31a74fdf7c26bd9d125b565a7d",
         "requestBody": {
           "required": true,
@@ -1199,33 +1254,44 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EmailSignupRequest"
-              },
-              "example": {
-                "email": "provider@example.com",
-                "device_token": "abc123-device-token",
-                "device_type": "android",
-                "referral_code": "REF123"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OTP sent to email.",
+            "description": "Two possible success shapes at HTTP 200 — branch on data.restore_required (see endpoint description).",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EmailOtpSentResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccountDeletedRestoreRequiredResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EmailOtpSentResponse"
+                    }
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Email belongs to a non-provider account.",
+            "description": "Email belongs to a non-provider account (Super Admin, Store Manager, Store Clerk, Customer Support, Inventory User).",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found. Returned when the user row was soft-deleted from the Convenient/customer side (users.status=2 or users.deleted_at set), or when the provider grace period has expired and the profile was permanently deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
                 }
               }
             }
@@ -1267,7 +1333,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Confirm email OTP and login.",
-        "description": "Validates the latest active OTP for the email, marks email verified, activates account status, and returns bearer token with user/profile verification flags.",
+        "description": "Validates the latest active OTP for the email, marks email verified, activates account status, clears users.deleted_at, and returns bearer token with user/profile verification flags. Dispatches default provider availability setup job on success.",
         "operationId": "c5e1efef762a192bbee420c19c24c0c1",
         "requestBody": {
           "required": true,
@@ -1317,7 +1383,10 @@
                     },
                     "device_token": null,
                     "profile_image": null,
-                    "background_verification": "Pending"
+                    "background_verification": "Pending",
+                    "provider_status": 1,
+                    "provider_status_label": "active",
+                    "suspension": null
                   },
                   "meta": []
                 }
@@ -1335,7 +1404,7 @@
             }
           },
           "404": {
-            "description": "User not found.",
+            "description": "No provider user found for the supplied email (role_id=3).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1371,7 +1440,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Resend OTP to email.",
-        "description": "Deactivates previous active OTP records for the user email and sends a fresh OTP email.",
+        "description": "Deactivates previous active OTP records for the user email and sends a fresh OTP email. Does not run the soft-delete restore guard — only succeeds when an active provider user row exists.",
         "operationId": "35e4c2393a7e9f64a60bbb5a03d809e4",
         "requestBody": {
           "required": true,
@@ -1398,7 +1467,7 @@
             }
           },
           "404": {
-            "description": "User not found.",
+            "description": "No provider user found for the supplied email.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1444,7 +1513,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Request phone OTP.",
-        "description": "Starts phone OTP flow. If the phone is not tied to restricted roles, the endpoint creates or reuses the provider account and sends OTP via SMS.",
+        "description": "Starts phone OTP flow. Same soft-delete two-step pattern as email-signup: Step 1 returns data.restore_required=true (no OTP). Step 2 with restore=true returns OTP sent successfully.",
         "operationId": "45db26a97f4a625989651c10dfd0694c",
         "requestBody": {
           "required": true,
@@ -1452,33 +1521,44 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/NumberLoginRequest"
-              },
-              "example": {
-                "phone": "+15551234567",
-                "device_token": "abc123-device-token",
-                "device_type": "android",
-                "referral_code": "REF123"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OTP sent to phone.",
+            "description": "Two possible success shapes at HTTP 200 — branch on data.restore_required.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PhoneOtpSentResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccountDeletedRestoreRequiredResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PhoneOtpSentResponse"
+                    }
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Phone belongs to another role.",
+            "description": "Phone belongs to Super Admin or Store Manager role.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
                 }
               }
             }
@@ -1520,7 +1600,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Confirm phone OTP and login.",
-        "description": "Validates the latest active OTP for the phone number, marks phone verified, activates account status, and returns bearer token with user/profile verification flags.",
+        "description": "Validates the latest active OTP for the phone number, marks phone verified, activates account status, clears users.deleted_at, and returns bearer token with user/profile verification flags. Dispatches default provider availability setup job on success.",
         "operationId": "3ea41d7ba74dd55302f48d664fa6c79c",
         "requestBody": {
           "required": true,
@@ -1568,9 +1648,12 @@
                       "name_verified": false,
                       "profile_verified": false
                     },
-                    "provider_type": null,
+                    "device_token": null,
                     "profile_image": null,
-                    "background_verification": "Pending"
+                    "background_verification": "Pending",
+                    "provider_status": 1,
+                    "provider_status_label": "active",
+                    "suspension": null
                   },
                   "meta": []
                 }
@@ -1588,7 +1671,7 @@
             }
           },
           "404": {
-            "description": "User not found.",
+            "description": "No provider user found for the supplied phone.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1651,7 +1734,7 @@
             }
           },
           "404": {
-            "description": "User not found.",
+            "description": "No provider user found for the supplied phone.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1697,7 +1780,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Login with Facebook identity.",
-        "description": "Creates or reuses provider account based on Facebook email, ensures active status, links optional device token, and returns bearer token with provider verification flags.",
+        "description": "Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).",
         "operationId": "70b97c6e364e984d0db80e179824dcc4",
         "requestBody": {
           "required": true,
@@ -1711,41 +1794,18 @@
         },
         "responses": {
           "200": {
-            "description": "Facebook login successful.",
+            "description": "Two possible success shapes at HTTP 200 — branch on data.restore_required.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OtpLoginResponse"
-                },
-                "example": {
-                  "status": "Success",
-                  "message": "Facebook login successful",
-                  "data": {
-                    "access_token": "eyJhbGciOi...",
-                    "user": {
-                      "user_id": 123,
-                      "user_fname": "John",
-                      "user_lname": "Doe",
-                      "user_email": "john.doe@example.com",
-                      "user_contact": null,
-                      "user_address": null,
-                      "user_zipcode": null,
-                      "user_status": 1,
-                      "role_id": 3,
-                      "user_role": "Customer",
-                      "full_name": "John Doe",
-                      "role_name": "Customer",
-                      "email_verified": false,
-                      "phone_verified": false,
-                      "id_verified": false,
-                      "name_verified": false,
-                      "profile_verified": false
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccountDeletedRestoreRequiredResponse"
                     },
-                    "device_token": null,
-                    "profile_image": null,
-                    "background_verification": "Pending"
-                  },
-                  "meta": []
+                    {
+                      "$ref": "#/components/schemas/OtpLoginResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -1755,7 +1815,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BadRequestResponse"
+                  "$ref": "#/components/schemas/SocialLoginBadRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
                 }
               }
             }
@@ -1797,7 +1867,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Login with Google identity.",
-        "description": "Creates or reuses provider account based on Google email, marks status active, links optional device token, and returns bearer token with provider verification flags.",
+        "description": "Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).",
         "operationId": "8462c65c42a46b738d1755340bf982d4",
         "requestBody": {
           "required": true,
@@ -1811,41 +1881,18 @@
         },
         "responses": {
           "200": {
-            "description": "Google login successful.",
+            "description": "Two possible success shapes at HTTP 200 — branch on data.restore_required.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OtpLoginResponse"
-                },
-                "example": {
-                  "status": "Success",
-                  "message": "Google login successful",
-                  "data": {
-                    "access_token": "eyJhbGciOi...",
-                    "user": {
-                      "user_id": 123,
-                      "user_fname": "John",
-                      "user_lname": "Doe",
-                      "user_email": "john.doe@example.com",
-                      "user_contact": null,
-                      "user_address": null,
-                      "user_zipcode": null,
-                      "user_status": 1,
-                      "role_id": 3,
-                      "user_role": "Customer",
-                      "full_name": "John Doe",
-                      "role_name": "Customer",
-                      "email_verified": true,
-                      "phone_verified": false,
-                      "id_verified": false,
-                      "name_verified": false,
-                      "profile_verified": false
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccountDeletedRestoreRequiredResponse"
                     },
-                    "device_token": null,
-                    "profile_image": null,
-                    "background_verification": "Pending"
-                  },
-                  "meta": []
+                    {
+                      "$ref": "#/components/schemas/OtpLoginResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -1855,7 +1902,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BadRequestResponse"
+                  "$ref": "#/components/schemas/SocialLoginBadRequestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
                 }
               }
             }
@@ -1897,7 +1954,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Login with Apple identity.",
-        "description": "Creates or reuses provider account based on Apple user ID, links optional device token and referral code, and returns bearer token with provider verification flags.",
+        "description": "Social login. Soft-delete two-step pattern: Step 1 returns data.restore_required=true (no token). Step 2 with restore=true returns access_token immediately (no OTP step).",
         "operationId": "4ab92d26ee694f2c95caab09064c0f15",
         "requestBody": {
           "required": true,
@@ -1911,41 +1968,28 @@
         },
         "responses": {
           "200": {
-            "description": "Apple login successful.",
+            "description": "Two possible success shapes at HTTP 200 — branch on data.restore_required.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OtpLoginResponse"
-                },
-                "example": {
-                  "status": "Success",
-                  "message": "Apple login successful",
-                  "data": {
-                    "access_token": "eyJhbGciOi...",
-                    "user": {
-                      "user_id": 123,
-                      "user_fname": null,
-                      "user_lname": null,
-                      "user_email": null,
-                      "user_contact": null,
-                      "user_address": null,
-                      "user_zipcode": null,
-                      "user_status": 1,
-                      "role_id": 3,
-                      "user_role": "Customer",
-                      "full_name": " ",
-                      "role_name": "Customer",
-                      "email_verified": false,
-                      "phone_verified": false,
-                      "id_verified": false,
-                      "name_verified": false,
-                      "profile_verified": false
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccountDeletedRestoreRequiredResponse"
                     },
-                    "device_token": null,
-                    "profile_image": null,
-                    "background_verification": "Pending"
-                  },
-                  "meta": []
+                    {
+                      "$ref": "#/components/schemas/OtpLoginResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found. Returned when the user row was soft-deleted from the Convenient/customer side, or when the provider grace period has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundResponse"
                 }
               }
             }
@@ -1987,7 +2031,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Send OTP for permanent account deletion.",
-        "description": "Sends OTP to email for an account already in deleted state and waiting for permanent deletion confirmation.",
+        "description": "Public endpoint (no bearer token). Sends OTP to the provider email for an account that is already in provider soft-deleted state (provider_profiles.deleted_at is set) but not yet permanently deleted (provider_status != 2). Used after the 30-day grace window approach when the user chooses to permanently delete instead of restoring. OTP type=3, valid 5 minutes.",
         "operationId": "e76a4e32221dba9028b68e60c53e9528",
         "requestBody": {
           "required": true,
@@ -2004,17 +2048,17 @@
         },
         "responses": {
           "200": {
-            "description": "OTP sent.",
+            "description": "Permanent-delete OTP sent to email.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/PermanentDeleteOtpSentResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "User or profile not found.",
+            "description": "User or provider profile not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2024,11 +2068,11 @@
             }
           },
           "422": {
-            "description": "Validation error or account state does not allow operation.",
+            "description": "Validation error or account state does not allow permanent-delete OTP.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                  "$ref": "#/components/schemas/AuthAccountStateErrorResponse"
                 }
               }
             }
@@ -2050,7 +2094,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Confirm OTP and permanently delete account.",
-        "description": "Confirms OTP for a deleted provider account and finalizes permanent deletion by setting provider status to deleted.",
+        "description": "Public endpoint (no bearer token). Confirms OTP (type=3) for a soft-deleted provider account and finalizes permanent deletion by setting provider_profiles.provider_status=2 and permanent_delete=now(). If the profile was not yet soft-deleted, it is soft-deleted first. After success the account cannot be restored via restore=true.",
         "operationId": "3ae25e4b0ec1fef3abd1ca9b653a1080",
         "requestBody": {
           "required": true,
@@ -2072,13 +2116,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/PermanentDeleteSuccessResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "User or profile not found.",
+            "description": "User or provider profile not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2088,11 +2132,11 @@
             }
           },
           "422": {
-            "description": "Invalid OTP or already permanently deleted.",
+            "description": "Invalid OTP, expired OTP, already permanently deleted, or validation error.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                  "$ref": "#/components/schemas/AuthAccountStateErrorResponse"
                 }
               }
             }
@@ -2289,11 +2333,11 @@
             }
           },
           "403": {
-            "description": "Forbidden.",
+            "description": "Provider account is suspended.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProviderAvailabilityForbiddenErrorResponse"
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -2459,11 +2503,11 @@
             }
           },
           "403": {
-            "description": "Forbidden.",
+            "description": "Provider account is suspended.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProviderAvailabilityForbiddenErrorResponse"
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -2680,7 +2724,7 @@
       "post": {
         "tags": ["Service Provider Business Members"],
         "summary": "Invite a business member.",
-        "description": "Creates a pending business member invitation for an existing role_id=3 user, assigns service sub-categories, and sends a signed invitation URL that expires in 7 days.",
+        "description": "Creates a pending business member invitation for an existing role_id=3 user, assigns service sub-categories, and sends a signed invitation URL that expires in 7 days. Internally, if the invited user already has a non-deleted provider profile, the invitation stores provider_profile_id; otherwise it remains null until the invitation is accepted. The API response does not expose provider_profile_id.",
         "operationId": "2aabc461bc1236b9c777497ed83e95a8",
         "requestBody": {
           "required": true,
@@ -2709,6 +2753,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BusinessMemberUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -2755,7 +2809,7 @@
       "get": {
         "tags": ["Service Provider Business Members"],
         "summary": "List active, pending and archive business members.",
-        "description": "Returns members for the requested business_id with active_count, pending_count, archive_count and members arrays grouped by status.",
+        "description": "Returns members for the requested business_id with active_count, pending_count, archive_count and members arrays grouped by status. Pending members are shown from user/email invitation data. Active members are shown only when their linked provider profile still exists and is not deleted. The response shape is unchanged and does not expose provider_profile_id.",
         "operationId": "191d8ebe38ce674dcacd2fa54afc535c",
         "parameters": [
           {
@@ -2831,7 +2885,7 @@
       "get": {
         "tags": ["Service Provider Business Members"],
         "summary": "Get business member details.",
-        "description": "Returns one member with joined_at and assigned service sub-categories for the provided business_id.",
+        "description": "Returns one member with joined_at and assigned service sub-categories for the provided business_id. Pending members can be returned from user/email invitation data; active members require a linked provider profile that still exists and is not deleted. The response shape is unchanged.",
         "operationId": "5796f2c4118ddf19ffd555245b23bb84",
         "parameters": [
           {
@@ -2957,6 +3011,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Business profile or member not found.",
             "content": {
@@ -2999,7 +3063,7 @@
       "post": {
         "tags": ["Service Provider Business Members"],
         "summary": "Resend business member invitation.",
-        "description": "Resends invitation email for a pending member and extends invitation expiry by 7 days.",
+        "description": "Resends invitation email for a pending member and extends invitation expiry by 7 days. If the invited user now has a non-deleted provider profile, the pending invitation is internally linked to it. The response shape is unchanged.",
         "operationId": "1e5d1d2af3d406c45c362bc3fbfb107a",
         "parameters": [
           {
@@ -3029,6 +3093,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BusinessMemberUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -3075,7 +3149,7 @@
       "post": {
         "tags": ["Service Provider Business Members"],
         "summary": "Add one service to member.",
-        "description": "Assigns one service sub-category to selected business member for the provided business_id.",
+        "description": "Assigns one service sub-category to selected business member for the provided business_id. Pending invitations remain user/email based; active members require a linked provider profile that still exists and is not deleted.",
         "operationId": "77fbbf99d20de449b55fbd9228fc1a2c",
         "parameters": [
           {
@@ -3115,6 +3189,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BusinessMemberUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -3161,7 +3245,7 @@
       "delete": {
         "tags": ["Service Provider Business Members"],
         "summary": "Remove one service from member.",
-        "description": "Removes one assigned service sub-category from selected business member for the provided business_id.",
+        "description": "Removes one assigned service sub-category from selected business member for the provided business_id. Pending invitations remain user/email based; active members require a linked provider profile that still exists and is not deleted.",
         "operationId": "18f30792a29fa650c80d6409fce227bf",
         "parameters": [
           {
@@ -3209,6 +3293,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BusinessMemberUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -3288,6 +3382,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation error or business already exists.",
             "content": {
@@ -3360,6 +3464,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProviderBusinessUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -3551,6 +3665,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Business profile not found.",
             "content": {
@@ -3613,6 +3737,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProviderBusinessUnauthorizedErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -4011,6 +4145,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Provider profile not found.",
             "content": {
@@ -4335,7 +4479,7 @@
       "get": {
         "tags": ["Service Provider Profile"],
         "summary": "Get authenticated provider profile summary.",
-        "description": "Returns authenticated user details along with profile image and background verification status.",
+        "description": "Returns authenticated user details along with profile image, background verification, and additive provider suspension status. Existing fields are unchanged.",
         "operationId": "196658d5fd4c5949852048a09979e245",
         "responses": {
           "200": {
@@ -6149,6 +6293,16 @@
           "401": {
             "description": "Unauthenticated"
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Template, ownership, fulfillment, file, or pricing validation failed.",
             "content": {
@@ -6399,6 +6553,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service not found",
             "content": {
@@ -6624,6 +6788,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service not found",
             "content": {
@@ -6781,6 +6955,16 @@
               }
             }
           },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service not found",
             "content": {
@@ -6852,6 +7036,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServiceStatusResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -6943,6 +7137,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServiceFileDeleteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider account is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderSuspendedErrorResponse"
                 }
               }
             }
@@ -7347,6 +7551,114 @@
         },
         "type": "object"
       },
+      "ProviderSuspensionSummary": {
+        "description": "Current open provider suspension. Null when the provider account is active.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 18
+          },
+          "type": {
+            "type": "string",
+            "example": "standard",
+            "enum": ["standard"]
+          },
+          "reason": {
+            "type": "string",
+            "example": "Your verification documents require review."
+          },
+          "suspended_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-08-12T10:30:00.000000Z"
+          }
+        },
+        "type": "object",
+        "nullable": true
+      },
+      "ProviderAccountStatusData": {
+        "required": [
+          "profile_id",
+          "provider_status",
+          "provider_status_label",
+          "suspension"
+        ],
+        "properties": {
+          "profile_id": {
+            "type": "integer",
+            "example": 54
+          },
+          "provider_status": {
+            "description": "0=suspended, 1=active, 2=deleted.",
+            "type": "integer",
+            "example": 0,
+            "enum": [0, 1, 2]
+          },
+          "provider_status_label": {
+            "type": "string",
+            "example": "suspended",
+            "enum": ["suspended", "active", "deleted"]
+          },
+          "suspension": {
+            "$ref": "#/components/schemas/ProviderSuspensionSummary"
+          }
+        },
+        "type": "object"
+      },
+      "ProviderAccountStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Provider account status retrieved successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProviderAccountStatusData"
+          },
+          "meta": {
+            "type": "object",
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "ProviderSuspendedErrorResponse": {
+        "description": "Returned by provider marketplace write APIs while the provider profile is suspended. Existing read APIs remain available.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Your provider account is suspended."
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProviderAccountStatusData"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "example": "PROVIDER_ACCOUNT_SUSPENDED"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "example": []
+          }
+        },
+        "type": "object"
+      },
       "ProviderAddressModel": {
         "properties": {
           "id": {
@@ -7489,9 +7801,9 @@
             "maxLength": 150
           },
           "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
+            "description": "Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.",
             "type": "boolean",
-            "example": true,
+            "example": false,
             "nullable": true
           },
           "device_token": {
@@ -7522,9 +7834,9 @@
             "example": "+15551234567"
           },
           "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
+            "description": "Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.",
             "type": "boolean",
-            "example": true,
+            "example": false,
             "nullable": true
           },
           "device_token": {
@@ -7563,12 +7875,6 @@
             "example": "1234",
             "maxLength": 4,
             "minLength": 4
-          },
-          "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
-            "type": "boolean",
-            "example": true,
-            "nullable": true
           }
         },
         "type": "object"
@@ -7587,12 +7893,6 @@
             "example": "1234",
             "maxLength": 4,
             "minLength": 4
-          },
-          "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
-            "type": "boolean",
-            "example": true,
-            "nullable": true
           }
         },
         "type": "object"
@@ -7621,9 +7921,9 @@
             "maxLength": 70
           },
           "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
+            "description": "Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.",
             "type": "boolean",
-            "example": true,
+            "example": false,
             "nullable": true
           },
           "device_token": {
@@ -7668,9 +7968,9 @@
             "maxLength": 70
           },
           "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
+            "description": "Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.",
             "type": "boolean",
-            "example": true,
+            "example": false,
             "nullable": true
           },
           "device_token": {
@@ -7700,9 +8000,9 @@
             "example": "apple_user_12345"
           },
           "restore": {
-            "description": "Set true to restore a soft-deleted provider profile when still in 30-day grace period.",
+            "description": "Soft-delete restore flag. Omit or false on first login attempt. If the API returns data.restore_required=true, show restore UI and call this endpoint again with restore=true.",
             "type": "boolean",
-            "example": true,
+            "example": false,
             "nullable": true
           },
           "device_token": {
@@ -7810,6 +8110,8 @@
         "type": "object"
       },
       "EmailOtpSentResponse": {
+        "title": "Success — OTP sent (proceed to OTP screen)",
+        "description": "Returned when signup/login continues normally, OR after the user confirmed restore (restore=true) on a previously soft-deleted provider profile. data.restore_required is ABSENT. Next step: call confirm-email / confirm-number with the OTP.",
         "properties": {
           "status": {
             "type": "string",
@@ -7822,9 +8124,10 @@
           "data": {
             "properties": {
               "email": {
+                "description": "Email where OTP was sent. data.restore_required is NOT present in this shape.",
                 "type": "string",
                 "format": "email",
-                "example": "provider@example.com"
+                "example": "ray@gmail.com"
               }
             },
             "type": "object"
@@ -7838,6 +8141,8 @@
         "type": "object"
       },
       "PhoneOtpSentResponse": {
+        "title": "Success — OTP sent (proceed to OTP screen)",
+        "description": "Returned when phone login continues normally, OR after restore=true on a soft-deleted profile. data.restore_required is ABSENT. Next step: call confirm-number.",
         "properties": {
           "status": {
             "type": "string",
@@ -7850,6 +8155,7 @@
           "data": {
             "properties": {
               "phone": {
+                "description": "Phone where OTP was sent. data.restore_required is NOT present.",
                 "type": "string",
                 "example": "+15551234567"
               }
@@ -7890,6 +8196,22 @@
             "type": "string",
             "example": "Pending",
             "enum": ["Pending", "Verified", "Not Verified"]
+          },
+          "provider_status": {
+            "description": "Additive provider profile status: 0=suspended, 1=active, 2=deleted. Existing response fields are unchanged.",
+            "type": "integer",
+            "example": 1,
+            "nullable": true,
+            "enum": [0, 1, 2]
+          },
+          "provider_status_label": {
+            "type": "string",
+            "example": "active",
+            "nullable": true,
+            "enum": ["suspended", "active", "deleted"]
+          },
+          "suspension": {
+            "$ref": "#/components/schemas/ProviderSuspensionSummary"
           }
         },
         "type": "object"
@@ -7929,6 +8251,171 @@
           "data": {
             "type": "string",
             "example": ""
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "AccountDeletedRestoreRequiredData": {
+        "description": "Returned when the provider profile was soft-deleted from the provider app (delete account flow) and is still inside the 30-day grace period. OTP is NOT sent until the client retries with restore=true.",
+        "required": [
+          "request_deletion_date",
+          "permanent_deletion_date",
+          "restore_required"
+        ],
+        "properties": {
+          "email": {
+            "description": "Present when the login identifier is email (email-signup, Google, Facebook).",
+            "type": "string",
+            "format": "email",
+            "example": "ray@gmail.com",
+            "nullable": true
+          },
+          "phone": {
+            "description": "Present when the login identifier is phone (number-login).",
+            "type": "string",
+            "example": "+15551234567",
+            "nullable": true
+          },
+          "apple_user_id": {
+            "description": "Present for Apple login when applicable.",
+            "type": "string",
+            "example": "apple_user_12345",
+            "nullable": true
+          },
+          "request_deletion_date": {
+            "description": "Date the provider requested account deletion (provider_profiles.deleted_at), formatted M j, Y.",
+            "type": "string",
+            "example": "Aug 24, 2026"
+          },
+          "permanent_deletion_date": {
+            "description": "Last date the account can be restored (provider_profiles.permanent_delete or deleted_at + 30 days), formatted M j, Y.",
+            "type": "string",
+            "example": "Sep 23, 2026"
+          },
+          "restore_required": {
+            "description": "Always true for this response. Frontend must show restore UI and call the same endpoint again with restore=true to continue login/signup.",
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "type": "object"
+      },
+      "AccountDeletedRestoreRequiredResponse": {
+        "title": "Success — soft-deleted account (show restore UI first)",
+        "description": "Step 1 response when provider profile is soft-deleted and the request did NOT include restore=true. HTTP 200 but NO OTP is sent and NO access_token is returned. Frontend MUST check data.restore_required === true, show restore confirmation, then call the SAME endpoint again with restore=true in the request body.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "This account has been deleted"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AccountDeletedRestoreRequiredData"
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "PermanentDeleteOtpSentResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "OTP sent successfully."
+          },
+          "data": {
+            "properties": {
+              "sent_to": {
+                "description": "Email address where the permanent-delete OTP was sent.",
+                "type": "string",
+                "format": "email",
+                "example": "provider@example.com"
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "PermanentDeleteSuccessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Account permanently deleted successfully!"
+          },
+          "data": {
+            "type": "string",
+            "example": ""
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "SocialLoginBadRequestResponse": {
+        "description": "Returned when the email is already registered under a non-provider role (Super Admin, Store Manager, etc.).",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "cannot login using this email, try using other email"
+          },
+          "data": {
+            "example": null,
+            "nullable": true
+          },
+          "meta": {
+            "type": "array",
+            "items": {},
+            "example": []
+          }
+        },
+        "type": "object"
+      },
+      "AuthAccountStateErrorResponse": {
+        "description": "Returned when the account exists but is not in the state required for the requested auth action (permanent delete OTP flow).",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Error"
+          },
+          "message": {
+            "type": "string",
+            "example": "This account is not in deleted state."
+          },
+          "data": {
+            "example": null,
+            "nullable": true
           },
           "meta": {
             "type": "array",
@@ -10833,6 +11320,22 @@
             "type": "string",
             "example": "Pending",
             "enum": ["Pending", "Verified", "Not Verified"]
+          },
+          "provider_status": {
+            "description": "Additive status: 0=suspended, 1=active, 2=deleted.",
+            "type": "integer",
+            "example": 1,
+            "nullable": true,
+            "enum": [0, 1, 2]
+          },
+          "provider_status_label": {
+            "type": "string",
+            "example": "active",
+            "nullable": true,
+            "enum": ["suspended", "active", "deleted"]
+          },
+          "suspension": {
+            "$ref": "#/components/schemas/ProviderSuspensionSummary"
           }
         },
         "type": "object"
@@ -11889,7 +12392,7 @@
             "maxItems": 20
           },
           "information_accuracy_acknowledgement": {
-            "description": "Optional on information update. When supplied it must be true.",
+            "description": "Prohibited on information update. Required only on create.",
             "type": "boolean",
             "nullable": true
           }
@@ -12620,6 +13123,10 @@
     {
       "name": "Service Provider Profile",
       "description": "Core profile bootstrap endpoints for complete-profile and auth-user."
+    },
+    {
+      "name": "Service Provider Account Status",
+      "description": "Backward-compatible active/suspended status contract for Convenient Connect."
     },
     {
       "name": "Service Provider Account Settings",

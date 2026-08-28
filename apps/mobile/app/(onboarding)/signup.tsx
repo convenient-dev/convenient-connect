@@ -1,4 +1,9 @@
-import { facebookLogin, googleLogin, numberLogin } from "@/api/auth";
+import {
+  facebookLogin,
+  googleLogin,
+  isRestoreRequired,
+  numberLogin,
+} from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { facebookSignOutQuietly, signInWithFacebook } from "@/auth/facebook";
@@ -99,6 +104,20 @@ export default function SignupScreen() {
         firstName: google.firstName,
         lastName: google.lastName,
       });
+      if (isRestoreRequired(result)) {
+        router.push({
+          pathname: "/restore-account",
+          params: {
+            method: "google",
+            identifier: google.email,
+            firstName: google.firstName,
+            lastName: google.lastName,
+            requestDeletionDate: result.request_deletion_date ?? "",
+            permanentDeletionDate: result.permanent_deletion_date ?? "",
+          },
+        });
+        return;
+      }
       await login(result.accessToken, {
         user: result.user,
         profileImage: result.profileImage,
@@ -120,6 +139,14 @@ export default function SignupScreen() {
       }
     } catch (e) {
       await googleSignOutQuietly();
+      if (
+        e instanceof ApiError &&
+        e.statusCode === 404 &&
+        /user not found/i.test(e.message)
+      ) {
+        setShowDeletedModal(true);
+        return;
+      }
       const msg = e instanceof ApiError ? e.message : "Google sign-in failed";
       Alert.alert("Error", msg);
     } finally {
@@ -142,6 +169,20 @@ export default function SignupScreen() {
         firstName: facebook.firstName,
         lastName: facebook.lastName,
       });
+      if (isRestoreRequired(result)) {
+        router.push({
+          pathname: "/restore-account",
+          params: {
+            method: "facebook",
+            identifier: facebook.email,
+            firstName: facebook.firstName,
+            lastName: facebook.lastName,
+            requestDeletionDate: result.request_deletion_date ?? "",
+            permanentDeletionDate: result.permanent_deletion_date ?? "",
+          },
+        });
+        return;
+      }
       await login(result.accessToken, {
         user: result.user,
         profileImage: result.profileImage,
@@ -163,6 +204,14 @@ export default function SignupScreen() {
       }
     } catch (e) {
       await facebookSignOutQuietly();
+      if (
+        e instanceof ApiError &&
+        e.statusCode === 404 &&
+        /user not found/i.test(e.message)
+      ) {
+        setShowDeletedModal(true);
+        return;
+      }
       const msg = e instanceof ApiError ? e.message : "Facebook sign-in failed";
       Alert.alert("Error", msg);
     } finally {

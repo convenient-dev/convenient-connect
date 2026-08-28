@@ -1,6 +1,15 @@
-import { emailSignup, numberLogin } from "@/api/auth";
+import {
+  emailSignup,
+  facebookLogin,
+  googleLogin,
+  isRestoreRequired,
+  numberLogin,
+  sendPermanentDeleteOtp,
+} from "@/api/auth";
 import { ApiError } from "@/api/client";
+import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   contentWidthStyle,
@@ -35,26 +44,78 @@ function maskEmail(email: string): string {
 
 export default function RestoreAccountScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const { screenPaddingStyle } = useResponsivePadding();
   const params = useLocalSearchParams<{
-    method: "phone" | "email";
+    method: "phone" | "email" | "google" | "facebook";
     identifier: string;
+    firstName?: string;
+    lastName?: string;
     requestDeletionDate: string;
     permanentDeletionDate: string;
   }>();
 
-  const isEmail = params.method === "email";
+  const method = params.method ?? "phone";
   const identifier = params.identifier ?? "";
-  const maskedIdentifier = isEmail
-    ? maskEmail(identifier)
-    : maskPhone(identifier);
+  const maskedIdentifier =
+    method === "phone" ? maskPhone(identifier) : maskEmail(identifier);
 
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // The permanent-delete endpoints only accept an email, so the option is
+  // hidden when the account was looked up by phone number.
+  const canDeletePermanently = method !== "phone";
+
+  const handlePermanentDelete = async () => {
+    setShowDeleteConfirm(false);
+    setDeleting(true);
+    try {
+      await sendPermanentDeleteOtp(identifier);
+      router.push({
+        pathname: "/permanent-delete-otp",
+        params: { email: identifier },
+      });
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to send OTP";
+      Alert.alert("Error", msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleRestore = async () => {
     setLoading(true);
     try {
-      if (isEmail) {
+      if (method === "google" || method === "facebook") {
+        const socialLogin = method === "google" ? googleLogin : facebookLogin;
+        const result = await socialLogin({
+          email: identifier,
+          firstName: params.firstName ?? "",
+          lastName: params.lastName ?? "",
+          restore: true,
+        });
+        if (isRestoreRequired(result)) {
+          Alert.alert("Error", "Failed to restore account");
+          return;
+        }
+        await login(result.accessToken, {
+          user: result.user,
+          profileImage: result.profileImage,
+          backgroundVerification: result.backgroundVerification,
+        });
+        const hasCompletedProfile =
+          !!result.user.user_fname?.trim() && !!result.user.user_lname?.trim();
+        if (hasCompletedProfile) {
+          router.replace("/home");
+        } else {
+          router.replace({
+            pathname: "/enter-personal-details",
+            params: { method: "email" },
+          });
+        }
+      } else if (method === "email") {
         await emailSignup({ email: identifier, restore: true });
         router.replace({
           pathname: "/confirm-email-otp",
@@ -120,16 +181,37 @@ export default function RestoreAccountScreen() {
           variant="secondary"
           size="lg"
           loading={loading}
+          disabled={deleting}
           onPress={handleRestore}
         />
+        {canDeletePermanently && (
+          <Button
+            title={deleting ? "Sending code..." : "Delete permanently"}
+            variant="ghost"
+            disabled={loading || deleting}
+            onPress={() => setShowDeleteConfirm(true)}
+            textStyle={styles.deleteText}
+          />
+        )}
         <Button
           title="Cancel"
           variant="ghost"
-          disabled={loading}
+          disabled={loading || deleting}
           onPress={() => router.back()}
           textStyle={styles.cancelText}
         />
       </View>
+
+      <ConfirmModal
+        visible={showDeleteConfirm}
+        type="warning"
+        title="Delete account permanently?"
+        message={`We will send a verification code to ${maskedIdentifier}. Once confirmed, your account and its data are permanently deleted and cannot be restored.`}
+        confirmLabel="Send code"
+        cancelLabel="Keep my account"
+        onConfirm={handlePermanentDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -189,6 +271,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: 12,
     gap: 18,
+  },
+  deleteText: {
+    color: brand.secondary,
+    fontSize: 17,
+    fontWeight: "500",
   },
   cancelText: {
     color: text.primary,

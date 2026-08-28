@@ -22,7 +22,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { neutral, text, background, border, brand } = Colors;
@@ -63,19 +63,22 @@ export default function RestoreAccountScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState("");
 
-  // The permanent-delete endpoints only accept an email, so the option is
-  // hidden when the account was looked up by phone number.
-  const canDeletePermanently = method !== "phone";
+  // The permanent-delete endpoints only accept an email, so when the account
+  // was looked up by phone number the user must enter their account email.
+  const needsEmailForDelete = method === "phone";
+  const deleteTarget = needsEmailForDelete ? deleteEmail.trim() : identifier;
+  const deleteTargetValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deleteTarget);
 
   const handlePermanentDelete = async () => {
     setShowDeleteConfirm(false);
     setDeleting(true);
     try {
-      await sendPermanentDeleteOtp(identifier);
+      await sendPermanentDeleteOtp(deleteTarget);
       router.push({
         pathname: "/permanent-delete-otp",
-        params: { email: identifier },
+        params: { email: deleteTarget },
       });
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to send OTP";
@@ -184,21 +187,12 @@ export default function RestoreAccountScreen() {
           disabled={deleting}
           onPress={handleRestore}
         />
-        {canDeletePermanently && (
-          <Button
-            title={deleting ? "Sending code..." : "Delete permanently"}
-            variant="ghost"
-            disabled={loading || deleting}
-            onPress={() => setShowDeleteConfirm(true)}
-            textStyle={styles.deleteText}
-          />
-        )}
         <Button
-          title="Cancel"
+          title={deleting ? "Sending code..." : "Delete permanently"}
           variant="ghost"
           disabled={loading || deleting}
-          onPress={() => router.back()}
-          textStyle={styles.cancelText}
+          onPress={() => setShowDeleteConfirm(true)}
+          textStyle={styles.deleteText}
         />
       </View>
 
@@ -206,12 +200,31 @@ export default function RestoreAccountScreen() {
         visible={showDeleteConfirm}
         type="warning"
         title="Delete account permanently?"
-        message={`We will send a verification code to ${maskedIdentifier}. Once confirmed, your account and its data are permanently deleted and cannot be restored.`}
+        message={
+          needsEmailForDelete
+            ? "Enter the email linked to your account and we will send it a verification code. Once confirmed, your account and its data are permanently deleted and cannot be restored."
+            : `We will send a verification code to ${maskedIdentifier}. Once confirmed, your account and its data are permanently deleted and cannot be restored.`
+        }
         confirmLabel="Send code"
         cancelLabel="Keep my account"
+        confirmDisabled={!deleteTargetValid}
         onConfirm={handlePermanentDelete}
         onCancel={() => setShowDeleteConfirm(false)}
-      />
+      >
+        {needsEmailForDelete && (
+          <TextInput
+            style={styles.emailInput}
+            placeholder="email@example.com"
+            placeholderTextColor={neutral[400]}
+            value={deleteEmail}
+            onChangeText={setDeleteEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="done"
+          />
+        )}
+      </ConfirmModal>
     </SafeAreaView>
   );
 }
@@ -276,6 +289,16 @@ const styles = StyleSheet.create({
     color: brand.secondary,
     fontSize: 17,
     fontWeight: "500",
+  },
+  emailInput: {
+    width: "100%",
+    height: 52,
+    backgroundColor: neutral[50],
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: text.primary,
+    letterSpacing: -0.408,
   },
   cancelText: {
     color: text.primary,

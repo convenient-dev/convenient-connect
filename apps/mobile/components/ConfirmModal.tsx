@@ -32,8 +32,12 @@ interface Props {
   showIcon?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Disables the confirm button (e.g. until required input is valid). */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel?: () => void;
+  /** Extra content rendered between the message and the action buttons. */
+  children?: React.ReactNode;
 }
 
 const ICON_CONFIG: Record<IconVariant, any> = {
@@ -69,8 +73,10 @@ export function ConfirmModal({
   showIcon = true,
   confirmLabel = "Continue",
   cancelLabel = "Cancel",
+  confirmDisabled = false,
   onConfirm,
   onCancel,
+  children,
 }: Props) {
   const reducedMotion = useReducedMotion();
   const icon = iconOverride !== undefined ? iconOverride : TYPE_ICON_MAP[type];
@@ -89,11 +95,13 @@ export function ConfirmModal({
           )}
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
+          {children}
           <View style={styles.actions}>
             <Button
               title={confirmLabel}
               variant="secondary"
               size="md"
+              disabled={confirmDisabled}
               onPress={onConfirm}
               style={{ width: "100%" }}
             />

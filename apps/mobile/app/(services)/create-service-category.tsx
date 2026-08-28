@@ -1,8 +1,8 @@
 import { Button } from "@/components/Button";
-import { CategoryIcon } from "@/components/CategoryIcon";
-import { getServiceCategories } from "@/api/business";
+import { getServiceCategories } from "@/api/services";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -25,7 +25,7 @@ const NUM_COLUMNS = 4;
 interface Category {
   id: number;
   name: string;
-  iconUrl: string;
+  iconUrl: string | null;
 }
 
 function CategoryItem({
@@ -46,7 +46,13 @@ function CategoryItem({
       <View
         style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
       >
-        <CategoryIcon name={item.name} size={44} />
+        {item.iconUrl && (
+          <Image
+            source={{ uri: item.iconUrl }}
+            style={styles.icon}
+            contentFit="contain"
+          />
+        )}
       </View>
       <Text
         style={[styles.cellLabel, selected && styles.cellLabelSelected]}
@@ -78,7 +84,7 @@ export default function CreateServiceCategoryScreen() {
           data.map((cat) => ({
             id: cat.category_id,
             name: cat.category_name,
-            iconUrl: cat.category_logo ?? "",
+            iconUrl: cat.category_logo,
           }))
         );
         setLoading(false);
@@ -266,6 +272,10 @@ const styles = StyleSheet.create({
     // borderWidth: 2,
     // borderColor: primary[400],
     backgroundColor: primary[50],
+  },
+  icon: {
+    width: 44,
+    height: 44,
   },
   cellLabel: {
     fontSize: 11,

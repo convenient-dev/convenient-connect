@@ -1,9 +1,9 @@
-import { getServiceCategories } from "@/api/business";
+import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
@@ -46,7 +46,13 @@ function CategoryItem({
       <View
         style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
       >
-        <CategoryIcon name={item.name} size={44} />
+        {item.iconUrl && (
+          <ExpoImage
+            source={{ uri: item.iconUrl }}
+            style={styles.icon}
+            contentFit="contain"
+          />
+        )}
       </View>
       <Text
         style={[styles.cellLabel, selected && styles.cellLabelSelected]}
@@ -210,6 +216,10 @@ const styles = StyleSheet.create({
   },
   iconWrapperSelected: {
     backgroundColor: primary[50],
+  },
+  icon: {
+    width: 44,
+    height: 44,
   },
   cellLabel: {
     fontSize: 11,

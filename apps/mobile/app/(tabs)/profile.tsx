@@ -1,14 +1,18 @@
 import { getUserCategories } from "@/api/legacy";
 import { getAboutMe } from "@/api/profile";
+import {
+  getCategoryLogoIndex,
+  lookupCategoryLogo,
+  type CategoryLogoIndex,
+} from "@/api/services";
 import { useAuth } from "@/auth/AuthContext";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -107,8 +111,15 @@ export default function ProfileScreen() {
   const { user: authUser } = useAuth();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoryLogos, setCategoryLogos] = useState<CategoryLogoIndex>({});
   const [aboutMe, setAboutMe] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getCategoryLogoIndex()
+      .then(setCategoryLogos)
+      .catch(() => {});
+  }, []);
 
   const user: UserProfile | null = authUser
     ? {
@@ -238,12 +249,21 @@ export default function ProfileScreen() {
 
         {categories.length > 0 && (
           <View style={styles.chipsRow}>
-            {categories.map((c) => (
-              <View key={c} style={styles.chip}>
-                <CategoryIcon name={c} size={14} />
-                <Text style={styles.chipText}>{titleCase(c)}</Text>
-              </View>
-            ))}
+            {categories.map((c) => {
+              const logo = lookupCategoryLogo(categoryLogos, c);
+              return (
+                <View key={c} style={styles.chip}>
+                  {logo && (
+                    <ExpoImage
+                      source={{ uri: logo }}
+                      style={styles.chipIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text style={styles.chipText}>{titleCase(c)}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -387,6 +407,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: primary[100],
+  },
+  chipIcon: {
+    width: 14,
+    height: 14,
   },
   chipText: {
     fontSize: 12,

@@ -1,7 +1,6 @@
-import { getServiceCategories } from "@/api/business";
+import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { getSubcategoryIcon } from "@/components/SubcategoryIcon";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
@@ -29,6 +28,7 @@ interface Subcategory {
   categoryId: number;
   categorySlug: string;
   categoryName: string;
+  iconUrl: string | null;
 }
 
 function SubcategoryItem({
@@ -49,11 +49,13 @@ function SubcategoryItem({
       <View
         style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
       >
-        <ExpoImage
-          source={getSubcategoryIcon(item.categorySlug, item.name)}
-          style={styles.icon}
-          contentFit="contain"
-        />
+        {item.iconUrl && (
+          <ExpoImage
+            source={{ uri: item.iconUrl }}
+            style={styles.icon}
+            contentFit="contain"
+          />
+        )}
       </View>
       <Text
         style={[styles.cellLabel, selected && styles.cellLabelSelected]}
@@ -100,6 +102,7 @@ export default function SelectSubcategoriesScreen() {
             categoryId: category.category_id,
             categorySlug: params.categorySlug ?? "",
             categoryName: params.categoryName ?? "",
+            iconUrl: sub.sub_category_logo,
           })),
         );
       } catch {

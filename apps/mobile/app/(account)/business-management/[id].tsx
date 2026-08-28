@@ -1,12 +1,17 @@
 import { deleteBusiness, getBusinessForEdit, toggleBusinessStatus } from "@/api/business";
+import {
+  getCategoryLogoIndex,
+  lookupCategoryLogo,
+  type CategoryLogoIndex,
+} from "@/api/services";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
@@ -100,6 +105,13 @@ export default function BusinessDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("members");
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [categoryLogos, setCategoryLogos] = useState<CategoryLogoIndex>({});
+
+  useEffect(() => {
+    getCategoryLogoIndex()
+      .then(setCategoryLogos)
+      .catch(() => {});
+  }, []);
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
@@ -221,12 +233,21 @@ export default function BusinessDetailScreen() {
 
         {categoryNames.length > 0 && (
           <View style={styles.chipRow}>
-            {categoryNames.map((category) => (
-              <View key={category} style={styles.chip}>
-                <CategoryIcon name={category} size={18} />
-                <Text style={styles.chipText}>{category}</Text>
-              </View>
-            ))}
+            {categoryNames.map((category) => {
+              const logo = lookupCategoryLogo(categoryLogos, category);
+              return (
+                <View key={category} style={styles.chip}>
+                  {logo && (
+                    <ExpoImage
+                      source={{ uri: logo }}
+                      style={styles.chipIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text style={styles.chipText}>{category}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -379,6 +400,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 999,
     backgroundColor: primary[50],
+  },
+  chipIcon: {
+    width: 18,
+    height: 18,
   },
   chipText: {
     fontSize: 14,

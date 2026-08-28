@@ -159,39 +159,6 @@ export async function toggleBusinessStatus(
   return data.status ?? false;
 }
 
-export interface ServiceSubCategory {
-  sub_category_id: number;
-  sub_category_name: string;
-  sub_category_logo: string | null;
-}
-
-export interface ServiceCategory {
-  category_id: number;
-  category_name: string;
-  category_logo: string | null;
-  sub_category_list: ServiceSubCategory[];
-}
-
-/**
- * Get service categories and subcategories.
- * @param search Optional search term to filter by category or subcategory name
- * @returns Array of categories with their subcategories
- */
-export async function getServiceCategories(
-  search?: string,
-): Promise<ServiceCategory[]> {
-  const params = new URLSearchParams();
-
-  if (search) {
-    params.append("search", search);
-  }
-
-  const url = `${BUSINESS_PREFIX}/services?${params.toString()}`;
-  const response = await laravelFetch<ServiceCategory[]>(url);
-
-  return response ?? [];
-}
-
 /**
  * Get services assigned to a specific business.
  */

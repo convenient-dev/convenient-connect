@@ -2,7 +2,6 @@ import { Button } from "@/components/Button";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
-import { getSubcategory, getLegacyUser, getUserAffiliations, createService, uploadImage, uploadPdf } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -169,9 +168,11 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (!subcategoryId) return;
-    getSubcategory(subcategoryId)
-      .then((data: SubcategoryData) => setSubcategoryData(data))
-      .catch(() => {});
+    // TODO: legacy API removed — implement getSubcategory via Laravel API
+    console.log("TODO: implement getSubcategory via Laravel API", {
+      subcategoryId,
+    });
+    setSubcategoryData(null);
   }, [subcategoryId]);
 
   // Merge subcategory-level and category-level custom fields
@@ -309,39 +310,18 @@ export default function CreateServiceFormScreen() {
 
   useEffect(() => {
     if (serviceMode === "business") return;
-    getLegacyUser(userId)
-      .then((user) => {
-        const addresses: Address[] = user?.address ?? [];
-        setSavedAddresses(addresses);
-        const defaultAddr = addresses.find((a) => a.isDefault) ?? addresses[0];
-        if (defaultAddr) {
-          setAddress(defaultAddr.address);
-          setAddressId(defaultAddr.id);
-        }
-      })
-      .catch(() => {});
+    // TODO: legacy API removed — implement getLegacyUser via Laravel API
+    console.log("TODO: implement getLegacyUser via Laravel API", { userId });
+    setSavedAddresses([]);
   }, [userId]);
 
   useEffect(() => {
     if (serviceMode !== "business" || !businessAffiliationId) return;
-    getUserAffiliations(userId)
-      .then(
-        (
-          businesses: {
-            id: number;
-            name: string;
-            address: string | null;
-            addressId: number | null;
-          }[],
-        ) => {
-          const business = businesses.find(
-            (b) => b.id === Number(businessAffiliationId),
-          );
-          if (business?.address) setAddress(business.address);
-          if (business?.addressId) setAddressId(business.addressId);
-        },
-      )
-      .catch(() => {});
+    // TODO: legacy API removed — implement getUserAffiliations via Laravel API
+    console.log("TODO: implement getUserAffiliations via Laravel API", {
+      userId,
+      businessAffiliationId,
+    });
   }, [userId]);
 
   const [aboutYou, setAboutYou] = useState("");
@@ -551,50 +531,19 @@ export default function CreateServiceFormScreen() {
           })),
       };
 
-      const service = await createService(userId, body);
+      // TODO: legacy API removed — implement createService via Laravel API
+      console.log("TODO: implement createService via Laravel API", {
+        userId,
+        body,
+      });
 
       // Upload selected images to the service_images bucket
       if (selectedImages.length > 0) {
-        const uploadResults = await Promise.allSettled(
-          selectedImages.map(async (uri) => {
-            const ext = uri.split(".").pop() ?? "jpg";
-            const mimeType =
-              ext === "png"
-                ? "image/png"
-                : ext === "webp"
-                  ? "image/webp"
-                  : "image/jpeg";
-
-            const formData = new FormData();
-            formData.append("serviceId", String(service.id));
-
-            if (Platform.OS === "web") {
-              const blobRes = await fetch(uri);
-              const blob = await blobRes.blob();
-              formData.append(
-                "file",
-                new File([blob], `image.${ext}`, { type: mimeType }),
-              );
-            } else {
-              formData.append("file", {
-                uri,
-                name: `image.${ext}`,
-                type: mimeType,
-              } as unknown as Blob);
-            }
-
-            await uploadImage(formData);
-          }),
+        // TODO: legacy API removed — implement uploadImage via Laravel API
+        console.log(
+          "TODO: implement uploadImage via Laravel API",
+          selectedImages,
         );
-
-        const failed = uploadResults.filter((r) => r.status === "rejected");
-        if (failed.length > 0) {
-          const reason = (failed[0] as PromiseRejectedResult).reason?.message;
-          setSubmitError(
-            `${failed.length} image${failed.length > 1 ? "s" : ""} failed to upload: ${reason}`,
-          );
-          return;
-        }
       }
 
       // Upload certifications (name + PDF both required when providing a cert)
@@ -609,39 +558,11 @@ export default function CreateServiceFormScreen() {
       }
       const certsWithPdf = certifications.filter((c) => c.name.trim() && c.pdf);
       if (certsWithPdf.length > 0) {
-        const certResults = await Promise.allSettled(
-          certsWithPdf.map(async (cert) => {
-            const formData = new FormData();
-            formData.append("serviceId", String(service.id));
-            formData.append("name", cert.name.trim());
-
-            if (Platform.OS === "web") {
-              const blobRes = await fetch(cert.pdf!.uri);
-              const blob = await blobRes.blob();
-              formData.append(
-                "file",
-                new File([blob], cert.pdf!.name, { type: "application/pdf" }),
-              );
-            } else {
-              formData.append("file", {
-                uri: cert.pdf!.uri,
-                name: cert.pdf!.name,
-                type: "application/pdf",
-              } as unknown as Blob);
-            }
-
-            await uploadPdf(formData);
-          }),
+        // TODO: legacy API removed — implement uploadPdf via Laravel API
+        console.log(
+          "TODO: implement uploadPdf via Laravel API",
+          certsWithPdf.map((c) => c.name.trim()),
         );
-
-        const failed = certResults.filter((r) => r.status === "rejected");
-        if (failed.length > 0) {
-          const reason = (failed[0] as PromiseRejectedResult).reason?.message;
-          setSubmitError(
-            `${failed.length} certification PDF${failed.length > 1 ? "s" : ""} failed to upload: ${reason}`,
-          );
-          return;
-        }
       }
 
       setSubmitted(true);

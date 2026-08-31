@@ -14,10 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { background, text, neutral, primary } = Colors;
 
-const WEB_BASE_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api"
-).replace(/\/api\/?$/, "");
-
 type AccountStatus = {
   readyToReceivePayments: boolean;
   onboardingComplete: boolean;
@@ -44,18 +40,12 @@ export default function BackgroundCheck4Screen() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(
-        `${WEB_BASE_URL}/api/stripe/accounts/${accountId}/status`,
-      );
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to load status");
-      setStatus(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
+    // TODO: legacy API removed — implement Stripe account status via Laravel API
+    console.log("TODO: implement Stripe account status via Laravel API", {
+      accountId,
+    });
+    setStatus(null);
+    setLoading(false);
   }, [accountId]);
 
   useEffect(() => {

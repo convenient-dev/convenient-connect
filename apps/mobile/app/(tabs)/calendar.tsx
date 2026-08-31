@@ -14,7 +14,6 @@ import { FilterButton } from "@/components/FilterButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
-import { getAvailability } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -202,8 +201,11 @@ export default function CalendarScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      getAvailability(userId)
-        .then((data: AvailabilityResponse) => {
+      // TODO: legacy API removed — implement getAvailability via Laravel API
+      console.log("TODO: implement getAvailability via Laravel API", { userId });
+      Promise.resolve<AvailabilityResponse | null>(null)
+        .then((data) => {
+          if (!data) return;
           const days = new Set<DayKey>();
           for (const slot of data.weeklyAvailabilitySlots) {
             const key = DAYS[slot.dayOfWeek];

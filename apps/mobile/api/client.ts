@@ -4,9 +4,6 @@ export const LARAVEL_API_BASE_URL =
   process.env.EXPO_PUBLIC_LARAVEL_API_URL ??
   "https://uatservices-backend.theconvenientapp.store/api/v1";
 
-export const LEGACY_API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-
 // The API returns storage paths relative to the host (e.g. "/storage/...").
 const LARAVEL_HOST = LARAVEL_API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
 
@@ -130,38 +127,4 @@ export async function laravelFetch<T>(
   }
 
   return (json as LaravelEnvelope<T>).data;
-}
-
-export async function legacyFetch<T>(
-  path: string,
-  options: { method?: string; body?: unknown; isFormData?: boolean } = {},
-): Promise<T> {
-  const { method = "GET", body, isFormData = false } = options;
-
-  const headers: Record<string, string> = {};
-  if (!isFormData) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const url = `${LEGACY_API_BASE_URL}${path}`;
-
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body
-      ? isFormData
-        ? (body as FormData)
-        : JSON.stringify(body)
-      : undefined,
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new ApiError(
-      errorBody?.error ?? "Request failed",
-      res.status,
-    );
-  }
-
-  return res.json() as Promise<T>;
 }

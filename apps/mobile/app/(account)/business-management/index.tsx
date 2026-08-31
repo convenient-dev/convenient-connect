@@ -1,4 +1,3 @@
-import { getUserAffiliations } from "@/api/legacy";
 import {
   getCategoryLogoIndex,
   lookupCategoryLogo,
@@ -75,7 +74,11 @@ export default function BusinessManagementScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoadingAffiliations(true);
-      getUserAffiliations(userId)
+      // TODO: legacy API removed — implement getUserAffiliations via Laravel API
+      console.log("TODO: implement getUserAffiliations via Laravel API", {
+        userId,
+      });
+      Promise.resolve<Affiliation[]>([])
         .then((data: Affiliation[]) => setAffiliations(data ?? []))
         .catch(() => setAffiliations([]))
         .finally(() => setLoadingAffiliations(false));

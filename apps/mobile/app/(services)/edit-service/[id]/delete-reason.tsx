@@ -1,6 +1,5 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { legacyFetch } from "@/api/client";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -48,9 +47,11 @@ export default function DeleteServiceReasonScreen() {
     setError(null);
     try {
       const reason = selected === "Other" ? otherText.trim() : selected;
-      await legacyFetch(`/users/${userId}/services/${id}`, {
-        method: "DELETE",
-        body: { reason },
+      // TODO: legacy API removed — implement delete service via Laravel API
+      console.log("TODO: implement delete service via Laravel API", {
+        userId,
+        id,
+        reason,
       });
       router.replace("/(tabs)/services");
     } catch (err: any) {

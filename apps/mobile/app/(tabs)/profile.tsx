@@ -1,4 +1,3 @@
-import { getUserCategories } from "@/api/legacy";
 import { getAboutMe } from "@/api/profile";
 import {
   getCategoryLogoIndex,
@@ -150,10 +149,12 @@ export default function ProfileScreen() {
         return;
       }
       setLoading(true);
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 5000),
+      // TODO: legacy API removed — implement getUserCategories via Laravel API
+      console.log(
+        "TODO: implement getUserCategories via Laravel API",
+        authUser.user.user_id,
       );
-      Promise.race([getUserCategories(authUser.user.user_id), timeout])
+      Promise.resolve<UserCategory[]>([])
         .then((cats: UserCategory[]) => {
           setCategories((cats ?? []).map((c) => c.name));
         })

@@ -4,7 +4,6 @@ import {
   type Address,
   type ResolvedLocation,
 } from "@/api/address";
-import { getUserServices } from "@/api/legacy";
 import bookingsData from "@/assets/data/bookings.json";
 import { useAuth } from "@/auth/AuthContext";
 import { AddressModal } from "@/components/AddressModal";
@@ -182,9 +181,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!authUser?.user.user_id) return;
-    getUserServices(authUser.user.user_id, false)
-      .then((data: MyServiceCardData[]) => setServices(data ?? []))
-      .catch(() => {});
+    // TODO: legacy API removed — implement getUserServices via Laravel API
+    console.log("TODO: implement getUserServices via Laravel API", {
+      userId: authUser.user.user_id,
+    });
+    setServices([]);
   }, [authUser?.user.user_id]);
 
   const handleBannerScroll = (event: any) => {

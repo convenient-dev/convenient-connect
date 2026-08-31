@@ -6,17 +6,9 @@ import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-// The agreement page is served by the Next.js web app at /agreement, so
-// non-engineers can update the copy without shipping a new mobile build.
-const WEB_BASE_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api"
-).replace(/\/api\/?$/, "");
-const AGREEMENT_URL = `${WEB_BASE_URL}/agreement`;
 
 const { primary, neutral, text, background } = Colors;
 
@@ -28,7 +20,8 @@ export default function BackgroundCheck3Screen() {
   const [submitting, setSubmitting] = useState(false);
 
   function handleOpenAgreement() {
-    WebBrowser.openBrowserAsync(AGREEMENT_URL);
+    // TODO: legacy API removed — serve the agreement page via the Laravel backend
+    console.log("TODO: implement agreement page via Laravel API");
   }
 
   async function handleAcceptAndProceed() {
@@ -37,44 +30,15 @@ export default function BackgroundCheck3Screen() {
     try {
       // TODO: Submit the agreement acceptance to the backend
 
-      // 1. Create (or reuse) the user's Stripe connected account. The web
-      //    API returns the same acct_... on subsequent calls thanks to the
-      //    `stripeAccountId` mapping on the User row.
-      const acctRes = await fetch(`${WEB_BASE_URL}/api/stripe/accounts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      const acctJson = await acctRes.json();
-      if (!acctRes.ok) {
-        throw new Error(acctJson.error ?? "Failed to create Stripe account");
-      }
-      const accountId: string = acctJson.accountId;
-
-      // 2. Mint a short-lived Account Link — this is the Stripe-hosted URL
-      //    that walks the user through identity verification, bank info, etc.
-      const linkRes = await fetch(
-        `${WEB_BASE_URL}/api/stripe/accounts/${accountId}/link`,
-        { method: "POST" },
+      // TODO: legacy API removed — implement Stripe Connect onboarding
+      // (create connected account + account link + browser handoff) via
+      // Laravel API
+      console.log(
+        "TODO: implement Stripe Connect onboarding via Laravel API",
+        { userId },
       );
-      const linkJson = await linkRes.json();
-      if (!linkRes.ok || !linkJson.url) {
-        throw new Error(linkJson.error ?? "Failed to create onboarding link");
-      }
 
-      // 3. Hand off to the phone's default browser. Unlike
-      //    WebBrowser.openBrowserAsync, Linking.openURL does NOT block —
-      //    control returns immediately, and the user will see Safari /
-      //    Chrome in the foreground while our app stays in the background.
-      await Linking.openURL(linkJson.url);
-
-      // 4. Continue to the success screen now (rather than waiting for the
-      //    browser to close, which we can't observe). Pass the accountId
-      //    so the next screen can fetch live onboarding status from Stripe.
-      router.push({
-        pathname: "/background-check/step-4",
-        params: { accountId },
-      });
+      router.push("/background-check/step-4");
     } catch (err) {
       console.warn("[stripe onboarding]", err);
       // TODO: surface a user-facing error toast/banner.

@@ -1,8 +1,6 @@
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
-import { legacyFetch } from "@/api/client";
-import { getService } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -110,9 +108,11 @@ export default function EditServiceScreen() {
         const newStatus = newValue ? "active" : "inactive";
         setSearchActive(newValue);
         setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
-        await legacyFetch(`/users/${userId}/services/${id}`, {
-          method: "PATCH",
-          body: { searchActive: newValue },
+        // TODO: legacy API removed — implement toggle service search via Laravel API
+        console.log("TODO: implement toggle service search via Laravel API", {
+          userId,
+          id,
+          searchActive: newValue,
         });
       },
     });
@@ -134,12 +134,12 @@ export default function EditServiceScreen() {
   }
 
   useEffect(() => {
-    getService(userId, id)
-      .then((data: ServiceSummary) => {
-        setService(data);
-        setSearchActive(data.searchActive ?? false);
-      })
-      .finally(() => setLoading(false));
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    const data = null as ServiceSummary | null;
+    setService(data);
+    setSearchActive(data?.searchActive ?? false);
+    setLoading(false);
   }, [id, userId]);
 
   if (loading) {

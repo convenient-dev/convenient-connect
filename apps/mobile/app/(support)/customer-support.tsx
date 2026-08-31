@@ -1,5 +1,4 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { getFaq } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -42,13 +41,11 @@ export default function CustomerSupportScreen() {
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    getFaq()
-      .then((data: any) => {
-        setTopics(data.topics);
-        setActiveKey(data.topics[0]?.key ?? null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    // TODO: legacy API removed — implement getFaq via Laravel API
+    console.log("TODO: implement getFaq via Laravel API");
+    setTopics([]);
+    setActiveKey(null);
+    setLoading(false);
   }, []);
 
   const activeTopic =

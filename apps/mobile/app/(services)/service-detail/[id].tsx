@@ -1,7 +1,6 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
-import { getService } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -148,9 +147,10 @@ export default function ServiceDetailScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    getService(userId, id!)
-      .then((data: ServiceDetail) => setService(data))
-      .finally(() => setLoading(false));
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    setService(null);
+    setLoading(false);
   }, [id, userId]);
 
   if (loading) {

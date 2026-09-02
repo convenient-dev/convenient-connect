@@ -3,8 +3,8 @@ import { toAbsoluteUrl } from "@/api/client";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
-import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background } = Colors;
+const { primary, neutral, text, background, status } = Colors;
 
 type TabKey = "businesses" | "affiliations";
 
@@ -83,11 +83,14 @@ export default function BusinessManagementScreen() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "businesses", label: "My Businesses" },
-    { key: "affiliations", label: "My Affiliations" },
+    { key: "affiliations", label: "My Collaborations" },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
 
       <ScreenHeader title="Business Management" />
@@ -129,14 +132,36 @@ export default function BusinessManagementScreen() {
                   }
                 >
                   <View style={styles.businessInfo}>
-                    <Text style={styles.businessName} numberOfLines={1}>
-                      {business.business_name}
-                    </Text>
-                    <View style={styles.chipRow}>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.businessName} numberOfLines={1}>
+                        {business.business_name}
+                      </Text>
+                      <MaterialIcons
+                        name={
+                          business.business_verification
+                            ? "check-circle"
+                            : "error"
+                        }
+                        size={14}
+                        color={
+                          business.business_verification
+                            ? status.active
+                            : status.error
+                        }
+                      />
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chipRow}
+                    >
                       {(business.services ?? []).map((service) => {
                         const logo = toAbsoluteUrl(service.sub_category_logo);
                         return (
-                          <View key={service.sub_category_id} style={styles.chip}>
+                          <View
+                            key={service.sub_category_id}
+                            style={styles.chip}
+                          >
                             {logo && (
                               <ExpoImage
                                 source={{ uri: logo }}
@@ -150,7 +175,7 @@ export default function BusinessManagementScreen() {
                           </View>
                         );
                       })}
-                    </View>
+                    </ScrollView>
                   </View>
                   <MaterialIcons
                     name="chevron-right"
@@ -167,7 +192,9 @@ export default function BusinessManagementScreen() {
               title="Create Business"
               variant="secondary"
               size="lg"
-              icon={<MaterialIcons name="add" size={22} color={Colors.neutral[0]} />}
+              icon={
+                <MaterialIcons name="add" size={22} color={Colors.neutral[0]} />
+              }
               onPress={() =>
                 router.push("/business-management/business-details")
               }
@@ -183,12 +210,12 @@ export default function BusinessManagementScreen() {
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={[styles.affiliationListContent, contentWidthStyle]}
+          contentContainerStyle={[
+            styles.affiliationListContent,
+            contentWidthStyle,
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.subtitle}>
-            Businesses you&apos;re currently affiliated with
-          </Text>
           {affiliations.length === 0 ? (
             <View style={styles.emptyState}>
               <ExpoImage
@@ -269,7 +296,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   businessName: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: "600",
     color: text.primary,
@@ -277,8 +310,7 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    gap: 6,
   },
   chip: {
     flexDirection: "row",

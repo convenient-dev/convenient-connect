@@ -1,7 +1,12 @@
-import { deleteBusiness, getBusinessForEdit, toggleBusinessStatus } from "@/api/business";
+import {
+  deleteBusiness,
+  getBusinessForEdit,
+  toggleBusinessStatus,
+} from "@/api/business";
 import { toAbsoluteUrl } from "@/api/client";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -79,7 +84,13 @@ function MemberRow({ member }: { member: Member }) {
   );
 }
 
-function MemberSection({ title, members }: { title: string; members: Member[] }) {
+function MemberSection({
+  title,
+  members,
+}: {
+  title: string;
+  members: Member[];
+}) {
   if (members.length === 0) return null;
   return (
     <View>
@@ -103,12 +114,18 @@ export default function BusinessDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("members");
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       const data = await getBusinessForEdit(Number(id));
+      console.log("Business data:", data);
       setBusiness(data);
       setAcceptingJobs(data.status);
     } catch (error: any) {
@@ -123,16 +140,25 @@ export default function BusinessDetailScreen() {
     loadBusiness();
   }, [loadBusiness]);
 
-  const handleToggleStatus = async () => {
+  const toggleStatus = async () => {
     if (!business) return;
     try {
       const newStatus = await toggleBusinessStatus(business.business_id);
       setAcceptingJobs(newStatus);
-      Alert.alert("Success", `Business is now ${newStatus ? "active" : "inactive"}`);
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update status");
-      setAcceptingJobs(!acceptingJobs);
+    } catch {
+      // Switch stays in its previous state; nothing else to roll back.
     }
+  };
+
+  const handleToggleStatus = (newValue: boolean) => {
+    if (!business) return;
+    setConfirmModal({
+      title: newValue ? "Accept New Jobs?" : "Stop Accepting Jobs?",
+      message: newValue
+        ? "Your business will be active and clients can request new jobs."
+        : "Your business will be inactive and won't receive new job requests. Existing jobs won't be affected.",
+      onConfirm: toggleStatus,
+    });
   };
 
   const handleDelete = () => {
@@ -151,7 +177,10 @@ export default function BusinessDetailScreen() {
               Alert.alert("Success", "Business deleted successfully");
               router.back();
             } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete business");
+              Alert.alert(
+                "Error",
+                error.message || "Failed to delete business",
+              );
             }
           },
         },
@@ -161,7 +190,10 @@ export default function BusinessDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top", "bottom"]}
+      >
         <StatusBar style="dark" />
         <ScreenHeader />
         <View style={styles.notFound}>
@@ -173,7 +205,10 @@ export default function BusinessDetailScreen() {
 
   if (!business) {
     return (
-      <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top", "bottom"]}
+      >
         <StatusBar style="dark" />
         <ScreenHeader />
         <View style={styles.notFound}>
@@ -192,7 +227,10 @@ export default function BusinessDetailScreen() {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
 
       <ScreenHeader
@@ -213,12 +251,29 @@ export default function BusinessDetailScreen() {
           <Text style={styles.businessName} numberOfLines={2}>
             {business.business_name}
           </Text>
-          <MaterialIcons
-            name={isVerified ? "check-circle" : "schedule"}
-            size={22}
-            color={isVerified ? status.active : status.inactive}
-          />
+          {isVerified && (
+            <MaterialIcons
+              name="check-circle"
+              size={18}
+              color={status.active}
+              style={styles.headerBadge}
+              contentFit="contain"
+            />
+          )}
         </View>
+
+        {!isVerified && (
+          <View style={styles.reviewCard}>
+            <MaterialIcons name="schedule" size={22} color={status.inactive} />
+            <View style={styles.reviewInfo}>
+              <Text style={styles.reviewTitle}>Review in Progress</Text>
+              <Text style={styles.reviewMessage}>
+                This business profile is under review. We&apos;ll notify you
+                once the review is complete.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {services.length > 0 && (
           <View style={styles.chipRow}>
@@ -233,7 +288,9 @@ export default function BusinessDetailScreen() {
                       contentFit="contain"
                     />
                   )}
-                  <Text style={styles.chipText}>{service.sub_category_name}</Text>
+                  <Text style={styles.chipText}>
+                    {service.sub_category_name}
+                  </Text>
                 </View>
               );
             })}
@@ -272,7 +329,7 @@ export default function BusinessDetailScreen() {
             </>
           )
         ) : (
-          <Text style={styles.guidelinesText}>
+          <Text style={styles.emptyText}>
             Guidelines for your business will appear here.
           </Text>
         )}
@@ -330,6 +387,18 @@ export default function BusinessDetailScreen() {
           },
         ]}
       />
+
+      <ConfirmModal
+        visible={confirmModal !== null}
+        title={confirmModal?.title ?? ""}
+        message={confirmModal?.message ?? ""}
+        onCancel={() => setConfirmModal(null)}
+        onConfirm={() => {
+          const fn = confirmModal?.onConfirm;
+          setConfirmModal(null);
+          fn?.();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -362,7 +431,7 @@ const styles = StyleSheet.create({
   titleBlock: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    gap: 16,
+    gap: 20,
   },
   nameRow: {
     flexDirection: "row",
@@ -374,6 +443,36 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: text.primary,
+    letterSpacing: -0.408,
+  },
+  headerBadge: {
+    width: 18,
+    height: 18,
+  },
+  reviewCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: background.subtle,
+    borderWidth: 1,
+    borderColor: border.default,
+  },
+  reviewInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  reviewTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: status.inactive,
+    letterSpacing: -0.408,
+  },
+  reviewMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: neutral[400],
     letterSpacing: -0.408,
   },
   chipRow: {
@@ -404,6 +503,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginTop: 4,
+    marginBottom: 12,
   },
   statusInfo: {
     flex: 1,

@@ -1,6 +1,6 @@
+import { submitBackgroundCheck } from "@/api/profile";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -15,7 +15,6 @@ const { primary, neutral, text, background } = Colors;
 export default function BackgroundCheck3Screen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,17 +29,14 @@ export default function BackgroundCheck3Screen() {
     try {
       // TODO: Submit the agreement acceptance to the backend
 
-      // TODO: legacy API removed — implement Stripe Connect onboarding
-      // (create connected account + account link + browser handoff) via
-      // Laravel API
-      console.log(
-        "TODO: implement Stripe Connect onboarding via Laravel API",
-        { userId },
-      );
+      // TODO: Stripe integration — create the connected account, mint an
+      // onboarding link, and hand off to the browser so the user completes
+      // identity verification before the background check is marked done.
+      await submitBackgroundCheck();
 
       router.push("/background-check/step-4");
     } catch (err) {
-      console.warn("[stripe onboarding]", err);
+      console.warn("[background check]", err);
       // TODO: surface a user-facing error toast/banner.
     } finally {
       setSubmitting(false);
@@ -84,7 +80,7 @@ export default function BackgroundCheck3Screen() {
 
       <View style={[styles.footer, contentWidthStyle]}>
         <Button
-          title={submitting ? "Opening Stripe…" : "Accept and Proceed"}
+          title={submitting ? "Submitting…" : "Accept and Proceed"}
           variant="primary"
           size="lg"
           disabled={!accepted || submitting}

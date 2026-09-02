@@ -154,12 +154,13 @@ export async function resendEmailOtp(email: string): Promise<void> {
   });
 }
 
-export async function submitBackgroundCheck(): Promise<boolean> {
-  const data = await laravelFetch<{ background_verification?: boolean }>(
-    `${SETTINGS_PREFIX}/background-check`,
-    { method: "POST" },
-  );
-  return data.background_verification ?? false;
+export async function submitBackgroundCheck(): Promise<
+  "Pending" | "Verified" | "Not Verified"
+> {
+  const data = await laravelFetch<{
+    background_verification?: "Pending" | "Verified" | "Not Verified";
+  }>(`${SETTINGS_PREFIX}/background-check`, { method: "POST" });
+  return data.background_verification ?? "Pending";
 }
 
 // ---------------------------------------------------------------------------

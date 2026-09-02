@@ -3,8 +3,10 @@ import type { components } from "./generated/api-types";
 
 type ProviderBusinessModel = components["schemas"]["ProviderBusinessModel"];
 
+export type ProviderBusinessListItem =
+  components["schemas"]["ProviderBusinessListItem"];
+
 const BUSINESS_PREFIX = "/service-provider/business";
-const MEMBERS_PREFIX = "/service-provider/business-members";
 
 export interface BusinessProfile {
   providerType: "individual" | "business" | null;
@@ -34,13 +36,11 @@ export async function addBusinessProfile(params: {
     | { uri: string; name: string; type: string };
   businessEin?: string | null;
   serviceSubCategoryIds: number[];
-  stripeAccountId?: string;
-  stripeAccountLastFour?: string;
 }): Promise<any> {
   const formData = new FormData();
   formData.append("business_name", params.businessName);
   formData.append("business_address", params.businessAddress);
-  if (params.about) formData.append("about", params.about);
+  formData.append("about", params.about ?? "");
   formData.append("country_id", params.countryId.toString());
   formData.append("state_id", params.stateId.toString());
   formData.append("city_id", params.cityId.toString());
@@ -55,12 +55,6 @@ export async function addBusinessProfile(params: {
   params.serviceSubCategoryIds.forEach((id) => {
     formData.append("service_sub_category_ids[]", id.toString());
   });
-  if (params.stripeAccountId) {
-    formData.append("stripe_account_id", params.stripeAccountId);
-  }
-  if (params.stripeAccountLastFour) {
-    formData.append("stripe_account_last_four", params.stripeAccountLastFour);
-  }
 
   return laravelFetch<any>(`${BUSINESS_PREFIX}/add`, {
     method: "POST",
@@ -97,7 +91,7 @@ export async function updateBusinessProfile(
   const formData = new FormData();
   formData.append("business_name", params.businessName);
   formData.append("business_address", params.businessAddress);
-  if (params.about) formData.append("about", params.about);
+  formData.append("about", params.about ?? "");
   formData.append("country_id", params.countryId.toString());
   formData.append("state_id", params.stateId.toString());
   formData.append("city_id", params.cityId.toString());
@@ -123,11 +117,11 @@ export async function updateBusinessProfile(
 /**
  * List all businesses for the authenticated provider.
  */
-export async function listBusinesses(): Promise<any[]> {
-  const data = await laravelFetch<{ businesses?: any[] }>(
+export async function listBusinesses(): Promise<ProviderBusinessListItem[]> {
+  const data = await laravelFetch<ProviderBusinessListItem[]>(
     `${BUSINESS_PREFIX}/list`,
   );
-  return data.businesses ?? [];
+  return data ?? [];
 }
 
 /**
@@ -160,7 +154,7 @@ export async function toggleBusinessStatus(
 }
 
 /**
- * Get services assigned to a specific business.
+ * Get services(including sub-categories and categories) assigned to a specific business.
  */
 export async function getBusinessServices(businessId: number): Promise<any[]> {
   const data = await laravelFetch<{ services?: any[] }>(

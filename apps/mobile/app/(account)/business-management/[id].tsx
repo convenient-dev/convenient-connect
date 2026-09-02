@@ -1,9 +1,5 @@
 import { deleteBusiness, getBusinessForEdit, toggleBusinessStatus } from "@/api/business";
-import {
-  getCategoryLogoIndex,
-  lookupCategoryLogo,
-  type CategoryLogoIndex,
-} from "@/api/services";
+import { toAbsoluteUrl } from "@/api/client";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -38,7 +34,7 @@ interface Member {
 }
 
 interface Business {
-  id: number;
+  business_id: number;
   business_name: string;
   business_address: string;
   about: string | null;
@@ -47,12 +43,14 @@ interface Business {
   city_id: number;
   zipcode: string | null;
   business_ein: string | null;
-  status: string;
-  service_sub_categories: {
+  status: boolean;
+  business_verification: boolean;
+  services: {
     sub_category_id: number;
     sub_category_name: string;
-    category_name: string;
+    sub_category_logo: string | null;
   }[];
+  service_sub_category_ids: number[];
 }
 
 // TODO: Load members from the API once team management endpoints exist.
@@ -105,13 +103,6 @@ export default function BusinessDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("members");
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [categoryLogos, setCategoryLogos] = useState<CategoryLogoIndex>({});
-
-  useEffect(() => {
-    getCategoryLogoIndex()
-      .then(setCategoryLogos)
-      .catch(() => {});
-  }, []);
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
@@ -119,7 +110,7 @@ export default function BusinessDetailScreen() {
       setLoading(true);
       const data = await getBusinessForEdit(Number(id));
       setBusiness(data);
-      setAcceptingJobs(data.status === "active");
+      setAcceptingJobs(data.status);
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to load business");
       router.back();
@@ -135,7 +126,7 @@ export default function BusinessDetailScreen() {
   const handleToggleStatus = async () => {
     if (!business) return;
     try {
-      const newStatus = await toggleBusinessStatus(business.id);
+      const newStatus = await toggleBusinessStatus(business.business_id);
       setAcceptingJobs(newStatus);
       Alert.alert("Success", `Business is now ${newStatus ? "active" : "inactive"}`);
     } catch (error: any) {
@@ -156,7 +147,7 @@ export default function BusinessDetailScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteBusiness(business.id);
+              await deleteBusiness(business.business_id);
               Alert.alert("Success", "Business deleted successfully");
               router.back();
             } catch (error: any) {
@@ -192,10 +183,8 @@ export default function BusinessDetailScreen() {
     );
   }
 
-  const isVerified = business.status === "verified" || business.status === "active";
-  const categoryNames = Array.from(
-    new Set(business.service_sub_categories.map((s) => s.category_name))
-  );
+  const isVerified = business.business_verification;
+  const services = business.services ?? [];
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "members", label: "Members" },
@@ -231,12 +220,12 @@ export default function BusinessDetailScreen() {
           />
         </View>
 
-        {categoryNames.length > 0 && (
+        {services.length > 0 && (
           <View style={styles.chipRow}>
-            {categoryNames.map((category) => {
-              const logo = lookupCategoryLogo(categoryLogos, category);
+            {services.map((service) => {
+              const logo = toAbsoluteUrl(service.sub_category_logo);
               return (
-                <View key={category} style={styles.chip}>
+                <View key={service.sub_category_id} style={styles.chip}>
                   {logo && (
                     <ExpoImage
                       source={{ uri: logo }}
@@ -244,7 +233,7 @@ export default function BusinessDetailScreen() {
                       contentFit="contain"
                     />
                   )}
-                  <Text style={styles.chipText}>{category}</Text>
+                  <Text style={styles.chipText}>{service.sub_category_name}</Text>
                 </View>
               );
             })}
@@ -313,7 +302,7 @@ export default function BusinessDetailScreen() {
               setMenuVisible(false);
               router.push({
                 pathname: "/business-management/view-business-detail",
-                params: { id: String(business.id) },
+                params: { id: String(business.business_id) },
               });
             },
           },
@@ -326,7 +315,7 @@ export default function BusinessDetailScreen() {
                 pathname: "/business-management/select-category",
                 params: {
                   flow: "edit-business",
-                  businessId: String(business.id),
+                  businessId: String(business.business_id),
                 },
               });
             },

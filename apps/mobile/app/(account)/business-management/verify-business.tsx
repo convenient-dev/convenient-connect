@@ -2,10 +2,6 @@ import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import {
-  UploadedDoc,
-  useBusinessSignup,
-} from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -29,6 +25,11 @@ const { primary, secondary, neutral, text, background, border } = Colors;
 const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
 type DocType = "registration" | "governmentId";
+
+interface UploadedDoc {
+  url: string;
+  fileName: string;
+}
 
 interface UploadCardProps {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -105,8 +106,11 @@ export default function VerifyBusinessScreen() {
   // Business details entered on the previous screen, forwarded through
   // each step of the create-business flow.
   const params = useLocalSearchParams();
-  const { data, update } = useBusinessSignup();
-  const { registrationDoc, governmentId, ein } = data;
+  const [registrationDoc, setRegistrationDoc] = useState<UploadedDoc | null>(
+    null,
+  );
+  const [governmentId, setGovernmentId] = useState<UploadedDoc | null>(null);
+  const [ein, setEin] = useState("");
 
   const [registrationError, setRegistrationError] = useState<string | null>(
     null,
@@ -237,20 +241,28 @@ export default function VerifyBusinessScreen() {
       return;
     }
 
-    // TODO: Upload to the create-business API on final submit. For now the
-    // picked file is kept locally (its uri) so the user can continue.
+    // The picked file is kept locally (its uri) and uploaded to the
+    // create-business API on final submit.
     const doc: UploadedDoc = { url: asset.uri, fileName: asset.name };
     if (docType === "registration") {
-      update({ registrationDoc: doc });
+      setRegistrationDoc(doc);
     } else {
-      update({ governmentId: doc });
+      setGovernmentId(doc);
     }
   }
 
   function handleContinue() {
+    if (!registrationDoc || !governmentId) return;
     router.push({
       pathname: "/business-management/update-bank-account",
-      params,
+      params: {
+        ...params,
+        registrationDocUri: registrationDoc.url,
+        registrationDocName: registrationDoc.fileName,
+        governmentIdUri: governmentId.url,
+        governmentIdName: governmentId.fileName,
+        ein,
+      },
     });
   }
 
@@ -322,7 +334,7 @@ export default function VerifyBusinessScreen() {
               placeholder="XX-XXXXXXX"
               placeholderTextColor={neutral[400]}
               value={ein}
-              onChangeText={(v) => update({ ein: formatEin(v) })}
+              onChangeText={(v) => setEin(formatEin(v))}
               keyboardType="number-pad"
               maxLength={10}
             />

@@ -1,8 +1,10 @@
+import { submitBackgroundCheck } from "@/api/profile";
+import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,43 +16,44 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { background, text, neutral, primary } = Colors;
 
-type AccountStatus = {
-  readyToReceivePayments: boolean;
-  onboardingComplete: boolean;
-  requirementsStatus: string | null;
-};
+type BackgroundStatus = "Pending" | "Verified" | "Not Verified";
 
 export default function BackgroundCheck4Screen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  // accountId is forwarded from background-check-3 after the user creates
-  // their connected account. The webhook keeps Stripe state authoritative —
-  // this screen just pulls the latest snapshot on mount / on refresh.
-  const { accountId } = useLocalSearchParams<{ accountId?: string }>();
+  const { user: authUser, setUser } = useAuth();
 
-  const [status, setStatus] = useState<AccountStatus | null>(null);
+  const [status, setStatus] = useState<BackgroundStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
-    if (!accountId) {
-      // No account id (e.g. screen opened directly) — nothing to check.
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
-    // TODO: legacy API removed — implement Stripe account status via Laravel API
-    console.log("TODO: implement Stripe account status via Laravel API", {
-      accountId,
-    });
-    setStatus(null);
-    setLoading(false);
-  }, [accountId]);
+    try {
+      // TODO: Stripe integration — once onboarding is wired up, check the
+      // connected account's real verification state instead of marking the
+      // background check verified directly.
+      const result = await submitBackgroundCheck();
+      setStatus(result);
+      // Sync the session so screens reading the auth profile (e.g. the
+      // profile tab's verified badge) reflect the new status immediately.
+      if (authUser) {
+        setUser({ ...authUser, backgroundVerification: result });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [authUser, setUser]);
 
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+    // Run once on mount; fetchStatus changes identity when authUser updates,
+    // which would otherwise re-trigger the request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleDone() {
     // Pop the whole background-check stack so it can't be surfaced later,
@@ -60,8 +63,7 @@ export default function BackgroundCheck4Screen() {
     router.navigate("/profile?from=background-check");
   }
 
-  const verified =
-    !!status?.onboardingComplete && !!status?.readyToReceivePayments;
+  const verified = status === "Verified";
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>

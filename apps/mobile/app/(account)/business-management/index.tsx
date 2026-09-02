@@ -1,20 +1,16 @@
-import {
-  getCategoryLogoIndex,
-  lookupCategoryLogo,
-  type CategoryLogoIndex,
-} from "@/api/services";
+import { listBusinesses, type ProviderBusinessListItem } from "@/api/business";
+import { toAbsoluteUrl } from "@/api/client";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -56,23 +52,23 @@ export default function BusinessManagementScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const { pendingBusinesses } = useBusinessSignup();
   const { userId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<TabKey>(
     tab === "affiliations" ? "affiliations" : "businesses",
   );
+  const [businesses, setBusinesses] = useState<ProviderBusinessListItem[]>([]);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
   const [affiliations, setAffiliations] = useState<Affiliation[]>([]);
   const [loadingAffiliations, setLoadingAffiliations] = useState(true);
-  const [categoryLogos, setCategoryLogos] = useState<CategoryLogoIndex>({});
-
-  useEffect(() => {
-    getCategoryLogoIndex()
-      .then(setCategoryLogos)
-      .catch(() => {});
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      setLoadingBusinesses(true);
+      listBusinesses()
+        .then((data) => setBusinesses(data ?? []))
+        .catch(() => setBusinesses([]))
+        .finally(() => setLoadingBusinesses(false));
+
       setLoadingAffiliations(true);
       // TODO: legacy API removed — implement getUserAffiliations via Laravel API
       console.log("TODO: implement getUserAffiliations via Laravel API", {
@@ -100,7 +96,13 @@ export default function BusinessManagementScreen() {
 
       {activeTab === "businesses" ? (
         <>
-          {pendingBusinesses.length === 0 ? (
+          {loadingBusinesses ? (
+            <ActivityIndicator
+              size="large"
+              color={primary[400]}
+              style={styles.loader}
+            />
+          ) : businesses.length === 0 ? (
             <View style={styles.emptyBody}>
               <ExpoImage
                 source={require("@/assets/global-icons/create-business-icon.png")}
@@ -114,30 +116,27 @@ export default function BusinessManagementScreen() {
               contentContainerStyle={[styles.listContent, contentWidthStyle]}
               showsVerticalScrollIndicator={false}
             >
-              {pendingBusinesses.map((business) => (
+              {businesses.map((business) => (
                 <TouchableOpacity
-                  key={business.id}
+                  key={business.business_id}
                   style={styles.businessRow}
                   activeOpacity={0.7}
                   onPress={() =>
                     router.push({
                       pathname: "/business-management/[id]",
-                      params: { id: String(business.id) },
+                      params: { id: String(business.business_id) },
                     })
                   }
                 >
                   <View style={styles.businessInfo}>
                     <Text style={styles.businessName} numberOfLines={1}>
-                      {business.name}
+                      {business.business_name}
                     </Text>
                     <View style={styles.chipRow}>
-                      {business.categories.map((category) => {
-                        const logo = lookupCategoryLogo(
-                          categoryLogos,
-                          category,
-                        );
+                      {(business.services ?? []).map((service) => {
+                        const logo = toAbsoluteUrl(service.sub_category_logo);
                         return (
-                          <View key={category} style={styles.chip}>
+                          <View key={service.sub_category_id} style={styles.chip}>
                             {logo && (
                               <ExpoImage
                                 source={{ uri: logo }}
@@ -145,7 +144,9 @@ export default function BusinessManagementScreen() {
                                 contentFit="contain"
                               />
                             )}
-                            <Text style={styles.chipText}>{category}</Text>
+                            <Text style={styles.chipText}>
+                              {service.sub_category_name}
+                            </Text>
                           </View>
                         );
                       })}

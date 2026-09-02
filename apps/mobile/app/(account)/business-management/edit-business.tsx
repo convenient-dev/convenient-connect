@@ -1,5 +1,5 @@
 import { getBusinessForEdit, updateBusinessProfile } from "@/api/business";
-import { getCities, getStates } from "@/api/location";
+import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
@@ -66,7 +66,7 @@ function Field({
 }
 
 interface Business {
-  id: number;
+  business_id: number;
   business_name: string;
   business_address: string;
   about: string | null;
@@ -75,12 +75,7 @@ interface Business {
   city_id: number;
   zipcode: string | null;
   business_ein: string | null;
-  service_sub_categories: {
-    sub_category_id: number;
-  }[];
-  country?: { id: number; name: string };
-  state?: { id: number; name: string };
-  city?: { id: number; name: string };
+  service_sub_category_ids: number[];
 }
 
 export default function EditBusinessScreen() {
@@ -116,14 +111,23 @@ export default function EditBusinessScreen() {
         setAbout(data.about || "");
         setZip(data.zipcode || "");
 
-        if (data.country) {
-          setSelectedCountry({ id: data.country.id, name: data.country.name });
-        }
-        if (data.state) {
-          setSelectedState({ id: data.state.id, name: data.state.name });
-        }
-        if (data.city) {
-          setSelectedCity({ id: data.city.id, name: data.city.name });
+        // The API returns only location ids, so resolve their names via the
+        // location endpoints to prefill the selects. If a lookup fails, the
+        // select stays empty and the user re-picks before saving.
+        try {
+          const countries = await getCountries();
+          const country = countries.find((c) => c.id === data.country_id);
+          if (country) setSelectedCountry(country);
+
+          const states = await getStates(data.country_id);
+          const state = states.find((s) => s.id === data.state_id);
+          if (state) setSelectedState(state);
+
+          const cities = await getCities(data.state_id);
+          const city = cities.find((c) => c.id === data.city_id);
+          if (city) setSelectedCity(city);
+        } catch {
+          // Leave unresolved selects empty.
         }
       } catch (error: any) {
         Alert.alert("Error", error.message || "Failed to load business");
@@ -168,11 +172,9 @@ export default function EditBusinessScreen() {
     try {
       setSaving(true);
 
-      const serviceSubCategoryIds = business.service_sub_categories.map(
-        (sc) => sc.sub_category_id,
-      );
+      const serviceSubCategoryIds = business.service_sub_category_ids ?? [];
 
-      await updateBusinessProfile(business.id, {
+      await updateBusinessProfile(business.business_id, {
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
         about: about.trim(),

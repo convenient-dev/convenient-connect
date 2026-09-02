@@ -218,10 +218,7 @@ export default function HomeScreen() {
                 style={styles.avatar}
                 contentFit="cover"
               />
-              {((user?.accountType === "individual" &&
-                user?.isPersonVerified) ||
-                (user?.accountType === "business" &&
-                  user?.isBusinessVerified)) && (
+              {user?.backgroundVerification === "Verified" && (
                 <ExpoImage
                   source={require("@/assets/global-icons/verified.svg")}
                   style={styles.avatarBadge}

@@ -4,7 +4,6 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -41,8 +40,12 @@ export default function UpdateBankAccountScreen() {
     about?: string;
     serviceIds?: string;
     categoryNames?: string;
+    registrationDocUri?: string;
+    registrationDocName?: string;
+    governmentIdUri?: string;
+    governmentIdName?: string;
+    ein?: string;
   }>();
-  const { data, addPendingBusiness, reset } = useBusinessSignup();
   const [successVisible, setSuccessVisible] = useState(false);
   const [verificationErrorVisible, setVerificationErrorVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -91,11 +94,6 @@ export default function UpdateBankAccountScreen() {
     setSubmitting(true);
 
     try {
-      // TODO: Get Stripe account info from the connected account
-      // For now, we'll pass placeholder values
-      const stripeAccountId = "acct_placeholder";
-      const stripeAccountLastFour = ACCOUNT_LAST_FOUR;
-
       await addBusinessProfile({
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
@@ -104,17 +102,14 @@ export default function UpdateBankAccountScreen() {
         stateId: parseInt(stateId, 10),
         cityId: parseInt(cityId, 10),
         zipcode: zipcode?.trim() || null,
-        businessDocuments: data.registrationDoc?.url
-          ? uriToFile(data.registrationDoc.url, data.registrationDoc.fileName || 'business_document.pdf') as any
+        businessDocuments: params.registrationDocUri
+          ? uriToFile(params.registrationDocUri, params.registrationDocName || 'business_document.pdf') as any
           : undefined,
-        governmentIssuedId: data.governmentId?.url
-          ? uriToFile(data.governmentId.url, data.governmentId.fileName || 'government_id.jpg') as any
+        governmentIssuedId: params.governmentIdUri
+          ? uriToFile(params.governmentIdUri, params.governmentIdName || 'government_id.jpg') as any
           : undefined,
-        businessEin: data.ein || null,
+        businessEin: params.ein || null,
         serviceSubCategoryIds,
-        // Stripe info - for now just pass as data in the request
-        stripeAccountId,
-        stripeAccountLastFour,
       });
 
       setSuccessVisible(true);
@@ -157,17 +152,8 @@ export default function UpdateBankAccountScreen() {
 
   function handleSuccessConfirm() {
     setSuccessVisible(false);
-    addPendingBusiness({
-      name: params.businessName ?? "",
-      categories: (params.categoryNames ?? "").split(",").filter(Boolean),
-      address: params.businessAddress ?? "",
-      country: params.countryName ?? "",
-      state: params.stateName ?? "",
-      city: params.cityName ?? "",
-      zipCode: params.zipcode ?? "",
-      about: params.about ?? "",
-    });
-    reset();
+    // The business list screen refetches on focus, so the new business
+    // shows up without any local bookkeeping.
     router.dismissTo("/business-management");
   }
 

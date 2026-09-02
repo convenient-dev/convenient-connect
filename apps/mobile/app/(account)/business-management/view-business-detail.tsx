@@ -1,4 +1,5 @@
 import { getBusinessForEdit } from "@/api/business";
+import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -20,7 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { primary, neutral, text, background, border, status } = Colors;
 
 interface Business {
-  id: number;
+  business_id: number;
   business_name: string;
   business_address: string;
   about: string | null;
@@ -29,19 +30,15 @@ interface Business {
   city_id: number;
   zipcode: string | null;
   business_ein: string | null;
-  status: string;
-  country?: { name: string };
-  state?: { name: string };
-  city?: { name: string };
-  stripe_account_last_four?: string;
+  status: boolean;
+  business_verification: boolean;
 }
 
-// TODO: Get the connected bank account from the API once it exists.
-const BANK_ACCOUNT = {
-  holderName: "William Conzalez",
-  routingLastFour: "0015",
-  accountLastFour: "6789",
-};
+interface LocationNames {
+  country?: string;
+  state?: string;
+  city?: string;
+}
 
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
@@ -58,6 +55,7 @@ export default function ViewBusinessDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [business, setBusiness] = useState<Business | null>(null);
+  const [locationNames, setLocationNames] = useState<LocationNames>({});
   const [loading, setLoading] = useState(true);
 
   const loadBusiness = useCallback(async () => {
@@ -66,6 +64,23 @@ export default function ViewBusinessDetailScreen() {
       setLoading(true);
       const data = await getBusinessForEdit(Number(id));
       setBusiness(data);
+
+      // The API returns only location ids, so resolve their names via the
+      // location endpoints. Unresolved names fall back to "—".
+      try {
+        const [countries, states, cities] = await Promise.all([
+          getCountries(),
+          getStates(data.country_id),
+          getCities(data.state_id),
+        ]);
+        setLocationNames({
+          country: countries.find((c) => c.id === data.country_id)?.name,
+          state: states.find((s) => s.id === data.state_id)?.name,
+          city: cities.find((c) => c.id === data.city_id)?.name,
+        });
+      } catch {
+        // Leave unresolved names empty.
+      }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to load business");
       router.back();
@@ -102,7 +117,7 @@ export default function ViewBusinessDetailScreen() {
     );
   }
 
-  const isVerified = business.status === "verified" || business.status === "active";
+  const isVerified = business.business_verification;
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
@@ -121,9 +136,9 @@ export default function ViewBusinessDetailScreen() {
         </View>
 
         <View style={styles.card}>
-          <DetailField label="Country" value={business.country?.name || "—"} />
-          <DetailField label="State" value={business.state?.name || "—"} />
-          <DetailField label="City" value={business.city?.name || "—"} />
+          <DetailField label="Country" value={locationNames.country || "—"} />
+          <DetailField label="State" value={locationNames.state || "—"} />
+          <DetailField label="City" value={locationNames.city || "—"} />
           <DetailField label="Zip code" value={business.zipcode || "—"} />
         </View>
 
@@ -137,23 +152,7 @@ export default function ViewBusinessDetailScreen() {
           </View>
         )}
 
-        {business.stripe_account_last_four && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Bank Account</Text>
-            <DetailField
-              label="Account holder name"
-              value={BANK_ACCOUNT.holderName}
-            />
-            <DetailField
-              label="Routing number"
-              value={`*****${BANK_ACCOUNT.routingLastFour}`}
-            />
-            <DetailField
-              label="Account number"
-              value={`********${business.stripe_account_last_four}`}
-            />
-          </View>
-        )}
+        {/* TODO: Show the connected bank account once the API exposes it. */}
 
         <View style={[styles.card, styles.verificationCard]}>
           <Text style={styles.verificationText}>
@@ -175,7 +174,7 @@ export default function ViewBusinessDetailScreen() {
           onPress={() => {
             router.push({
               pathname: "/business-management/edit-business",
-              params: { id: String(business.id) },
+              params: { id: String(business.business_id) },
             });
           }}
         />

@@ -40,6 +40,23 @@ interface LocationNames {
   city?: string;
 }
 
+interface BankAccount {
+  holderName: string;
+  routingLastFour: string;
+  accountLastFour: string;
+}
+
+// TODO: Map the connected bank account from the API response once the API
+// exposes it. Until then the section renders with "—" placeholders.
+function getBankAccount(_business: Business): BankAccount | null {
+  return null;
+}
+
+// Masks a bank number so only the last four digits are visible.
+function maskLastFour(lastFour: string | undefined, hiddenLength: number) {
+  return lastFour ? `${"*".repeat(hiddenLength)}${lastFour}` : "";
+}
+
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.fieldBlock}>
@@ -119,6 +136,8 @@ export default function ViewBusinessDetailScreen() {
 
   const isVerified = business.business_verification;
 
+  const bankAccount = getBankAccount(business);
+
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
       <StatusBar style="dark" />
@@ -152,7 +171,21 @@ export default function ViewBusinessDetailScreen() {
           </View>
         )}
 
-        {/* TODO: Show the connected bank account once the API exposes it. */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Bank Account</Text>
+          <DetailField
+            label="Account holder name"
+            value={bankAccount?.holderName ?? ""}
+          />
+          <DetailField
+            label="Routing number"
+            value={maskLastFour(bankAccount?.routingLastFour, 5)}
+          />
+          <DetailField
+            label="Account number"
+            value={maskLastFour(bankAccount?.accountLastFour, 8)}
+          />
+        </View>
 
         <View style={[styles.card, styles.verificationCard]}>
           <Text style={styles.verificationText}>

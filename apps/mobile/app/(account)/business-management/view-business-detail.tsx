@@ -1,16 +1,16 @@
 import { getBusinessForEdit } from "@/api/business";
 import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -74,6 +74,7 @@ export default function ViewBusinessDetailScreen() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [locationNames, setLocationNames] = useState<LocationNames>({});
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
@@ -99,16 +100,34 @@ export default function ViewBusinessDetailScreen() {
         // Leave unresolved names empty.
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load business");
-      router.back();
+      setErrorMessage(error.message || "Failed to load business");
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id]);
 
-  useEffect(() => {
-    loadBusiness();
-  }, [loadBusiness]);
+  // Load errors send the user back to the previous screen once acknowledged.
+  const errorModal = (
+    <ConfirmModal
+      visible={errorMessage !== null}
+      type="error"
+      title="Error"
+      message={errorMessage ?? ""}
+      confirmLabel="OK"
+      onConfirm={() => {
+        setErrorMessage(null);
+        router.back();
+      }}
+    />
+  );
+
+  // Refetch whenever the screen regains focus so edits made on the
+  // edit-business screen are reflected after navigating back.
+  useFocusEffect(
+    useCallback(() => {
+      loadBusiness();
+    }, [loadBusiness]),
+  );
 
   if (loading) {
     return (
@@ -130,6 +149,7 @@ export default function ViewBusinessDetailScreen() {
         <View style={styles.notFound}>
           <Text style={styles.notFoundText}>Business not found</Text>
         </View>
+        {errorModal}
       </SafeAreaView>
     );
   }
@@ -212,6 +232,8 @@ export default function ViewBusinessDetailScreen() {
           }}
         />
       </View>
+
+      {errorModal}
     </SafeAreaView>
   );
 }

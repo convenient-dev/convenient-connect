@@ -13,12 +13,11 @@ import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -56,6 +55,17 @@ interface Business {
     sub_category_logo: string | null;
   }[];
   service_sub_category_ids: number[];
+}
+
+interface ModalState {
+  type?: "success" | "error" | "warning";
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Hide the cancel button for informational (success/error) pop-ups. */
+  showCancel?: boolean;
+  onConfirm?: () => void | Promise<void>;
 }
 
 // TODO: Load members from the API once team management endpoints exist.
@@ -114,31 +124,45 @@ export default function BusinessDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("members");
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{
-    title: string;
-    message: string;
-    onConfirm: () => void | Promise<void>;
-  } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<ModalState | null>(null);
+
+  const showError = useCallback(
+    (message: string, onConfirm?: () => void) => {
+      setConfirmModal({
+        type: "error",
+        title: "Error",
+        message,
+        confirmLabel: "OK",
+        showCancel: false,
+        onConfirm,
+      });
+    },
+    [],
+  );
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       const data = await getBusinessForEdit(Number(id));
-      console.log("Business data:", data);
       setBusiness(data);
       setAcceptingJobs(data.status);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load business");
-      router.back();
+      showError(error.message || "Failed to load business", () =>
+        router.back(),
+      );
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id, router, showError]);
 
-  useEffect(() => {
-    loadBusiness();
-  }, [loadBusiness]);
+  // Refetch whenever the screen regains focus so changes made on the
+  // detail/edit screens are reflected after navigating back.
+  useFocusEffect(
+    useCallback(() => {
+      loadBusiness();
+    }, [loadBusiness]),
+  );
 
   const toggleStatus = async () => {
     if (!business) return;
@@ -161,32 +185,55 @@ export default function BusinessDetailScreen() {
     });
   };
 
+  const confirmDelete = async () => {
+    if (!business) return;
+    try {
+      await deleteBusiness(business.business_id);
+      setConfirmModal({
+        type: "success",
+        title: "Success",
+        message: "Business deleted successfully.",
+        confirmLabel: "Done",
+        showCancel: false,
+        onConfirm: () => router.back(),
+      });
+    } catch (error: any) {
+      showError(error.message || "Failed to delete business");
+    }
+  };
+
   const handleDelete = () => {
     if (!business) return;
-    Alert.alert(
-      "Delete Business",
-      `Are you sure you want to delete ${business.business_name}? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteBusiness(business.business_id);
-              Alert.alert("Success", "Business deleted successfully");
-              router.back();
-            } catch (error: any) {
-              Alert.alert(
-                "Error",
-                error.message || "Failed to delete business",
-              );
-            }
-          },
-        },
-      ],
-    );
+    setConfirmModal({
+      type: "warning",
+      title: "Delete Business",
+      message: `Are you sure you want to delete ${business.business_name}? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      onConfirm: confirmDelete,
+    });
   };
+
+  const modal = (
+    <ConfirmModal
+      visible={confirmModal !== null}
+      type={confirmModal?.type ?? "warning"}
+      title={confirmModal?.title ?? ""}
+      message={confirmModal?.message ?? ""}
+      confirmLabel={confirmModal?.confirmLabel}
+      cancelLabel={confirmModal?.cancelLabel}
+      onCancel={
+        confirmModal?.showCancel === false
+          ? undefined
+          : () => setConfirmModal(null)
+      }
+      onConfirm={() => {
+        const fn = confirmModal?.onConfirm;
+        setConfirmModal(null);
+        fn?.();
+      }}
+    />
+  );
 
   if (loading) {
     return (
@@ -214,6 +261,7 @@ export default function BusinessDetailScreen() {
         <View style={styles.notFound}>
           <Text style={styles.notFoundText}>Business not found</Text>
         </View>
+        {modal}
       </SafeAreaView>
     );
   }
@@ -388,17 +436,7 @@ export default function BusinessDetailScreen() {
         ]}
       />
 
-      <ConfirmModal
-        visible={confirmModal !== null}
-        title={confirmModal?.title ?? ""}
-        message={confirmModal?.message ?? ""}
-        onCancel={() => setConfirmModal(null)}
-        onConfirm={() => {
-          const fn = confirmModal?.onConfirm;
-          setConfirmModal(null);
-          fn?.();
-        }}
-      />
+      {modal}
     </SafeAreaView>
   );
 }

@@ -7,6 +7,7 @@
 3. Read apps/mobile/api-doc.json everytime before creating/editing any API related code.
 4. Ensure the frontend implementation matches the API contract exactly. Do not assume or invent request or response fields that are not defined in apps/mobile/api-doc.json.
 5. If the implementation and the API specification do not match, report the discrepancy.
+6. Use apps/mobile/components/ConfirmModal.tsx for all alert. Do not user native alert.
 
 ## General approach
 

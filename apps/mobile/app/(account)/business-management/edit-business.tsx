@@ -1,6 +1,7 @@
 import { getBusinessForEdit, updateBusinessProfile } from "@/api/business";
 import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -10,7 +11,6 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -78,6 +78,14 @@ interface Business {
   service_sub_category_ids: number[];
 }
 
+interface ModalState {
+  type: "success" | "error";
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm?: () => void;
+}
+
 export default function EditBusinessScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
@@ -85,7 +93,12 @@ export default function EditBusinessScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [modal, setModal] = useState<ModalState | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+
+  const showError = useCallback((message: string, onConfirm?: () => void) => {
+    setModal({ type: "error", title: "Error", message, confirmLabel: "OK", onConfirm });
+  }, []);
 
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
@@ -130,15 +143,16 @@ export default function EditBusinessScreen() {
           // Leave unresolved selects empty.
         }
       } catch (error: any) {
-        Alert.alert("Error", error.message || "Failed to load business");
-        router.back();
+        showError(error.message || "Failed to load business", () =>
+          router.back(),
+        );
       } finally {
         setLoading(false);
       }
     }
 
     loadBusiness();
-  }, [id, router]);
+  }, [id, router, showError]);
 
   const loadStates = useCallback(
     (search: string) =>
@@ -186,18 +200,35 @@ export default function EditBusinessScreen() {
         serviceSubCategoryIds,
       });
 
-      Alert.alert("Success", "Business updated successfully", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      setModal({
+        type: "success",
+        title: "Success",
+        message: "Business updated successfully.",
+        confirmLabel: "Done",
+        // The detail screen refetches on focus, so it shows the saved changes.
+        onConfirm: () => router.back(),
+      });
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update business");
+      showError(error.message || "Failed to update business");
     } finally {
       setSaving(false);
     }
   }
+
+  const modalElement = (
+    <ConfirmModal
+      visible={modal !== null}
+      type={modal?.type ?? "error"}
+      title={modal?.title ?? ""}
+      message={modal?.message ?? ""}
+      confirmLabel={modal?.confirmLabel}
+      onConfirm={() => {
+        const fn = modal?.onConfirm;
+        setModal(null);
+        fn?.();
+      }}
+    />
+  );
 
   if (loading) {
     return (
@@ -225,6 +256,7 @@ export default function EditBusinessScreen() {
         <View style={styles.loadingContainer}>
           <Text style={styles.errorText}>Business not found</Text>
         </View>
+        {modalElement}
       </SafeAreaView>
     );
   }
@@ -327,6 +359,8 @@ export default function EditBusinessScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {modalElement}
     </SafeAreaView>
   );
 }

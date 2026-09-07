@@ -1,15 +1,16 @@
+import { getBusinessForEdit, updateBusinessProfile } from "@/api/business";
 import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -29,6 +30,29 @@ interface Subcategory {
   categorySlug: string;
   categoryName: string;
   iconUrl: string | null;
+}
+
+// Fields from the business edit response that the update endpoint requires
+// to be resent alongside the new service ids.
+interface BusinessEditData {
+  business_id: number;
+  business_name: string;
+  business_address: string;
+  about: string | null;
+  country_id: number;
+  state_id: number;
+  city_id: number;
+  zipcode: string | null;
+  business_ein: string | null;
+  service_sub_category_ids: number[];
+}
+
+interface ModalState {
+  type: "success" | "error";
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm?: () => void;
 }
 
 function SubcategoryItem({
@@ -74,11 +98,32 @@ export default function SelectSubcategoriesScreen() {
     categoryId: string;
     categorySlug: string;
     categoryName: string;
+    flow?: string;
+    businessId?: string;
   }>();
+  // Editing an existing business's services: preselect its current
+  // subcategories and save directly instead of continuing the create flow.
+  const isEditMode = params.flow === "edit-business" && !!params.businessId;
 
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Subcategory[]>([]);
+  const [business, setBusiness] = useState<BusinessEditData | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [modal, setModal] = useState<ModalState | null>(null);
+
+  const showLoadError = useCallback(
+    (message: string) => {
+      setModal({
+        type: "error",
+        title: "Error",
+        message,
+        confirmLabel: "OK",
+        onConfirm: () => router.back(),
+      });
+    },
+    [router],
+  );
 
   useEffect(() => {
     (async () => {
@@ -90,28 +135,43 @@ export default function SelectSubcategoriesScreen() {
         );
 
         if (!category) {
-          Alert.alert("Error", "Category not found");
+          showLoadError("Category not found");
           setLoading(false);
           return;
         }
 
-        setSubcategories(
-          category.sub_category_list.map((sub) => ({
-            id: sub.sub_category_id,
-            name: sub.sub_category_name,
-            categoryId: category.category_id,
-            categorySlug: params.categorySlug ?? "",
-            categoryName: params.categoryName ?? "",
-            iconUrl: sub.sub_category_logo,
-          })),
-        );
+        const list: Subcategory[] = category.sub_category_list.map((sub) => ({
+          id: sub.sub_category_id,
+          name: sub.sub_category_name,
+          categoryId: category.category_id,
+          categorySlug: params.categorySlug ?? "",
+          categoryName: params.categoryName ?? "",
+          iconUrl: sub.sub_category_logo,
+        }));
+        setSubcategories(list);
+
+        if (isEditMode) {
+          const data: BusinessEditData = await getBusinessForEdit(
+            Number(params.businessId),
+          );
+          setBusiness(data);
+          const currentIds = data.service_sub_category_ids ?? [];
+          setSelected(list.filter((sub) => currentIds.includes(sub.id)));
+        }
       } catch {
-        Alert.alert("Error", "Failed to load services");
+        showLoadError("Failed to load services");
       } finally {
         setLoading(false);
       }
     })();
-  }, [params.categoryId, params.categorySlug, params.categoryName]);
+  }, [
+    params.categoryId,
+    params.categorySlug,
+    params.categoryName,
+    isEditMode,
+    params.businessId,
+    showLoadError,
+  ]);
 
   const isSelected = (id: number) => selected.some((s) => s.id === id);
 
@@ -123,7 +183,54 @@ export default function SelectSubcategoriesScreen() {
     );
   }
 
+  async function saveServices() {
+    if (!business || saving) return;
+    setSaving(true);
+    try {
+      // The update endpoint requires the full business record, so resend the
+      // existing fields with only the service ids changed. Documents are
+      // omitted; the server keeps the ones already on file.
+      await updateBusinessProfile(business.business_id, {
+        businessName: business.business_name,
+        businessAddress: business.business_address,
+        about: business.about,
+        countryId: business.country_id,
+        stateId: business.state_id,
+        cityId: business.city_id,
+        zipcode: business.zipcode,
+        businessEin: business.business_ein,
+        serviceSubCategoryIds: selected.map((s) => s.id),
+      });
+      setModal({
+        type: "success",
+        title: "Success",
+        message:
+          "Your services have been updated. Your business will be reviewed again before it can accept new bookings.",
+        confirmLabel: "Done",
+        // The business detail screen refetches on focus.
+        onConfirm: () =>
+          router.dismissTo({
+            pathname: "/business-management/[id]",
+            params: { id: String(business.business_id) },
+          }),
+      });
+    } catch (error: any) {
+      setModal({
+        type: "error",
+        title: "Error",
+        message: error?.message || "Failed to update services. Please try again.",
+        confirmLabel: "OK",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function handleContinue() {
+    if (isEditMode) {
+      saveServices();
+      return;
+    }
     router.push({
       pathname: "/business-management/verify-business",
       params: {
@@ -175,10 +282,26 @@ export default function SelectSubcategoriesScreen() {
           title="Continue"
           variant="secondary"
           size="lg"
-          disabled={selected.length === 0}
+          disabled={
+            selected.length === 0 || saving || (isEditMode && !business)
+          }
+          loading={saving}
           onPress={handleContinue}
         />
       </View>
+
+      <ConfirmModal
+        visible={modal !== null}
+        type={modal?.type ?? "error"}
+        title={modal?.title ?? ""}
+        message={modal?.message ?? ""}
+        confirmLabel={modal?.confirmLabel}
+        onConfirm={() => {
+          const fn = modal?.onConfirm;
+          setModal(null);
+          fn?.();
+        }}
+      />
     </SafeAreaView>
   );
 }

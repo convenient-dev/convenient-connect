@@ -94,6 +94,7 @@ export default function EditBusinessScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [reverifyVisible, setReverifyVisible] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
 
   const showError = useCallback((message: string, onConfirm?: () => void) => {
@@ -179,7 +180,47 @@ export default function EditBusinessScreen() {
     zip.trim().length > 0 &&
     about.trim().length > 0;
 
-  async function handleSave() {
+  // Changing the legal name or address invalidates the documents on file, so
+  // those edits go through the documents and bank screens before submitting.
+  const requiresReverification =
+    !!business &&
+    (businessName.trim() !== business.business_name ||
+      businessAddress.trim() !== business.business_address);
+
+  function handleSave() {
+    if (requiresReverification) {
+      setReverifyVisible(true);
+      return;
+    }
+    saveDetails();
+  }
+
+  function continueToDocuments() {
+    if (!business || !selectedCountry || !selectedState || !selectedCity)
+      return;
+    setReverifyVisible(false);
+    router.push({
+      pathname: "/business-management/verify-business",
+      params: {
+        flow: "edit-business",
+        businessId: String(business.business_id),
+        businessName: businessName.trim(),
+        businessAddress: businessAddress.trim(),
+        countryId: String(selectedCountry.id),
+        countryName: selectedCountry.name,
+        stateId: String(selectedState.id),
+        stateName: selectedState.name,
+        cityId: String(selectedCity.id),
+        cityName: selectedCity.name,
+        zipcode: zip.trim(),
+        about: about.trim(),
+        serviceIds: (business.service_sub_category_ids ?? []).join(","),
+        ein: business.business_ein ?? "",
+      },
+    });
+  }
+
+  async function saveDetails() {
     if (!business || !selectedCountry || !selectedState || !selectedCity)
       return;
 
@@ -359,6 +400,17 @@ export default function EditBusinessScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={reverifyVisible}
+        type="warning"
+        title="Re-verification Required"
+        message="Changing your business name or address resets your verification. Your business will stop accepting new bookings until it is verified again. Next, upload updated documents and confirm your bank account."
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
+        onConfirm={continueToDocuments}
+        onCancel={() => setReverifyVisible(false)}
+      />
 
       {modalElement}
     </SafeAreaView>

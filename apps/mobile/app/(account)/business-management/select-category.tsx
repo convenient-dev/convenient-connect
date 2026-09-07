@@ -1,5 +1,7 @@
+import { getBusinessForEdit } from "@/api/business";
 import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -9,7 +11,6 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -67,11 +68,14 @@ function CategoryItem({
 export default function SelectCategoryScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{ flow?: string; businessId?: string }>();
+  // Editing an existing business's services: preselect its current category.
+  const isEditMode = params.flow === "edit-business" && !!params.businessId;
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -95,14 +99,27 @@ export default function SelectCategoryScreen() {
             iconUrl: cat.category_logo,
           }))
         );
+
+        if (isEditMode) {
+          // The edit response only carries subcategory ids, so find the
+          // category that owns them.
+          const business = await getBusinessForEdit(Number(params.businessId));
+          const currentIds: number[] = business.service_sub_category_ids ?? [];
+          const currentCategory = data.find((cat) =>
+            cat.sub_category_list.some((sub) =>
+              currentIds.includes(sub.sub_category_id),
+            ),
+          );
+          if (currentCategory) setSelected(currentCategory.category_id);
+        }
       } catch (error) {
         console.error("[SelectCategory] Error loading categories:", error);
-        Alert.alert("Error", "Failed to load categories");
+        setLoadError("Failed to load categories");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [isEditMode, params.businessId]);
 
   const canProceed = selected !== null;
 
@@ -168,6 +185,18 @@ export default function SelectCategoryScreen() {
           onPress={handleContinue}
         />
       </View>
+
+      <ConfirmModal
+        visible={loadError !== null}
+        type="error"
+        title="Error"
+        message={loadError ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => {
+          setLoadError(null);
+          router.back();
+        }}
+      />
     </SafeAreaView>
   );
 }

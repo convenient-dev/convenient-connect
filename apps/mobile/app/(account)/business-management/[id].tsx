@@ -126,19 +126,16 @@ export default function BusinessDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ModalState | null>(null);
 
-  const showError = useCallback(
-    (message: string, onConfirm?: () => void) => {
-      setConfirmModal({
-        type: "error",
-        title: "Error",
-        message,
-        confirmLabel: "OK",
-        showCancel: false,
-        onConfirm,
-      });
-    },
-    [],
-  );
+  const showError = useCallback((message: string, onConfirm?: () => void) => {
+    setConfirmModal({
+      type: "error",
+      title: "Error",
+      message,
+      confirmLabel: "OK",
+      showCancel: false,
+      onConfirm,
+    });
+  }, []);
 
   const loadBusiness = useCallback(async () => {
     if (!id) return;
@@ -532,7 +529,7 @@ const styles = StyleSheet.create({
     height: 18,
   },
   chipText: {
-    fontSize: 14,
+    fontSize: 12,
     color: text.primary,
     letterSpacing: -0.408,
   },

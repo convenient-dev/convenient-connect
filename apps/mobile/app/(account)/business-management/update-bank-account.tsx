@@ -1,4 +1,4 @@
-import { addBusinessProfile } from "@/api/business";
+import { addBusinessProfile, updateBusinessProfile } from "@/api/business";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -9,7 +9,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +27,9 @@ export default function UpdateBankAccountScreen() {
   // Business details, services, and documents collected on the previous
   // screens of the create-business flow.
   const params = useLocalSearchParams<{
+    // Present only when re-verifying an existing business from the edit flow.
+    flow?: string;
+    businessId?: string;
     businessName?: string;
     businessAddress?: string;
     countryId?: string;
@@ -48,7 +50,9 @@ export default function UpdateBankAccountScreen() {
   }>();
   const [successVisible, setSuccessVisible] = useState(false);
   const [verificationErrorVisible, setVerificationErrorVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const editingBusinessId = params.businessId ? Number(params.businessId) : null;
 
   function handleUpdateDetails() {
     // TODO: Open Stripe to update account details.
@@ -77,7 +81,7 @@ export default function UpdateBankAccountScreen() {
       !cityId ||
       !serviceIds
     ) {
-      Alert.alert("Error", "Missing required business information");
+      setErrorMessage("Missing required business information");
       return;
     }
 
@@ -87,14 +91,14 @@ export default function UpdateBankAccountScreen() {
       .filter((id) => !isNaN(id));
 
     if (serviceSubCategoryIds.length === 0) {
-      Alert.alert("Error", "No services selected");
+      setErrorMessage("No services selected");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      await addBusinessProfile({
+      const payload = {
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
         about: about?.trim() || null,
@@ -110,7 +114,13 @@ export default function UpdateBankAccountScreen() {
           : undefined,
         businessEin: params.ein || null,
         serviceSubCategoryIds,
-      });
+      };
+
+      if (editingBusinessId !== null) {
+        await updateBusinessProfile(editingBusinessId, payload);
+      } else {
+        await addBusinessProfile(payload);
+      }
 
       setSuccessVisible(true);
     } catch (error: any) {
@@ -121,9 +131,11 @@ export default function UpdateBankAccountScreen() {
           errorMessage.toLowerCase().includes("profile is not verified")) {
         setVerificationErrorVisible(true);
       } else {
-        Alert.alert(
-          "Error",
-          errorMessage || "Failed to create business profile. Please try again."
+        setErrorMessage(
+          errorMessage ||
+            (editingBusinessId !== null
+              ? "Failed to update business profile. Please try again."
+              : "Failed to create business profile. Please try again."),
         );
       }
     } finally {
@@ -152,9 +164,16 @@ export default function UpdateBankAccountScreen() {
 
   function handleSuccessConfirm() {
     setSuccessVisible(false);
-    // The business list screen refetches on focus, so the new business
-    // shows up without any local bookkeeping.
-    router.dismissTo("/business-management");
+    // Both destination screens refetch on focus, so the saved changes show
+    // up without any local bookkeeping.
+    if (editingBusinessId !== null) {
+      router.dismissTo({
+        pathname: "/business-management/[id]",
+        params: { id: String(editingBusinessId) },
+      });
+    } else {
+      router.dismissTo("/business-management");
+    }
   }
 
   function handleVerificationConfirm() {
@@ -228,9 +247,22 @@ export default function UpdateBankAccountScreen() {
         visible={successVisible}
         icon="success"
         title="Success"
-        message="Your business is now under review. We'll notify you once it has been approved."
+        message={
+          editingBusinessId !== null
+            ? "Your business has been updated and is now under review. We'll notify you once it has been approved."
+            : "Your business is now under review. We'll notify you once it has been approved."
+        }
         confirmLabel="Done"
         onConfirm={handleSuccessConfirm}
+      />
+
+      <ConfirmModal
+        visible={errorMessage !== null}
+        type="error"
+        title="Error"
+        message={errorMessage ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setErrorMessage(null)}
       />
 
       <ConfirmModal

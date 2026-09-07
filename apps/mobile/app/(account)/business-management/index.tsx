@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     height: 18,
   },
   chipText: {
-    fontSize: 14,
+    fontSize: 12,
     color: text.primary,
     letterSpacing: -0.408,
   },

@@ -26,6 +26,12 @@ const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
 type DocType = "registration" | "governmentId";
 
+function formatEin(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 9);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+}
+
 interface UploadedDoc {
   url: string;
   fileName: string;
@@ -104,13 +110,15 @@ export default function VerifyBusinessScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details entered on the previous screen, forwarded through
-  // each step of the create-business flow.
-  const params = useLocalSearchParams();
+  // each step of the create-business flow. In the edit flow the existing EIN
+  // is passed along so it can be prefilled.
+  const params = useLocalSearchParams<{ flow?: string; ein?: string }>();
+  const isEditMode = params.flow === "edit-business";
   const [registrationDoc, setRegistrationDoc] = useState<UploadedDoc | null>(
     null,
   );
   const [governmentId, setGovernmentId] = useState<UploadedDoc | null>(null);
-  const [ein, setEin] = useState("");
+  const [ein, setEin] = useState(() => formatEin(params.ein ?? ""));
 
   const [registrationError, setRegistrationError] = useState<string | null>(
     null,
@@ -118,12 +126,6 @@ export default function VerifyBusinessScreen() {
   const [governmentIdError, setGovernmentIdError] = useState<string | null>(
     null,
   );
-
-  function formatEin(raw: string) {
-    const digits = raw.replace(/\D/g, "").slice(0, 9);
-    if (digits.length <= 2) return digits;
-    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  }
 
   const einValid = /^\d{2}-\d{7}$/.test(ein);
   const canContinue = !!registrationDoc && !!governmentId && einValid;
@@ -282,7 +284,9 @@ export default function VerifyBusinessScreen() {
         >
           <Text style={styles.title}>Verify Your Business</Text>
           <Text style={styles.subtitle}>
-            Please upload the required documents below.
+            {isEditMode
+              ? "Your business details changed. Please upload updated documents to re-verify your business."
+              : "Please upload the required documents below."}
           </Text>
 
           <UploadCard

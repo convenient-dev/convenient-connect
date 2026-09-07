@@ -3,6 +3,10 @@ import {
   getBusinessForEdit,
   toggleBusinessStatus,
 } from "@/api/business";
+import {
+  listBusinessMembers,
+  type BusinessMember,
+} from "@/api/business-members";
 import { toAbsoluteUrl } from "@/api/client";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
@@ -30,12 +34,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { primary, neutral, text, background, border, status } = Colors;
 
 type TabKey = "members" | "guidelines";
-
-interface Member {
-  id: number;
-  name: string;
-  email: string;
-}
 
 interface Business {
   business_id: number;
@@ -68,26 +66,32 @@ interface ModalState {
   onConfirm?: () => void | Promise<void>;
 }
 
-// TODO: Load members from the API once team management endpoints exist.
-const ACTIVE_MEMBERS: Member[] = [];
-const PENDING_MEMBERS: Member[] = [];
-
-function MemberRow({ member }: { member: Member }) {
+function MemberRow({
+  member,
+  onPress,
+}: {
+  member: BusinessMember;
+  onPress?: () => void;
+}) {
+  // Pending invitees may not have a name yet; the email still shows below.
+  const email = member.email ?? "";
+  const name = member.name?.trim() || "Unknown member";
   return (
     <TouchableOpacity
       style={styles.memberRow}
       activeOpacity={0.7}
-      onPress={() => {
-        // TODO: Open the member detail view once it exists.
-      }}
+      disabled={!onPress}
+      onPress={onPress}
     >
       <View style={styles.memberInfo}>
         <Text style={styles.memberName} numberOfLines={1}>
-          {member.name}
+          {name}
         </Text>
-        <Text style={styles.memberEmail} numberOfLines={1}>
-          {member.email}
-        </Text>
+        {!!email && (
+          <Text style={styles.memberEmail} numberOfLines={1}>
+            {email}
+          </Text>
+        )}
       </View>
       <MaterialIcons name="chevron-right" size={26} color={neutral[800]} />
     </TouchableOpacity>
@@ -97,9 +101,11 @@ function MemberRow({ member }: { member: Member }) {
 function MemberSection({
   title,
   members,
+  onPressMember,
 }: {
   title: string;
-  members: Member[];
+  members: BusinessMember[];
+  onPressMember: (member: BusinessMember) => void;
 }) {
   if (members.length === 0) return null;
   return (
@@ -107,8 +113,18 @@ function MemberSection({
       <Text style={styles.sectionTitle}>
         {title} ({members.length})
       </Text>
-      {members.map((member) => (
-        <MemberRow key={member.id} member={member} />
+      {members.map((member, index) => (
+        <MemberRow
+          // Pending invitees may come back without an id yet.
+          key={member.id ?? `${member.email ?? "member"}-${index}`}
+          member={member}
+          // Without an id there is nothing to manage.
+          onPress={
+            typeof member.id === "number"
+              ? () => onPressMember(member)
+              : undefined
+          }
+        />
       ))}
     </View>
   );
@@ -121,6 +137,9 @@ export default function BusinessDetailScreen() {
 
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeMembers, setActiveMembers] = useState<BusinessMember[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<BusinessMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("members");
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -153,12 +172,27 @@ export default function BusinessDetailScreen() {
     }
   }, [id, router, showError]);
 
+  const loadMembers = useCallback(async () => {
+    if (!id) return;
+    try {
+      setMembersLoading(true);
+      const data = await listBusinessMembers(Number(id));
+      setActiveMembers(data.activeMembers);
+      setPendingMembers(data.pendingMembers);
+    } catch {
+      // Keep whatever was shown before; the business itself still loads.
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [id]);
+
   // Refetch whenever the screen regains focus so changes made on the
-  // detail/edit screens are reflected after navigating back.
+  // detail/edit/invite screens are reflected after navigating back.
   useFocusEffect(
     useCallback(() => {
       loadBusiness();
-    }, [loadBusiness]),
+      loadMembers();
+    }, [loadBusiness, loadMembers]),
   );
 
   const toggleStatus = async () => {
@@ -197,6 +231,17 @@ export default function BusinessDetailScreen() {
     } catch (error: any) {
       showError(error.message || "Failed to delete business");
     }
+  };
+
+  const openMember = (member: BusinessMember) => {
+    if (!business || typeof member.id !== "number") return;
+    router.push({
+      pathname: "/business-management/[id]/member/[memberId]",
+      params: {
+        id: String(business.business_id),
+        memberId: String(member.id),
+      },
+    });
   };
 
   const handleDelete = () => {
@@ -365,12 +410,25 @@ export default function BusinessDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "members" ? (
-          ACTIVE_MEMBERS.length === 0 && PENDING_MEMBERS.length === 0 ? (
+          membersLoading && activeMembers.length + pendingMembers.length === 0 ? (
+            <ActivityIndicator
+              color={primary[400]}
+              style={styles.membersLoader}
+            />
+          ) : activeMembers.length === 0 && pendingMembers.length === 0 ? (
             <Text style={styles.emptyText}>No members yet</Text>
           ) : (
             <>
-              <MemberSection title="Active" members={ACTIVE_MEMBERS} />
-              <MemberSection title="Pending" members={PENDING_MEMBERS} />
+              <MemberSection
+                title="Active"
+                members={activeMembers}
+                onPressMember={openMember}
+              />
+              <MemberSection
+                title="Pending"
+                members={pendingMembers}
+                onPressMember={openMember}
+              />
             </>
           )
         ) : (
@@ -386,9 +444,12 @@ export default function BusinessDetailScreen() {
           variant="primary"
           size="lg"
           disabled={!isVerified}
-          onPress={() => {
-            // TODO: Open the invite-member screen once it exists.
-          }}
+          onPress={() =>
+            router.push({
+              pathname: "/business-management/[id]/invite-member",
+              params: { id: String(business.business_id) },
+            })
+          }
         />
       </View>
 
@@ -603,6 +664,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: neutral[400],
     textAlign: "center",
+    paddingVertical: 24,
+  },
+  membersLoader: {
     paddingVertical: 24,
   },
 

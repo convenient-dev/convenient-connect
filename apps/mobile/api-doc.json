@@ -1383,7 +1383,7 @@
                     },
                     "device_token": null,
                     "profile_image": null,
-                    "background_verification": "Pending",
+                    "background_verification": "Not Verified",
                     "provider_status": 1,
                     "provider_status_label": "active",
                     "suspension": null
@@ -1650,7 +1650,7 @@
                     },
                     "device_token": null,
                     "profile_image": null,
-                    "background_verification": "Pending",
+                    "background_verification": "Not Verified",
                     "provider_status": 1,
                     "provider_status_label": "active",
                     "suspension": null
@@ -2031,7 +2031,7 @@
       "post": {
         "tags": ["Service Provider Auth"],
         "summary": "Send OTP for permanent account deletion.",
-        "description": "Public endpoint (no bearer token). Sends OTP to the provider email for an account that is already in provider soft-deleted state (provider_profiles.deleted_at is set) but not yet permanently deleted (provider_status != 2). Used after the 30-day grace window approach when the user chooses to permanently delete instead of restoring. OTP type=3, valid 5 minutes.",
+        "description": "Public endpoint (no bearer token). Sends OTP to the provider email for an account that is already in provider soft-deleted state (provider_profiles.deleted_at is set) but not yet permanently deleted (provider_status != 2). Used after the 30-day grace window approach when the user chooses to permanently delete instead of restoring. OTP type=3, valid 5 minutes.\n\nNote: After permanent deletion, the user cannot access any data from the previous account. The same email or phone number may be used later to sign up again as a completely new user; no prior account data is restored.",
         "operationId": "e76a4e32221dba9028b68e60c53e9528",
         "requestBody": {
           "required": true,
@@ -4544,7 +4544,7 @@
       "post": {
         "tags": ["Service Provider Profile"],
         "summary": "Send OTP for account deletion.",
-        "description": "Generates a delete-account OTP and delivers it to the requested channel. The authenticated user phone or email is used as the destination based on delivery_type.",
+        "description": "Generates a delete-account OTP and delivers it to the requested channel. The authenticated user phone or email is used as the destination based on delivery_type.\n\nNote: After permanent deletion, the user cannot access any data from the previous account. The same email or phone number may be used later to sign up again as a completely new user; no prior account data is restored.",
         "operationId": "d91dd9a94dfff4c0d5370f65ccc0940e",
         "requestBody": {
           "required": true,
@@ -8192,9 +8192,9 @@
             "nullable": true
           },
           "background_verification": {
-            "description": "Provider profile background verification status.",
+            "description": "Provider profile background verification status. New accounts start as Not Verified. Pending means a background check is in progress.",
             "type": "string",
-            "example": "Pending",
+            "example": "Not Verified",
             "enum": ["Pending", "Verified", "Not Verified"]
           },
           "provider_status": {
@@ -11318,7 +11318,7 @@
           },
           "background_verification": {
             "type": "string",
-            "example": "Pending",
+            "example": "Not Verified",
             "enum": ["Pending", "Verified", "Not Verified"]
           },
           "provider_status": {

@@ -196,7 +196,7 @@ export default function BusinessManagementScreen() {
                 <MaterialIcons name="add" size={22} color={Colors.neutral[0]} />
               }
               onPress={() =>
-                router.push("/business-management/business-details")
+                router.push("/business-management/create")
               }
             />
           </View>

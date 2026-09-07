@@ -256,7 +256,7 @@ export default function VerifyBusinessScreen() {
   function handleContinue() {
     if (!registrationDoc || !governmentId) return;
     router.push({
-      pathname: "/business-management/update-bank-account",
+      pathname: "/business-management/steps/bank-account",
       params: {
         ...params,
         registrationDocUri: registrationDoc.url,

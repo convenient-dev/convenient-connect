@@ -403,7 +403,7 @@ export default function BusinessDetailScreen() {
             onPress: () => {
               setMenuVisible(false);
               router.push({
-                pathname: "/business-management/view-business-detail",
+                pathname: "/business-management/[id]/details",
                 params: { id: String(business.business_id) },
               });
             },
@@ -414,7 +414,7 @@ export default function BusinessDetailScreen() {
             onPress: () => {
               setMenuVisible(false);
               router.push({
-                pathname: "/business-management/select-category",
+                pathname: "/business-management/steps/select-category",
                 params: {
                   flow: "edit-business",
                   businessId: String(business.business_id),

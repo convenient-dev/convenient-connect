@@ -232,7 +232,7 @@ export default function SelectSubcategoriesScreen() {
       return;
     }
     router.push({
-      pathname: "/business-management/verify-business",
+      pathname: "/business-management/steps/documents",
       params: {
         ...params,
         serviceIds: selected.map((s) => s.id).join(","),

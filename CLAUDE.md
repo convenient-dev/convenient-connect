@@ -62,6 +62,7 @@ Both throw `ApiError` (message + statusCode). Typed request/response shapes for 
 - **Routing**: Expo Router file-based routing under `apps/mobile/app/`, organized into route groups: `(onboarding)` (signup/OTP flows), `(tabs)` (main nav), `(services)`, `(account)`, `(earnings)`, `(support)`.
 - **Auth**: `apps/mobile/auth/` — `token-store.ts` persists the bearer token in `expo-secure-store` (with an in-memory fallback when the native module isn't linked, e.g. stale dev build); `AuthContext.tsx` holds the session (`AuthUserProfile`), handles login/logout, and uses router segments to gate navigation.
 - **Domain API modules**: `apps/mobile/api/` (`auth.ts`, `profile.ts`, `business.ts`, `address.ts`, `location.ts`, `legacy.ts`) wrap the fetch layers — screens call these, not `fetch` directly.
+- **Business management** (`apps/mobile/app/(account)/business-management/`): `index.tsx` lists businesses; `[id]/` holds the per-business hub (`index`), read-only `details`, and `edit`; `create/index.tsx` is step 1 of the create wizard; `steps/` holds the wizard steps shared by both flows (`select-category`, `select-subcategories`, `documents`, `bank-account`). Steps run in edit mode when given `flow=edit-business` and `businessId` params, and the final step calls the update endpoint instead of create when `businessId` is present.
 - **Theming**: tokens (colors, fonts) in `apps/mobile/constants/theme.ts`; shared UI in `apps/mobile/components/`.
 
 ### Temporary web backend

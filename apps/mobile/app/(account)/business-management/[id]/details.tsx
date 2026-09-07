@@ -122,7 +122,7 @@ export default function ViewBusinessDetailScreen() {
   );
 
   // Refetch whenever the screen regains focus so edits made on the
-  // edit-business screen are reflected after navigating back.
+  // edit screen are reflected after navigating back.
   useFocusEffect(
     useCallback(() => {
       loadBusiness();
@@ -226,7 +226,7 @@ export default function ViewBusinessDetailScreen() {
           size="lg"
           onPress={() => {
             router.push({
-              pathname: "/business-management/edit-business",
+              pathname: "/business-management/[id]/edit",
               params: { id: String(business.business_id) },
             });
           }}

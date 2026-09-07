@@ -132,7 +132,7 @@ export default function SelectCategoryScreen() {
       .replace(/\s+/g, "-");
 
     router.push({
-      pathname: "/business-management/select-subcategories",
+      pathname: "/business-management/steps/select-subcategories",
       params: {
         ...params,
         categoryId: String(category.id),

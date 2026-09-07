@@ -200,7 +200,7 @@ export default function EditBusinessScreen() {
       return;
     setReverifyVisible(false);
     router.push({
-      pathname: "/business-management/verify-business",
+      pathname: "/business-management/steps/documents",
       params: {
         flow: "edit-business",
         businessId: String(business.business_id),

@@ -15,17 +15,8 @@ type AuthUser = components["schemas"]["AuthUser"];
 
 export interface AuthUserProfile {
   user: AuthUser;
-  providerType: "individual" | "business" | null;
   profileImage: string | null;
-  backgroundVerification: boolean;
-  businessVerification: boolean;
-  business?: {
-    userId: number;
-    businessName: string;
-    address: string;
-    businessVerification: boolean;
-    about: string | null;
-  } | null;
+  backgroundVerification: "Pending" | "Verified" | "Not Verified";
 }
 
 interface AuthState {
@@ -79,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             userId: profile.user?.user_id,
             userFname: profile.user?.user_fname,
             userLname: profile.user?.user_lname,
-            providerType: profile.providerType,
+            backgroundVerification: profile.backgroundVerification,
             hasEmail: !!profile.user?.user_email,
             hasPhone: !!profile.user?.user_contact,
           });

@@ -2,7 +2,6 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useCurrentUser } from "@/constants/session";
-import { createTicket } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -60,12 +59,14 @@ export default function SubmitTicketScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      const data = await createTicket(userId, {
+      // TODO: legacy API removed — implement createTicket via Laravel API
+      console.log("TODO: implement createTicket via Laravel API", {
+        userId,
         topicKey,
         subject: trimmedSubject,
         description: trimmedDescription,
-      }) as { id: string };
-      setSubmittedTicketId(data.id);
+      });
+      setSubmittedTicketId(null);
       setSubmitted(true);
     } catch {
       setErrorMessage("Network error. Please check your connection and try again.");

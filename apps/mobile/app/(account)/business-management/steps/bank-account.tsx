@@ -1,0 +1,369 @@
+import { addBusinessProfile, updateBusinessProfile } from "@/api/business";
+import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const { primary, neutral, text, background, status } = Colors;
+
+
+const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
+
+export default function UpdateBankAccountScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
+  const router = useRouter();
+  // Business details, services, and documents collected on the previous
+  // screens of the create-business flow.
+  const params = useLocalSearchParams<{
+    // Present only when re-verifying an existing business from the edit flow.
+    flow?: string;
+    businessId?: string;
+    businessName?: string;
+    businessAddress?: string;
+    countryId?: string;
+    countryName?: string;
+    stateId?: string;
+    stateName?: string;
+    cityId?: string;
+    cityName?: string;
+    zipcode?: string;
+    about?: string;
+    serviceIds?: string;
+    categoryNames?: string;
+    registrationDocUri?: string;
+    registrationDocName?: string;
+    governmentIdUri?: string;
+    governmentIdName?: string;
+    ein?: string;
+  }>();
+  const [successVisible, setSuccessVisible] = useState(false);
+  const [verificationErrorVisible, setVerificationErrorVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const editingBusinessId = params.businessId ? Number(params.businessId) : null;
+
+  function handleUpdateDetails() {
+    // TODO: Open Stripe to update account details.
+  }
+
+  async function handleSubmit() {
+    if (submitting) return;
+
+    const {
+      businessName,
+      businessAddress,
+      countryId,
+      stateId,
+      cityId,
+      zipcode,
+      about,
+      serviceIds,
+    } = params;
+
+    // Validate required params
+    if (
+      !businessName ||
+      !businessAddress ||
+      !countryId ||
+      !stateId ||
+      !cityId ||
+      !serviceIds
+    ) {
+      setErrorMessage("Missing required business information");
+      return;
+    }
+
+    const serviceSubCategoryIds = serviceIds
+      .split(",")
+      .map((id) => parseInt(id.trim(), 10))
+      .filter((id) => !isNaN(id));
+
+    if (serviceSubCategoryIds.length === 0) {
+      setErrorMessage("No services selected");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        businessName: businessName.trim(),
+        businessAddress: businessAddress.trim(),
+        about: about?.trim() || null,
+        countryId: parseInt(countryId, 10),
+        stateId: parseInt(stateId, 10),
+        cityId: parseInt(cityId, 10),
+        zipcode: zipcode?.trim() || null,
+        businessDocuments: params.registrationDocUri
+          ? uriToFile(params.registrationDocUri, params.registrationDocName || 'business_document.pdf') as any
+          : undefined,
+        governmentIssuedId: params.governmentIdUri
+          ? uriToFile(params.governmentIdUri, params.governmentIdName || 'government_id.jpg') as any
+          : undefined,
+        businessEin: params.ein || null,
+        serviceSubCategoryIds,
+      };
+
+      if (editingBusinessId !== null) {
+        await updateBusinessProfile(editingBusinessId, payload);
+      } else {
+        await addBusinessProfile(payload);
+      }
+
+      setSuccessVisible(true);
+    } catch (error: any) {
+      const errorMessage = error?.message || "";
+
+      // Check if the error is about profile verification
+      if (errorMessage.toLowerCase().includes("not verified") ||
+          errorMessage.toLowerCase().includes("profile is not verified")) {
+        setVerificationErrorVisible(true);
+      } else {
+        setErrorMessage(
+          errorMessage ||
+            (editingBusinessId !== null
+              ? "Failed to update business profile. Please try again."
+              : "Failed to create business profile. Please try again."),
+        );
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function uriToFile(uri: string, filename: string): { uri: string; name: string; type: string } {
+    // Determine mime type from filename extension
+    const extension = filename.toLowerCase().split('.').pop() || '';
+    const mimeTypes: Record<string, string> = {
+      'pdf': 'application/pdf',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+    };
+    const type = mimeTypes[extension] || 'application/octet-stream';
+
+    // Return object that React Native FormData can handle
+    return {
+      uri,
+      name: filename,
+      type,
+    };
+  }
+
+  function handleSuccessConfirm() {
+    setSuccessVisible(false);
+    // Both destination screens refetch on focus, so the saved changes show
+    // up without any local bookkeeping.
+    if (editingBusinessId !== null) {
+      router.dismissTo({
+        pathname: "/business-management/[id]",
+        params: { id: String(editingBusinessId) },
+      });
+    } else {
+      router.dismissTo("/business-management");
+    }
+  }
+
+  function handleVerificationConfirm() {
+    setVerificationErrorVisible(false);
+    router.push("/(tabs)/profile");
+  }
+
+  function handleVerificationCancel() {
+    setVerificationErrorVisible(false);
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <ScreenHeader />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Update Bank Account</Text>
+        <Text style={styles.subtitle}>
+          Please update the connected account below.
+        </Text>
+
+        <View style={styles.statusRow}>
+          <MaterialIcons name="check-circle" size={22} color={status.active} />
+          <Text style={styles.statusText}>
+            Your account is connected to Stripe
+          </Text>
+        </View>
+
+        <View style={styles.accountCard}>
+          <Text style={styles.accountText}>
+            Connected account ending in{" "}
+            <Text style={styles.accountHighlight}>{ACCOUNT_LAST_FOUR}</Text>
+          </Text>
+        </View>
+
+        <Text style={styles.helperText}>
+          You may update your account details on Stripe by selecting the button
+          below. Please allow 5-7 business days for account verification.
+        </Text>
+      </ScrollView>
+
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Update account details"
+          variant="primary"
+          size="lg"
+          disabled={submitting}
+          onPress={handleUpdateDetails}
+        />
+
+        <Button
+          title={submitting ? "Submitting..." : "Submit with this account"}
+          variant="secondary"
+          size="lg"
+          disabled={submitting}
+          onPress={handleSubmit}
+        />
+      </View>
+
+      {submitting && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      )}
+
+      <ConfirmModal
+        visible={successVisible}
+        icon="success"
+        title="Success"
+        message={
+          editingBusinessId !== null
+            ? "Your business has been updated and is now under review. We'll notify you once it has been approved."
+            : "Your business is now under review. We'll notify you once it has been approved."
+        }
+        confirmLabel="Done"
+        onConfirm={handleSuccessConfirm}
+      />
+
+      <ConfirmModal
+        visible={errorMessage !== null}
+        type="error"
+        title="Error"
+        message={errorMessage ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setErrorMessage(null)}
+      />
+
+      <ConfirmModal
+        visible={verificationErrorVisible}
+        icon="warning"
+        title="Verification Required"
+        message="Your provider profile must be verified before you can create a business profile. Please complete your background check first."
+        confirmLabel="Complete Background Check"
+        cancelLabel="Cancel"
+        onConfirm={handleVerificationConfirm}
+        onCancel={handleVerificationCancel}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: background.screen,
+  },
+
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: text.primary,
+    textAlign: "center",
+    letterSpacing: -0.408,
+    marginTop: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: text.primary,
+    letterSpacing: -0.408,
+    lineHeight: 20,
+    marginTop: 14,
+    marginBottom: 22,
+  },
+
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  statusText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+
+  accountCard: {
+    backgroundColor: neutral[50],
+    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accountText: {
+    fontSize: 15,
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  accountHighlight: {
+    color: primary[400],
+    fontWeight: "600",
+  },
+
+  helperText: {
+    fontSize: 13,
+    color: neutral[400],
+    lineHeight: 19,
+    letterSpacing: -0.408,
+    marginTop: 16,
+  },
+
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+    gap: 10,
+  },
+
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

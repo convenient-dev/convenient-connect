@@ -2,7 +2,6 @@ import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
-import { getTickets } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -59,12 +58,10 @@ export default function MyTicketsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTickets(userId)
-      .then((data: Ticket[]) => {
-        setAllTickets(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    // TODO: legacy API removed — implement getTickets via Laravel API
+    console.log("TODO: implement getTickets via Laravel API", { userId });
+    setAllTickets([]);
+    setLoading(false);
   }, [userId]);
 
   const tickets =

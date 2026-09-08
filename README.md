@@ -61,35 +61,18 @@ cp apps/mobile/.env.example apps/mobile/.env
 
 | Variable | Description |
 | --- | --- |
-| `EXPO_PUBLIC_API_URL` | Full URL of the Next.js API the app calls (see the table below for platform-specific values) |
-| `EXPO_PUBLIC_USER_ID` | Hardcoded user ID used during development |
+| `EXPO_PUBLIC_LARAVEL_API_URL` | Base URL of the hosted Laravel API (including `/api/v1`) |
+| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps API key |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Google Sign-In web client ID |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Google Sign-In iOS client ID |
 
 ### Mobile (Expo)
 
-> **Run the backend first.** The mobile app talks to the Next.js API in `apps/web`
-> (see [Web](#web-nextjs) below). Start it before launching the app.
+> `.env` is committed, so changing it will show up in `git status`. To keep
+> machine-specific values out of commits, put them in an untracked
+> `apps/mobile/.env.local` instead — it overrides `.env`.
 
-#### 1. Configure the API URL for your machine
-
-`apps/mobile/.env` defines `EXPO_PUBLIC_API_URL`, the address the app uses to reach
-the backend. The committed value is **machine-specific** and you must point it at a
-host your simulator/emulator can actually reach:
-
-| Where you run the app | Set `EXPO_PUBLIC_API_URL` to |
-| --- | --- |
-| iOS Simulator | `http://localhost:3000/api` |
-| Android Emulator | `http://10.0.2.2:3000/api` (the emulator's alias for your computer's `localhost`) |
-| Physical device (iOS/Android) | `http://<your-computer-LAN-IP>:3000/api` (e.g. `http://192.168.1.42:3000/api`) |
-
-The **LAN IP** option works for both simulators *and* physical devices on the same
-Wi-Fi, so it's the simplest single value if you switch between them. Find it with
-`ipconfig getifaddr en0` (macOS) and make sure your device is on the same network.
-
-> `.env` is committed, so changing it will show up in `git status`. To keep your
-> local address out of commits, put it in an untracked `apps/mobile/.env.local`
-> instead — it overrides `.env`.
-
-#### 2. Build and launch
+#### Build and launch
 
 ```bash
 cd apps/mobile

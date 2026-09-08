@@ -1,4 +1,3 @@
-import { getService } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -32,12 +31,12 @@ export default function EditServiceCategoryScreen() {
   const [categoryName, setCategoryName] = useState<string | null>(null);
 
   useEffect(() => {
-    getService(userId, id)
-      .then((data: ServiceCategory) => {
-        setSubcategoryName(data.subcategory?.name ?? null);
-        setCategoryName(data.subcategory?.category.name ?? null);
-      })
-      .finally(() => setLoading(false));
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    const data = null as ServiceCategory | null;
+    setSubcategoryName(data?.subcategory?.name ?? null);
+    setCategoryName(data?.subcategory?.category.name ?? null);
+    setLoading(false);
   }, [id, userId]);
 
   return (

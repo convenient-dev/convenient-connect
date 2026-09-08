@@ -1,6 +1,5 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { legacyFetch } from "@/api/client";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -28,9 +27,10 @@ export default function DeleteServiceScreen() {
   async function handlePause() {
     setPausing(true);
     try {
-      await legacyFetch(`/users/${userId}/services/${id}`, {
-        method: "PATCH",
-        body: { status: "inactive" },
+      // TODO: legacy API removed — implement inactivate service via Laravel API
+      console.log("TODO: implement inactivate service via Laravel API", {
+        userId,
+        id,
       });
       router.back();
     } catch {

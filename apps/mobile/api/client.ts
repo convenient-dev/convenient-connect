@@ -4,9 +4,6 @@ export const LARAVEL_API_BASE_URL =
   process.env.EXPO_PUBLIC_LARAVEL_API_URL ??
   "https://uatservices-backend.theconvenientapp.store/api/v1";
 
-export const LEGACY_API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
-
 // The API returns storage paths relative to the host (e.g. "/storage/...").
 const LARAVEL_HOST = LARAVEL_API_BASE_URL.replace(/\/api\/v\d+\/?$/, "");
 
@@ -94,48 +91,40 @@ export async function laravelFetch<T>(
     throw new ApiError("Unauthenticated.", 401);
   }
 
-  const json = await res.json();
+  let json: any;
+  try {
+    json = await res.json();
+  } catch (parseError) {
+    console.error("[laravelFetch] Failed to parse response as JSON:", {
+      url,
+      status: res.status,
+      parseError,
+    });
+    throw new ApiError("Invalid server response", res.status);
+  }
 
   if (!res.ok) {
-    throw new ApiError(
-      json.message ?? "Something went wrong",
-      res.status,
-    );
+    console.error("[laravelFetch] Error response:", {
+      url,
+      status: res.status,
+      json,
+    });
+
+    // Extract error message from various possible formats
+    const errorMessage =
+      json?.message ||
+      json?.error ||
+      json?.errors?.[0]?.message ||
+      "Something went wrong";
+
+    throw new ApiError(errorMessage, res.status);
+  }
+
+  // Debug logging for business/services endpoint
+  if (path.includes('/business/services')) {
+    const envelope = json as LaravelEnvelope<T>;
+    console.log(`[laravelFetch] ${path} - Status: ${envelope.status}, Data length: ${Array.isArray(envelope.data) ? envelope.data.length : 'N/A'}`);
   }
 
   return (json as LaravelEnvelope<T>).data;
-}
-
-export async function legacyFetch<T>(
-  path: string,
-  options: { method?: string; body?: unknown; isFormData?: boolean } = {},
-): Promise<T> {
-  const { method = "GET", body, isFormData = false } = options;
-
-  const headers: Record<string, string> = {};
-  if (!isFormData) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const url = `${LEGACY_API_BASE_URL}${path}`;
-
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body
-      ? isFormData
-        ? (body as FormData)
-        : JSON.stringify(body)
-      : undefined,
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new ApiError(
-      errorBody?.error ?? "Request failed",
-      res.status,
-    );
-  }
-
-  return res.json() as Promise<T>;
 }

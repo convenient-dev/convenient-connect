@@ -1,11 +1,10 @@
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
-import { getService } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import {
@@ -70,15 +69,6 @@ function SectionHeader({ label }: { label: string }) {
     <View style={styles.sectionHeaderRow}>
       <ExpoImage source={SECTION_ICONS[label]} style={styles.sectionIcon} />
       <Text style={styles.sectionLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function FieldBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.fieldBlock}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.fieldValue}>{value}</Text>
     </View>
   );
 }
@@ -151,16 +141,16 @@ function ImageViewerModal({
 export default function ServiceDetailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const { userId } = useCurrentUser();
   const [service, setService] = useState<ServiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    getService(userId, id!)
-      .then((data: ServiceDetail) => setService(data))
-      .finally(() => setLoading(false));
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    setService(null);
+    setLoading(false);
   }, [id, userId]);
 
   if (loading) {

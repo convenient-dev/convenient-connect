@@ -1,0 +1,678 @@
+import {
+  deleteBusiness,
+  getBusinessForEdit,
+  toggleBusinessStatus,
+} from "@/api/business";
+import {
+  listBusinessMembers,
+  type BusinessMember,
+} from "@/api/business-members";
+import { toAbsoluteUrl } from "@/api/client";
+import { BottomSheet } from "@/components/BottomSheet";
+import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { TabBar } from "@/components/TabBar";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { Colors } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image as ExpoImage } from "expo-image";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const { primary, neutral, text, background, border, status } = Colors;
+
+type TabKey = "members" | "guidelines";
+
+interface Business {
+  business_id: number;
+  business_name: string;
+  business_address: string;
+  about: string | null;
+  country_id: number;
+  state_id: number;
+  city_id: number;
+  zipcode: string | null;
+  business_ein: string | null;
+  status: boolean;
+  business_verification: boolean;
+  services: {
+    sub_category_id: number;
+    sub_category_name: string;
+    sub_category_logo: string | null;
+  }[];
+  service_sub_category_ids: number[];
+}
+
+interface ModalState {
+  type?: "success" | "error" | "warning";
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Hide the cancel button for informational (success/error) pop-ups. */
+  showCancel?: boolean;
+  onConfirm?: () => void | Promise<void>;
+}
+
+function MemberRow({
+  member,
+  onPress,
+}: {
+  member: BusinessMember;
+  onPress?: () => void;
+}) {
+  // Pending invitees may not have a name yet; the email still shows below.
+  const email = member.email ?? "";
+  const name = member.name?.trim() || "Unknown member";
+  return (
+    <TouchableOpacity
+      style={styles.memberRow}
+      activeOpacity={0.7}
+      disabled={!onPress}
+      onPress={onPress}
+    >
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName} numberOfLines={1}>
+          {name}
+        </Text>
+        {!!email && (
+          <Text style={styles.memberEmail} numberOfLines={1}>
+            {email}
+          </Text>
+        )}
+      </View>
+      <MaterialIcons name="chevron-right" size={26} color={neutral[800]} />
+    </TouchableOpacity>
+  );
+}
+
+function MemberSection({
+  title,
+  members,
+  onPressMember,
+}: {
+  title: string;
+  members: BusinessMember[];
+  onPressMember: (member: BusinessMember) => void;
+}) {
+  if (members.length === 0) return null;
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>
+        {title} ({members.length})
+      </Text>
+      {members.map((member, index) => (
+        <MemberRow
+          // Pending invitees may come back without an id yet.
+          key={member.id ?? `${member.email ?? "member"}-${index}`}
+          member={member}
+          // Without an id there is nothing to manage.
+          onPress={
+            typeof member.id === "number"
+              ? () => onPressMember(member)
+              : undefined
+          }
+        />
+      ))}
+    </View>
+  );
+}
+
+export default function BusinessDetailScreen() {
+  const { screenPaddingStyle } = useResponsivePadding();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeMembers, setActiveMembers] = useState<BusinessMember[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<BusinessMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabKey>("members");
+  const [acceptingJobs, setAcceptingJobs] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<ModalState | null>(null);
+
+  const showError = useCallback((message: string, onConfirm?: () => void) => {
+    setConfirmModal({
+      type: "error",
+      title: "Error",
+      message,
+      confirmLabel: "OK",
+      showCancel: false,
+      onConfirm,
+    });
+  }, []);
+
+  const loadBusiness = useCallback(async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await getBusinessForEdit(Number(id));
+      setBusiness(data);
+      setAcceptingJobs(data.status);
+    } catch (error: any) {
+      showError(error.message || "Failed to load business", () =>
+        router.back(),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router, showError]);
+
+  const loadMembers = useCallback(async () => {
+    if (!id) return;
+    try {
+      setMembersLoading(true);
+      const data = await listBusinessMembers(Number(id));
+      setActiveMembers(data.activeMembers);
+      setPendingMembers(data.pendingMembers);
+    } catch {
+      // Keep whatever was shown before; the business itself still loads.
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [id]);
+
+  // Refetch whenever the screen regains focus so changes made on the
+  // detail/edit/invite screens are reflected after navigating back.
+  useFocusEffect(
+    useCallback(() => {
+      loadBusiness();
+      loadMembers();
+    }, [loadBusiness, loadMembers]),
+  );
+
+  const toggleStatus = async () => {
+    if (!business) return;
+    try {
+      const newStatus = await toggleBusinessStatus(business.business_id);
+      setAcceptingJobs(newStatus);
+    } catch {
+      // Switch stays in its previous state; nothing else to roll back.
+    }
+  };
+
+  const handleToggleStatus = (newValue: boolean) => {
+    if (!business) return;
+    setConfirmModal({
+      title: newValue ? "Accept New Jobs?" : "Stop Accepting Jobs?",
+      message: newValue
+        ? "Your business will be active and clients can request new jobs."
+        : "Your business will be inactive and won't receive new job requests. Existing jobs won't be affected.",
+      onConfirm: toggleStatus,
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!business) return;
+    try {
+      await deleteBusiness(business.business_id);
+      setConfirmModal({
+        type: "success",
+        title: "Success",
+        message: "Business deleted successfully.",
+        confirmLabel: "Done",
+        showCancel: false,
+        onConfirm: () => router.back(),
+      });
+    } catch (error: any) {
+      showError(error.message || "Failed to delete business");
+    }
+  };
+
+  const openMember = (member: BusinessMember) => {
+    if (!business || typeof member.id !== "number") return;
+    router.push({
+      pathname: "/business-management/[id]/member/[memberId]",
+      params: {
+        id: String(business.business_id),
+        memberId: String(member.id),
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!business) return;
+    setConfirmModal({
+      type: "warning",
+      title: "Delete Business",
+      message: `Are you sure you want to delete ${business.business_name}? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      onConfirm: confirmDelete,
+    });
+  };
+
+  const modal = (
+    <ConfirmModal
+      visible={confirmModal !== null}
+      type={confirmModal?.type ?? "warning"}
+      title={confirmModal?.title ?? ""}
+      message={confirmModal?.message ?? ""}
+      confirmLabel={confirmModal?.confirmLabel}
+      cancelLabel={confirmModal?.cancelLabel}
+      onCancel={
+        confirmModal?.showCancel === false
+          ? undefined
+          : () => setConfirmModal(null)
+      }
+      onConfirm={() => {
+        const fn = confirmModal?.onConfirm;
+        setConfirmModal(null);
+        fn?.();
+      }}
+    />
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top", "bottom"]}
+      >
+        <StatusBar style="dark" />
+        <ScreenHeader />
+        <View style={styles.notFound}>
+          <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!business) {
+    return (
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top", "bottom"]}
+      >
+        <StatusBar style="dark" />
+        <ScreenHeader />
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>Business not found</Text>
+        </View>
+        {modal}
+      </SafeAreaView>
+    );
+  }
+
+  const isVerified = business.business_verification;
+  const services = business.services ?? [];
+
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: "members", label: "Members" },
+    { key: "guidelines", label: "Guidelines" },
+  ];
+
+  return (
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
+      <StatusBar style="dark" />
+
+      <ScreenHeader
+        onBack={() => router.back()}
+        rightAccessory={
+          <TouchableOpacity
+            style={styles.menuButton}
+            hitSlop={8}
+            onPress={() => setMenuVisible(true)}
+          >
+            <MaterialIcons name="more-horiz" size={22} color={neutral[700]} />
+          </TouchableOpacity>
+        }
+      />
+
+      <View style={styles.titleBlock}>
+        <View style={styles.nameRow}>
+          <Text style={styles.businessName} numberOfLines={2}>
+            {business.business_name}
+          </Text>
+          {isVerified && (
+            <MaterialIcons
+              name="check-circle"
+              size={18}
+              color={status.active}
+              style={styles.headerBadge}
+              contentFit="contain"
+            />
+          )}
+        </View>
+
+        {!isVerified && (
+          <View style={styles.reviewCard}>
+            <MaterialIcons name="schedule" size={22} color={status.inactive} />
+            <View style={styles.reviewInfo}>
+              <Text style={styles.reviewTitle}>Review in Progress</Text>
+              <Text style={styles.reviewMessage}>
+                This business profile is under review. We&apos;ll notify you
+                once the review is complete.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {services.length > 0 && (
+          <View style={styles.chipRow}>
+            {services.map((service) => {
+              const logo = toAbsoluteUrl(service.sub_category_logo);
+              return (
+                <View key={service.sub_category_id} style={styles.chip}>
+                  {logo && (
+                    <ExpoImage
+                      source={{ uri: logo }}
+                      style={styles.chipIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text style={styles.chipText}>
+                    {service.sub_category_name}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        <View style={styles.statusRow}>
+          <View style={styles.statusInfo}>
+            <Text style={styles.statusTitle}>Business Status</Text>
+            <Text style={styles.statusSubtitle}>Accepting new jobs</Text>
+          </View>
+          <Switch
+            value={isVerified && acceptingJobs}
+            onValueChange={handleToggleStatus}
+            disabled={!isVerified}
+            trackColor={{ false: neutral[200], true: primary[400] }}
+            thumbColor={neutral[0]}
+          />
+        </View>
+      </View>
+
+      <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
+
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === "members" ? (
+          membersLoading && activeMembers.length + pendingMembers.length === 0 ? (
+            <ActivityIndicator
+              color={primary[400]}
+              style={styles.membersLoader}
+            />
+          ) : activeMembers.length === 0 && pendingMembers.length === 0 ? (
+            <Text style={styles.emptyText}>No members yet</Text>
+          ) : (
+            <>
+              <MemberSection
+                title="Active"
+                members={activeMembers}
+                onPressMember={openMember}
+              />
+              <MemberSection
+                title="Pending"
+                members={pendingMembers}
+                onPressMember={openMember}
+              />
+            </>
+          )
+        ) : (
+          <Text style={styles.emptyText}>
+            Guidelines for your business will appear here.
+          </Text>
+        )}
+      </ScrollView>
+
+      <View style={[styles.footer, contentWidthStyle]}>
+        <Button
+          title="Invite New Member"
+          variant="primary"
+          size="lg"
+          disabled={!isVerified}
+          onPress={() =>
+            router.push({
+              pathname: "/business-management/[id]/invite-member",
+              params: { id: String(business.business_id) },
+            })
+          }
+        />
+      </View>
+
+      <BottomSheet
+        visible={menuVisible}
+        title="Manage Business"
+        onClose={() => setMenuVisible(false)}
+        options={[
+          {
+            label: "Business Details",
+            icon: require("@/assets/global-icons/view-detail.svg"),
+            onPress: () => {
+              setMenuVisible(false);
+              router.push({
+                pathname: "/business-management/[id]/details",
+                params: { id: String(business.business_id) },
+              });
+            },
+          },
+          {
+            label: "Edit Service",
+            icon: require("@/assets/global-icons/edit.svg"),
+            onPress: () => {
+              setMenuVisible(false);
+              router.push({
+                pathname: "/business-management/steps/select-category",
+                params: {
+                  flow: "edit-business",
+                  businessId: String(business.business_id),
+                },
+              });
+            },
+          },
+          {
+            label: "Delete Business",
+            icon: require("@/assets/global-icons/cancel.svg"),
+            onPress: () => {
+              setMenuVisible(false);
+              handleDelete();
+            },
+          },
+        ]}
+      />
+
+      {modal}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: background.screen,
+  },
+  flex: { flex: 1 },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: neutral[50],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notFound: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notFoundText: {
+    fontSize: 15,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+
+  titleBlock: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 20,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  businessName: {
+    flexShrink: 1,
+    fontSize: 28,
+    fontWeight: "700",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  headerBadge: {
+    width: 18,
+    height: 18,
+  },
+  reviewCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: background.subtle,
+    borderWidth: 1,
+    borderColor: border.default,
+  },
+  reviewInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  reviewTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: status.inactive,
+    letterSpacing: -0.408,
+  },
+  reviewMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: primary[50],
+  },
+  chipIcon: {
+    width: 18,
+    height: 18,
+  },
+  chipText: {
+    fontSize: 12,
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  statusInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  statusTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  statusSubtitle: {
+    fontSize: 15,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: text.primary,
+    letterSpacing: -0.408,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: border.default,
+  },
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: border.default,
+  },
+  memberInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  memberName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
+  memberEmail: {
+    fontSize: 15,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  guidelinesText: {
+    fontSize: 14,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: neutral[400],
+    textAlign: "center",
+    paddingVertical: 24,
+  },
+  membersLoader: {
+    paddingVertical: 24,
+  },
+
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+});

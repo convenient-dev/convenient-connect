@@ -1,8 +1,6 @@
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { legacyFetch } from "@/api/client";
-import { getService, getSubcategory } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -80,13 +78,23 @@ export default function EditServicePricingScreen() {
   const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    getService(userId, id)
-      .then(async (service: ServicePricing) => {
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    Promise.resolve(null as ServicePricing | null)
+      .then(async (service) => {
+        if (!service) return;
         setBaseRate(parseFloat(service.baseRate).toFixed(2));
         setBaseRateUnit(service.baseRateUnit);
 
         if (service.subcategory) {
-          const subcatData = await getSubcategory(service.subcategory.id);
+          // TODO: legacy API removed — implement getSubcategory via Laravel API
+          console.log(
+            "TODO: implement getSubcategory via Laravel API",
+            service.subcategory.id,
+          );
+          const subcatData = null as {
+            addonTemplates?: AddonTemplate[];
+          } | null;
 
           const templates: AddonTemplate[] = subcatData?.addonTemplates ?? [];
           setAddonTemplates(templates);
@@ -175,8 +183,10 @@ export default function EditServicePricingScreen() {
           })),
       };
 
-      await legacyFetch(`/users/${userId}/services/${id}`, {
-        method: "PATCH",
+      // TODO: legacy API removed — implement update service pricing via Laravel API
+      console.log("TODO: implement update service pricing via Laravel API", {
+        userId,
+        id,
         body,
       });
 

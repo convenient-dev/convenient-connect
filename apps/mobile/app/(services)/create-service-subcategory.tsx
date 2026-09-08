@@ -1,6 +1,5 @@
-import { getSubcategories } from "@/api/legacy";
+import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
-import { getSubcategoryIcon } from "@/components/SubcategoryIcon";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
@@ -27,16 +26,15 @@ interface Subcategory {
   id: number;
   name: string;
   categoryId: number;
+  iconUrl: string | null;
 }
 
 function SubcategoryItem({
   item,
-  categorySlug,
   selected,
   onSelect,
 }: {
   item: Subcategory;
-  categorySlug: string;
   selected: boolean;
   onSelect: (id: number) => void;
 }) {
@@ -49,11 +47,13 @@ function SubcategoryItem({
       <View
         style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
       >
-        <Image
-          source={getSubcategoryIcon(categorySlug, item.name)}
-          style={styles.icon}
-          contentFit="contain"
-        />
+        {item.iconUrl && (
+          <Image
+            source={{ uri: item.iconUrl }}
+            style={styles.icon}
+            contentFit="contain"
+          />
+        )}
       </View>
       <Text
         style={[styles.cellLabel, selected && styles.cellLabelSelected]}
@@ -70,7 +70,6 @@ export default function CreateServiceSubcategoryScreen() {
   const router = useRouter();
   const {
     categoryId,
-    categorySlug,
     categoryName,
     serviceMode,
     businessAffiliationId,
@@ -90,9 +89,21 @@ export default function CreateServiceSubcategoryScreen() {
 
   useEffect(() => {
     if (!categoryId) return;
-    getSubcategories(categoryId)
-      .then((data) => {
-        setSubcategories(data);
+    getServiceCategories()
+      .then((categories) => {
+        const category = categories.find(
+          (cat) => cat.category_id === parseInt(categoryId, 10)
+        );
+        if (category) {
+          setSubcategories(
+            category.sub_category_list.map((sub) => ({
+              id: sub.sub_category_id,
+              name: sub.sub_category_name,
+              categoryId: category.category_id,
+              iconUrl: sub.sub_category_logo,
+            }))
+          );
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -140,7 +151,6 @@ export default function CreateServiceSubcategoryScreen() {
           renderItem={({ item }) => (
             <SubcategoryItem
               item={item}
-              categorySlug={categorySlug ?? ""}
               selected={selected === item.id}
               onSelect={setSelected}
             />

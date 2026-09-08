@@ -2,8 +2,6 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomField, CustomFieldInput } from "@/components/CustomFieldInput";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { legacyFetch } from "@/api/client";
-import { getService, getLegacyUser, getSubcategory, uploadImage, deleteImage, uploadPdf, deletePdf } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
@@ -135,11 +133,16 @@ export default function EditServiceInformationScreen() {
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // TODO: legacy API removed — implement getService via Laravel API
+    console.log("TODO: implement getService via Laravel API", { userId, id });
+    // TODO: legacy API removed — implement getLegacyUser via Laravel API
+    console.log("TODO: implement getLegacyUser via Laravel API", userId);
     Promise.all([
-      getService(userId, id) as Promise<ServiceDetail>,
-      getLegacyUser(userId),
+      Promise.resolve(null as ServiceDetail | null),
+      Promise.resolve(null as { address?: Address[] } | null),
     ])
       .then(([service, user]) => {
+        if (!service) return;
         setTitle(service.title);
         setServiceMode(service.serviceMode);
         setServiceType(service.serviceType);
@@ -183,32 +186,37 @@ export default function EditServiceInformationScreen() {
 
         // Fetch custom fields from subcategory
         if (service.subcategory) {
-          getSubcategory(service.subcategory.id)
-            .then((subcatData) => {
-              const fields: CustomField[] = [
-                ...(subcatData?.customFields ?? []),
-                ...(subcatData?.category?.customFields ?? []),
-              ];
-              setCustomFields(fields);
+          // TODO: legacy API removed — implement getSubcategory via Laravel API
+          console.log(
+            "TODO: implement getSubcategory via Laravel API",
+            service.subcategory.id,
+          );
+          const subcatData = null as {
+            customFields?: CustomField[];
+            category?: { customFields?: CustomField[] };
+          } | null;
+          const fields: CustomField[] = [
+            ...(subcatData?.customFields ?? []),
+            ...(subcatData?.category?.customFields ?? []),
+          ];
+          setCustomFields(fields);
 
-              // Map existing custom values by field id
-              const mapped: Record<number, string> = {};
-              service.customValues.forEach((cv) => {
-                const field = fields.find(
-                  (f) => f.fieldLabel === cv.field.fieldLabel,
-                );
-                if (field) {
-                  if (cv.valueText) mapped[field.id] = cv.valueText;
-                  else if (cv.valueNumber) mapped[field.id] = cv.valueNumber;
-                  else if (cv.valueBoolean != null)
-                    mapped[field.id] = cv.valueBoolean ? "Yes" : "No";
-                  else if (cv.valueJson && Array.isArray(cv.valueJson))
-                    mapped[field.id] = JSON.stringify(cv.valueJson);
-                }
-              });
-              setCustomFieldValues(mapped);
-            })
-            .catch(() => {});
+          // Map existing custom values by field id
+          const mapped: Record<number, string> = {};
+          service.customValues.forEach((cv) => {
+            const field = fields.find(
+              (f) => f.fieldLabel === cv.field.fieldLabel,
+            );
+            if (field) {
+              if (cv.valueText) mapped[field.id] = cv.valueText;
+              else if (cv.valueNumber) mapped[field.id] = cv.valueNumber;
+              else if (cv.valueBoolean != null)
+                mapped[field.id] = cv.valueBoolean ? "Yes" : "No";
+              else if (cv.valueJson && Array.isArray(cv.valueJson))
+                mapped[field.id] = JSON.stringify(cv.valueJson);
+            }
+          });
+          setCustomFieldValues(mapped);
         }
       })
       .finally(() => setLoading(false));
@@ -363,20 +371,20 @@ export default function EditServiceInformationScreen() {
         ),
       };
 
-      const service = await legacyFetch<any>(`/users/${userId}/services/${id}`, {
-        method: "PATCH",
+      // TODO: legacy API removed — implement update service information via Laravel API
+      console.log("TODO: implement update service information via Laravel API", {
+        userId,
+        id,
         body,
       });
+      const service = { id } as any;
 
       // Persist existing certification name changes
       if (existingCertifications.length > 0) {
-        await Promise.allSettled(
-          existingCertifications.map((cert) =>
-            legacyFetch(`/uploads/pdfs/${cert.id}`, {
-              method: "PATCH",
-              body: { name: cert.name },
-            }),
-          ),
+        // TODO: legacy API removed — implement rename certification PDFs via Laravel API
+        console.log(
+          "TODO: implement rename certification PDFs via Laravel API",
+          existingCertifications.map((cert) => ({ id: cert.id, name: cert.name })),
         );
       }
 
@@ -407,7 +415,8 @@ export default function EditServiceInformationScreen() {
                 type: mimeType,
               } as unknown as Blob);
             }
-            await uploadImage(formData);
+            // TODO: legacy API removed — implement uploadImage via Laravel API
+            console.log("TODO: implement uploadImage via Laravel API", formData);
           }),
         );
       }
@@ -443,7 +452,8 @@ export default function EditServiceInformationScreen() {
                 type: "application/pdf",
               } as unknown as Blob);
             }
-            await uploadPdf(formData);
+            // TODO: legacy API removed — implement uploadPdf via Laravel API
+            console.log("TODO: implement uploadPdf via Laravel API", formData);
           }),
         );
       }
@@ -713,11 +723,14 @@ export default function EditServiceInformationScreen() {
                   <TouchableOpacity
                     style={styles.imageThumbnailRemove}
                     onPress={() => {
-                      deleteImage(img.id).then(() => {
-                        setExistingImages((prev) =>
-                          prev.filter((e) => e.id !== img.id),
-                        );
-                      });
+                      // TODO: legacy API removed — implement deleteImage via Laravel API
+                      console.log(
+                        "TODO: implement deleteImage via Laravel API",
+                        img.id,
+                      );
+                      setExistingImages((prev) =>
+                        prev.filter((e) => e.id !== img.id),
+                      );
                     }}
                     activeOpacity={0.7}
                   >
@@ -781,11 +794,14 @@ export default function EditServiceInformationScreen() {
                   <TouchableOpacity
                     style={styles.certRemoveBtn}
                     onPress={() => {
-                      deletePdf(cert.id).then(() => {
-                        setExistingCertifications((prev) =>
-                          prev.filter((c) => c.id !== cert.id),
-                        );
-                      });
+                      // TODO: legacy API removed — implement deletePdf via Laravel API
+                      console.log(
+                        "TODO: implement deletePdf via Laravel API",
+                        cert.id,
+                      );
+                      setExistingCertifications((prev) =>
+                        prev.filter((c) => c.id !== cert.id),
+                      );
                     }}
                     activeOpacity={0.7}
                   >

@@ -37,9 +37,7 @@ interface SideMenuProps {
     firstName: string;
     lastName: string;
     avatarUrl: string | null;
-    accountType?: "individual" | "business" | string;
-    isPersonVerified?: boolean;
-    isBusinessVerified?: boolean;
+    backgroundVerification?: "Pending" | "Verified" | "Not Verified";
   } | null;
   membership?: { tier: string };
   appVersion?: string;
@@ -234,10 +232,7 @@ export function SideMenu({
                   style={styles.avatar}
                   contentFit="cover"
                 />
-                {((user?.accountType === "individual" &&
-                  user?.isPersonVerified) ||
-                  (user?.accountType === "business" &&
-                    user?.isBusinessVerified)) && (
+                {user?.backgroundVerification === "Verified" && (
                   <ExpoImage
                     source={require("@/assets/global-icons/verified.svg")}
                     style={styles.avatarBadge}
@@ -324,7 +319,7 @@ export function SideMenu({
         visible={logoutModalVisible}
         title="Log Out"
         message="Are you sure you want to log out?"
-        icon="alert"
+        icon="warning"
         confirmLabel="Log Out"
         cancelLabel="Cancel"
         onConfirm={handleLogout}

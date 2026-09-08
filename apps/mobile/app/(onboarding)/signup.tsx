@@ -1,9 +1,15 @@
-import { facebookLogin, googleLogin, numberLogin } from "@/api/auth";
+import {
+  facebookLogin,
+  googleLogin,
+  isRestoreRequired,
+  numberLogin,
+} from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { facebookSignOutQuietly, signInWithFacebook } from "@/auth/facebook";
 import { googleSignOutQuietly, signInWithGoogle } from "@/auth/google";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   buildFullPhone,
   Country,
@@ -81,6 +87,7 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [showDeletedModal, setShowDeletedModal] = useState(false);
 
   const handleGoogleLogin = async () => {
     if (socialLoading) return;
@@ -97,16 +104,27 @@ export default function SignupScreen() {
         firstName: google.firstName,
         lastName: google.lastName,
       });
+      if (isRestoreRequired(result)) {
+        router.push({
+          pathname: "/restore-account",
+          params: {
+            method: "google",
+            identifier: google.email,
+            firstName: google.firstName,
+            lastName: google.lastName,
+            requestDeletionDate: result.request_deletion_date ?? "",
+            permanentDeletionDate: result.permanent_deletion_date ?? "",
+          },
+        });
+        return;
+      }
       await login(result.accessToken, {
         user: result.user,
-        providerType: result.providerType,
         profileImage: result.profileImage,
         backgroundVerification: result.backgroundVerification,
-        businessVerification: result.businessVerification,
       });
 
       // Check if user has completed profile by checking if they have both names.
-      // We can't rely on providerType since the backend doesn't always set it.
       const hasCompletedProfile =
         !!result.user.user_fname?.trim() &&
         !!result.user.user_lname?.trim();
@@ -121,6 +139,14 @@ export default function SignupScreen() {
       }
     } catch (e) {
       await googleSignOutQuietly();
+      if (
+        e instanceof ApiError &&
+        e.statusCode === 404 &&
+        /user not found/i.test(e.message)
+      ) {
+        setShowDeletedModal(true);
+        return;
+      }
       const msg = e instanceof ApiError ? e.message : "Google sign-in failed";
       Alert.alert("Error", msg);
     } finally {
@@ -143,16 +169,27 @@ export default function SignupScreen() {
         firstName: facebook.firstName,
         lastName: facebook.lastName,
       });
+      if (isRestoreRequired(result)) {
+        router.push({
+          pathname: "/restore-account",
+          params: {
+            method: "facebook",
+            identifier: facebook.email,
+            firstName: facebook.firstName,
+            lastName: facebook.lastName,
+            requestDeletionDate: result.request_deletion_date ?? "",
+            permanentDeletionDate: result.permanent_deletion_date ?? "",
+          },
+        });
+        return;
+      }
       await login(result.accessToken, {
         user: result.user,
-        providerType: result.providerType,
         profileImage: result.profileImage,
         backgroundVerification: result.backgroundVerification,
-        businessVerification: result.businessVerification,
       });
 
       // Check if user has completed profile by checking if they have both names.
-      // We can't rely on providerType since the backend doesn't always set it.
       const hasCompletedProfile =
         !!result.user.user_fname?.trim() &&
         !!result.user.user_lname?.trim();
@@ -167,6 +204,14 @@ export default function SignupScreen() {
       }
     } catch (e) {
       await facebookSignOutQuietly();
+      if (
+        e instanceof ApiError &&
+        e.statusCode === 404 &&
+        /user not found/i.test(e.message)
+      ) {
+        setShowDeletedModal(true);
+        return;
+      }
       const msg = e instanceof ApiError ? e.message : "Facebook sign-in failed";
       Alert.alert("Error", msg);
     } finally {
@@ -217,12 +262,33 @@ export default function SignupScreen() {
               const fullPhone = buildFullPhone(country, phone);
               setLoading(true);
               try {
-                await numberLogin({ phone: fullPhone });
+                const result = await numberLogin({ phone: fullPhone });
+                if (result?.restore_required) {
+                  router.push({
+                    pathname: "/restore-account",
+                    params: {
+                      method: "phone",
+                      identifier: fullPhone,
+                      requestDeletionDate: result.request_deletion_date ?? "",
+                      permanentDeletionDate:
+                        result.permanent_deletion_date ?? "",
+                    },
+                  });
+                  return;
+                }
                 router.push({
                   pathname: "/signup-by-phone",
                   params: { phone: fullPhone },
                 });
               } catch (e) {
+                if (
+                  e instanceof ApiError &&
+                  e.statusCode === 404 &&
+                  /user not found/i.test(e.message)
+                ) {
+                  setShowDeletedModal(true);
+                  return;
+                }
                 const msg =
                   e instanceof ApiError ? e.message : "Failed to send OTP";
                 Alert.alert("Error", msg);
@@ -270,6 +336,15 @@ export default function SignupScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={showDeletedModal}
+        type="error"
+        title="Account permanently deleted"
+        message="This account has been permanently deleted and can no longer be restored. To continue, sign up with a different phone number or email."
+        confirmLabel="OK"
+        onConfirm={() => setShowDeletedModal(false)}
+      />
     </SafeAreaView>
   );
 }

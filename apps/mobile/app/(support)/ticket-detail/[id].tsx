@@ -2,7 +2,6 @@ import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCurrentUser } from "@/constants/session";
-import { getTicket } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -66,12 +65,10 @@ export default function TicketDetailScreen() {
       setLoading(false);
       return;
     }
-    getTicket(userId, id)
-      .then((data: TicketDetail) => {
-        setTicket(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    // TODO: legacy API removed — implement getTicket via Laravel API
+    console.log("TODO: implement getTicket via Laravel API", { userId, id });
+    setTicket(null);
+    setLoading(false);
   }, [id, userId]);
 
   if (loading) {

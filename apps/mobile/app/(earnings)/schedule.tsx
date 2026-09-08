@@ -6,7 +6,6 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
-import { getAvailability, toggleAvailability, setWeeklySlots, setOverrides } from "@/api/legacy";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -223,8 +222,11 @@ export default function ScheduleScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      getAvailability(userId)
-        .then((data: AvailabilityResponse) => {
+      // TODO: legacy API removed — implement getAvailability via Laravel API
+      console.log("TODO: implement getAvailability via Laravel API", { userId });
+      Promise.resolve<AvailabilityResponse | null>(null)
+        .then((data) => {
+          if (!data) return;
           setAvailable(data.availabilityEnabled);
 
           const days = new Set<DayKey>();
@@ -527,8 +529,10 @@ export default function ScheduleScreen() {
 
     setSaving(true);
     try {
-      await setWeeklySlots(userId, { slots });
-      await setOverrides(userId, { overrides });
+      // TODO: legacy API removed — implement setWeeklySlots via Laravel API
+      console.log("TODO: implement setWeeklySlots via Laravel API", { userId, slots });
+      // TODO: legacy API removed — implement setOverrides via Laravel API
+      console.log("TODO: implement setOverrides via Laravel API", { userId, overrides });
 
       const latest =
         (lastOverrideDate &&
@@ -566,7 +570,11 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOn() {
     try {
-      await toggleAvailability(userId, { availabilityEnabled: true });
+      // TODO: legacy API removed — implement toggleAvailability via Laravel API
+      console.log("TODO: implement toggleAvailability via Laravel API", {
+        userId,
+        availabilityEnabled: true,
+      });
       setAvailable(true);
     } catch {
       Alert.alert("Couldn't update", "Network error. Please try again.");
@@ -581,7 +589,11 @@ export default function ScheduleScreen() {
 
   async function confirmTurnOff() {
     try {
-      await toggleAvailability(userId, { availabilityEnabled: false });
+      // TODO: legacy API removed — implement toggleAvailability via Laravel API
+      console.log("TODO: implement toggleAvailability via Laravel API", {
+        userId,
+        availabilityEnabled: false,
+      });
       setAvailable(false);
     } finally {
       setConfirmOffVisible(false);

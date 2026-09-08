@@ -169,7 +169,7 @@ const variantTextStyles: Record<ButtonVariant, TextStyle> = {
   secondary: { color: neutral[0] },
   dark: { color: neutral[0] },
   outline: { color: primary[400] },
-  ghost: { color: primary[400], fontSize: 16 },
+  ghost: { color: neutral[800], fontSize: 16 },
   social: {
     flex: 1,
     textAlign: "center",

@@ -175,11 +175,14 @@ export default function ManageMemberScreen() {
     }
     setModal({
       type: "warning",
-      title: "Remove Service",
+      title: `Remove ${name}?`,
       message: (
         <>
-          Remove <Text style={styles.bold}>{name}</Text> from this member? They
-          will no longer be able to provide it under your business.
+          Once removed,{" "}
+          <Text style={styles.bold}>
+            {member?.name?.trim() || "this member"}
+          </Text>{" "}
+          will not be able to create listings under {name}.
         </>
       ),
       confirmLabel: "Remove",
@@ -236,10 +239,10 @@ export default function ManageMemberScreen() {
     const label = member?.name?.trim() || member?.email || "this member";
     setModal({
       type: "warning",
-      title: isPending ? "Cancel Invitation" : "Remove Member",
+      title: isPending ? "Cancel Invite?" : `Remove ${label}?`,
       message: isPending
-        ? `Cancel the pending invitation for ${label}?`
-        : `Remove ${label} from your business? They will no longer be able to provide services under it.`,
+        ? `This will cancel the pending invitation for ${label}. They will no longer be able to join your business using this invite.`
+        : `This cannot be undone. Their account will be removed from your business.`,
       confirmLabel: isPending ? "Cancel Invite" : "Remove",
       cancelLabel: "Keep",
       onConfirm: async () => {
@@ -356,7 +359,9 @@ export default function ManageMemberScreen() {
             available={available}
             disabled={busy}
             onAdd={handleAddService}
-            onRemove={(service) => handleRemoveService(service.id, service.name)}
+            onRemove={(service) =>
+              handleRemoveService(service.id, service.name)
+            }
           />
           {available.length === 0 && businessServices.length > 0 && (
             <Text style={styles.helper}>
@@ -380,16 +385,13 @@ export default function ManageMemberScreen() {
             style={styles.emptyIllustration}
             contentFit="contain"
           />
-          <Text style={styles.emptyTitle}>No Earnings yet</Text>
-          <Text style={styles.emptyMessage}>
-            This member hasn&apos;t generated any earnings yet.
-          </Text>
+          <Text style={styles.emptyMessage}>No Earnings yet</Text>
         </View>
       </ScrollView>
 
       <View style={[styles.footer, contentWidthStyle]}>
         <Button
-          title={isPending ? "Cancel Invitation" : "Remove"}
+          title={isPending ? "Cancel Invite" : "Remove"}
           variant="secondary"
           size="lg"
           disabled={busy}
@@ -398,7 +400,7 @@ export default function ManageMemberScreen() {
         />
         {isPending && (
           <Button
-            title="Resend Invitation"
+            title="Resend Invite"
             variant="ghost"
             size="md"
             disabled={busy}

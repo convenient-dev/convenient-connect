@@ -14,7 +14,8 @@ type IconVariant = "success" | "error" | "warning";
 interface Props {
   visible: boolean;
   title: string;
-  message: string;
+  /** Plain text, or a node such as a fragment with nested bold `Text`. */
+  message: React.ReactNode;
   /**
    * Type of message - determines default icon and styling
    * @default "warning"

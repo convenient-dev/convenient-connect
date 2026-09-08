@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
 import {
   StyleSheet,
@@ -76,6 +77,77 @@ export function ServiceChips({
   );
 }
 
+interface AssignmentProps {
+  /** Services currently assigned; rendered as solid chips with a remove icon. */
+  selected: ServiceChipItem[];
+  /** Services that can still be added; rendered as dashed chips with an add icon. */
+  available: ServiceChipItem[];
+  onAdd: (service: ServiceChipItem) => void;
+  onRemove: (service: ServiceChipItem) => void;
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+}
+
+/**
+ * Assignment-style chips: selected services first with an "x" to remove,
+ * followed by the remaining services as dashed placeholders to add.
+ */
+export function ServiceAssignmentChips({
+  selected,
+  available,
+  onAdd,
+  onRemove,
+  disabled = false,
+  style,
+}: AssignmentProps) {
+  return (
+    <View style={[styles.row, style]}>
+      {selected.map((service) => (
+        <View key={service.id} style={styles.assignChip}>
+          <Text
+            style={[styles.chipText, styles.assignChipText]}
+            numberOfLines={1}
+          >
+            {service.name}
+          </Text>
+          <TouchableOpacity
+            onPress={() => onRemove(service)}
+            disabled={disabled}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${service.name}`}
+          >
+            <MaterialIcons name="close" size={18} color={neutral[500]} />
+          </TouchableOpacity>
+        </View>
+      ))}
+      {available.map((service) => (
+        <TouchableOpacity
+          key={service.id}
+          style={[
+            styles.assignChip,
+            styles.addChip,
+            disabled && styles.addChipDisabled,
+          ]}
+          onPress={() => onAdd(service)}
+          disabled={disabled}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${service.name}`}
+        >
+          <Text
+            style={[styles.chipText, styles.assignChipText, styles.addChipText]}
+            numberOfLines={1}
+          >
+            {service.name}
+          </Text>
+          <MaterialIcons name="add" size={18} color={neutral[400]} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -114,5 +186,31 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: neutral[0],
     fontWeight: "500",
+  },
+
+  assignChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+    paddingLeft: 16,
+    paddingRight: 12,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: neutral[300],
+    backgroundColor: neutral[0],
+  },
+  assignChipText: {
+    fontSize: 15,
+  },
+  addChip: {
+    borderStyle: "dashed",
+    backgroundColor: "transparent",
+  },
+  addChipText: {
+    color: neutral[400],
+  },
+  addChipDisabled: {
+    opacity: 0.5,
   },
 });

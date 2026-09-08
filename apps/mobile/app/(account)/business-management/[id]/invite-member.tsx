@@ -4,7 +4,10 @@ import { createInviteCode, listInviteCodes } from "@/api/invite-codes";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ServiceChips, type ServiceChipItem } from "@/components/ServiceChips";
+import {
+  ServiceAssignmentChips,
+  type ServiceChipItem,
+} from "@/components/ServiceChips";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -105,10 +108,17 @@ export default function InviteMemberScreen() {
     }, [businessId]),
   );
 
-  const toggleService = (id: number) =>
-    setSelectedServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const selectedServices = services.filter((s) =>
+    selectedServiceIds.includes(s.id),
+  );
+  const availableServices = services.filter(
+    (s) => !selectedServiceIds.includes(s.id),
+  );
+
+  const addService = (service: ServiceChipItem) =>
+    setSelectedServiceIds((prev) => [...prev, service.id]);
+  const removeService = (service: ServiceChipItem) =>
+    setSelectedServiceIds((prev) => prev.filter((id) => id !== service.id));
 
   const hasServices = selectedServiceIds.length > 0;
   const canSendInvite = EMAIL_RE.test(email.trim()) && hasServices;
@@ -148,13 +158,10 @@ export default function InviteMemberScreen() {
     if (!canCreateCode || submitting) return;
     setSubmitting(true);
     try {
-      const selected = services.filter((s) =>
-        selectedServiceIds.includes(s.id),
-      );
       await createInviteCode({
         businessId,
         name: codeName,
-        services: selected.map((s) => ({
+        services: selectedServices.map((s) => ({
           sub_category_id: s.id,
           sub_category_name: s.name,
         })),
@@ -199,10 +206,12 @@ export default function InviteMemberScreen() {
           members.
         </Text>
       ) : (
-        <ServiceChips
-          services={services}
-          selectedIds={selectedServiceIds}
-          onToggle={toggleService}
+        <ServiceAssignmentChips
+          selected={selectedServices}
+          available={availableServices}
+          disabled={submitting}
+          onAdd={addService}
+          onRemove={removeService}
         />
       )}
     </View>

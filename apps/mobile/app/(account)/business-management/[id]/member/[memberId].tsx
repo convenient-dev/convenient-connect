@@ -10,7 +10,10 @@ import {
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ServiceChips, type ServiceChipItem } from "@/components/ServiceChips";
+import {
+  ServiceAssignmentChips,
+  type ServiceChipItem,
+} from "@/components/ServiceChips";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -23,7 +26,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,7 +35,7 @@ const { primary, neutral, text, background, border, status } = Colors;
 interface ModalState {
   type?: "success" | "error" | "warning";
   title: string;
-  message: string;
+  message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   /** Hide the cancel button for informational (success/error) pop-ups. */
@@ -63,55 +65,6 @@ function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-function RemovableChip({
-  label,
-  onRemove,
-  disabled,
-}: {
-  label: string;
-  onRemove: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipText} numberOfLines={1}>
-        {label}
-      </Text>
-      <TouchableOpacity
-        onPress={onRemove}
-        disabled={disabled}
-        hitSlop={10}
-        accessibilityLabel={`Remove ${label}`}
-        accessibilityRole="button"
-      >
-        <MaterialIcons name="close" size={18} color={neutral[500]} />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function AddChip({
-  onPress,
-  disabled,
-}: {
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.chip, styles.addChip, disabled && styles.addChipDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel="Add service"
-    >
-      <Text style={styles.chipText}>Add</Text>
-      <MaterialIcons name="add" size={20} color={neutral[500]} />
-    </TouchableOpacity>
-  );
-}
-
 export default function ManageMemberScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
@@ -126,10 +79,6 @@ export default function ManageMemberScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
-
-  // "Add" picker state
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerSelection, setPickerSelection] = useState<number[]>([]);
 
   // TODO: Wire to a member-earnings endpoint once the API exposes one.
   const earningsTotal = 0;
@@ -172,9 +121,13 @@ export default function ManageMemberScreen() {
   }, [load]);
 
   const assigned = member?.assigned_service_sub_categories ?? [];
-  const assignedIds = assigned
-    .map((s) => s.sub_category_id)
-    .filter((id): id is number => typeof id === "number");
+  const assignedItems: ServiceChipItem[] = assigned
+    .filter((s) => typeof s.sub_category_id === "number")
+    .map((s) => ({
+      id: s.sub_category_id as number,
+      name: s.sub_category_name ?? "Service",
+    }));
+  const assignedIds = assignedItems.map((s) => s.id);
   const available = businessServices.filter((s) => !assignedIds.includes(s.id));
   const isPending = member?.status === "pending";
 
@@ -182,27 +135,30 @@ export default function ManageMemberScreen() {
   // Services
   // -------------------------------------------------------------------------
 
-  function openPicker() {
-    setPickerSelection([]);
-    setPickerVisible(true);
-  }
-
-  async function confirmAddServices() {
-    if (pickerSelection.length === 0 || busy) return;
-    setPickerVisible(false);
-    setBusy(true);
-    try {
-      // The API assigns one service per call.
-      for (const subCategoryId of pickerSelection) {
-        await addBusinessMemberService(businessId, memberId, subCategoryId);
-      }
-      await load();
-    } catch (error: any) {
-      showError(error?.message || "Failed to add service");
-      await load();
-    } finally {
-      setBusy(false);
-    }
+  function handleAddService(service: ServiceChipItem) {
+    setModal({
+      title: "Add Service",
+      message: (
+        <>
+          Add <Text style={styles.bold}>{service.name}</Text> to this member?
+          They will be able to provide it under your business.
+        </>
+      ),
+      confirmLabel: "Add",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        setBusy(true);
+        try {
+          await addBusinessMemberService(businessId, memberId, service.id);
+          await load();
+        } catch (error: any) {
+          showError(error?.message || "Failed to add service");
+          await load();
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   }
 
   function handleRemoveService(subCategoryId: number, name: string) {
@@ -220,7 +176,12 @@ export default function ManageMemberScreen() {
     setModal({
       type: "warning",
       title: "Remove Service",
-      message: `Remove ${name} from this member? They will no longer be able to provide it under your business.`,
+      message: (
+        <>
+          Remove <Text style={styles.bold}>{name}</Text> from this member? They
+          will no longer be able to provide it under your business.
+        </>
+      ),
       confirmLabel: "Remove",
       cancelLabel: "Cancel",
       onConfirm: async () => {
@@ -390,26 +351,13 @@ export default function ManageMemberScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Provided Services</Text>
-          <View style={styles.chipRow}>
-            {assigned.map((service) => (
-              <RemovableChip
-                key={service.sub_category_id ?? service.sub_category_name}
-                label={service.sub_category_name ?? "Service"}
-                disabled={busy}
-                onRemove={() =>
-                  typeof service.sub_category_id === "number" &&
-                  handleRemoveService(
-                    service.sub_category_id,
-                    service.sub_category_name ?? "this service",
-                  )
-                }
-              />
-            ))}
-            <AddChip
-              onPress={openPicker}
-              disabled={busy || available.length === 0}
-            />
-          </View>
+          <ServiceAssignmentChips
+            selected={assignedItems}
+            available={available}
+            disabled={busy}
+            onAdd={handleAddService}
+            onRemove={(service) => handleRemoveService(service.id, service.name)}
+          />
           {available.length === 0 && businessServices.length > 0 && (
             <Text style={styles.helper}>
               This member already provides every service your business offers.
@@ -458,36 +406,6 @@ export default function ManageMemberScreen() {
           />
         )}
       </View>
-
-      <ConfirmModal
-        visible={pickerVisible}
-        type="warning"
-        icon={null}
-        title="Add Services"
-        message="Select the services this member may provide under your business."
-        confirmLabel={
-          pickerSelection.length > 1
-            ? `Add ${pickerSelection.length} Services`
-            : "Add Service"
-        }
-        cancelLabel="Cancel"
-        confirmDisabled={pickerSelection.length === 0}
-        onCancel={() => setPickerVisible(false)}
-        onConfirm={confirmAddServices}
-      >
-        <ServiceChips
-          services={available}
-          selectedIds={pickerSelection}
-          onToggle={(id) =>
-            setPickerSelection((prev) =>
-              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-            )
-          }
-          size="sm"
-          centered
-          style={styles.pickerChips}
-        />
-      </ConfirmModal>
 
       {confirmModal}
     </SafeAreaView>
@@ -566,39 +484,13 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingLeft: 16,
-    paddingRight: 12,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: neutral[300],
-    backgroundColor: neutral[0],
-  },
-  chipText: {
-    fontSize: 17,
-    color: neutral[500],
-    letterSpacing: -0.408,
-  },
-  addChip: {
-    borderStyle: "dashed",
-    borderColor: neutral[300],
-  },
-  addChipDisabled: {
-    opacity: 0.5,
-  },
   helper: {
     fontSize: 13,
     color: neutral[400],
     letterSpacing: -0.408,
+  },
+  bold: {
+    fontWeight: "700",
   },
   divider: {
     height: 1,
@@ -637,10 +529,6 @@ const styles = StyleSheet.create({
     color: neutral[300],
     textAlign: "center",
     letterSpacing: -0.408,
-  },
-
-  pickerChips: {
-    marginBottom: 4,
   },
 
   footer: {

@@ -1,3 +1,14 @@
+import {
+  getAvailability,
+  getDateAvailability,
+  listAvailabilityDays,
+  listAvailabilityTimezones,
+  saveAvailability,
+  saveDateAvailability,
+  toggleAvailabilityStatus,
+  type AvailabilitySaveRequest,
+  type AvailabilityTimezone,
+} from "@/api/schedule";
 import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
 import { CardGrid } from "@/components/CardGrid";
@@ -5,17 +16,21 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import WheelPicker from "@quidone/react-native-wheel-picker";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -81,39 +96,75 @@ type HourRange = { id: string; start: TimeValue; end: TimeValue };
 const DEFAULT_START: TimeValue = { hour: 9, minute: 0 };
 const DEFAULT_END: TimeValue = { hour: 17, minute: 0 };
 
-interface WeeklySlot {
-  id: number;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-}
-
-interface OverrideSlot {
-  id: number;
-  startTime: string;
-  endTime: string;
-}
-
+// A date override loaded from (or saved to) the API. Slots for available
+// overrides live in `overrideRangesByDate`, keyed by the same date.
 interface OverrideDay {
-  id: number;
   date: string;
   isAvailable: boolean;
-  slots: OverrideSlot[];
 }
 
-interface AvailabilityResponse {
-  availabilityEnabled: boolean;
-  weeklyAvailabilitySlots: WeeklySlot[];
-  availabilityOverrideDays: OverrideDay[];
+interface ApiSlot {
+  id?: number;
+  start_time?: string;
+  end_time?: string;
 }
 
-function parseHHmm(s: string): TimeValue {
-  const [h, m] = s.split(":").map(Number);
-  return { hour: h, minute: m };
+// Weekly slots come back as "09:00"; date-override slots come back as
+// "5:00 PM". Accept both, plus an optional seconds part.
+function parseApiTime(s: string): TimeValue {
+  const match = s.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/);
+  if (!match) return { hour: 0, minute: 0 };
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const period = match[3]?.toUpperCase();
+  if (period === "PM" && hour < 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  return { hour, minute };
 }
 
 function formatHHmm(v: TimeValue): string {
   return `${String(v.hour).padStart(2, "0")}:${String(v.minute).padStart(2, "0")}`;
+}
+
+function toHourRanges(slots: ApiSlot[], idPrefix: string): HourRange[] {
+  const ranges: HourRange[] = [];
+  slots.forEach((slot, i) => {
+    if (!slot.start_time || !slot.end_time) return;
+    ranges.push({
+      id: `${idPrefix}-${slot.id ?? i}`,
+      start: parseApiTime(slot.start_time),
+      end: parseApiTime(slot.end_time),
+    });
+  });
+  return ranges;
+}
+
+// Maps an API day (day_name "Monday" / short_name "Mon") to our DayKey.
+function toDayKey(name: string | null | undefined): DayKey | null {
+  const short = name?.trim().slice(0, 3).toLowerCase();
+  if (!short) return null;
+  return DAYS.find((d) => d.toLowerCase() === short) ?? null;
+}
+
+function emptyDayRanges(): Record<DayKey, HourRange[]> {
+  const obj = {} as Record<DayKey, HourRange[]>;
+  for (const d of DAYS) obj[d] = [];
+  return obj;
+}
+
+// Prefer the device timezone when the provider hasn't picked one yet.
+function pickDefaultTimezone(
+  timezones: AvailabilityTimezone[],
+): AvailabilityTimezone | null {
+  let deviceZone: string | undefined;
+  try {
+    deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    deviceZone = undefined;
+  }
+  return (
+    timezones.find((tz) => tz.timezone === deviceZone) ?? timezones[0] ?? null
+  );
 }
 
 type BookingStatus = "active" | "completed" | "pending" | "cancelled";
@@ -128,6 +179,8 @@ type Booking = {
   status: BookingStatus;
 };
 
+// TODO: no bookings endpoint yet — replace this mock data with the Laravel API
+// once bookings are available.
 const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
 
 const BOOKING_DOT_COLORS = [
@@ -165,18 +218,15 @@ function todayKey(): string {
   return toDateKey(new Date().toISOString());
 }
 
-function parseAnyTime(s: string): TimeValue {
-  if (s.includes("T")) {
-    const d = new Date(s);
-    return { hour: d.getUTCHours(), minute: d.getUTCMinutes() };
-  }
-  return parseHHmm(s);
+// The API only accepts overrides for today or later. YYYY-MM-DD keys sort
+// lexicographically, so a plain string compare is enough.
+function isPastDate(dateKey: string): boolean {
+  return dateKey < todayKey();
 }
 
 export default function ScheduleScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
 
   const [available, setAvailable] = useState(true);
   const [tab, setTab] = useState<Tab>("days");
@@ -185,13 +235,19 @@ export default function ScheduleScreen() {
   const [hourRanges, setHourRanges] = useState<HourRange[]>([
     { id: "0", start: DEFAULT_START, end: DEFAULT_END },
   ]);
-  const [dayRanges, setDayRanges] = useState<Record<DayKey, HourRange[]>>(
-    () => {
-      const obj = {} as Record<DayKey, HourRange[]>;
-      for (const d of DAYS) obj[d] = [];
-      return obj;
-    },
+  const [dayRanges, setDayRanges] =
+    useState<Record<DayKey, HourRange[]>>(emptyDayRanges);
+  const [dayIdByKey, setDayIdByKey] = useState<Partial<Record<DayKey, number>>>(
+    {},
   );
+  const [timezoneId, setTimezoneId] = useState<number | null>(null);
+  const [timezoneName, setTimezoneName] = useState<string | null>(null);
+  const [weeklyDirty, setWeeklyDirty] = useState(false);
+  const [dirtyOverrideDates, setDirtyOverrideDates] = useState<Set<string>>(
+    new Set(),
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fetchedOverrideDatesRef = useRef<Set<string>>(new Set());
   const [editing, setEditing] = useState<{
     day: DayKey | null;
     date?: string;
@@ -221,91 +277,138 @@ export default function ScheduleScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      let cancelled = false;
       setLoading(true);
-      // TODO: legacy API removed — implement getAvailability via Laravel API
-      console.log("TODO: implement getAvailability via Laravel API", { userId });
-      Promise.resolve<AvailabilityResponse | null>(null)
-        .then((data) => {
-          if (!data) return;
-          setAvailable(data.availabilityEnabled);
+      fetchedOverrideDatesRef.current = new Set();
 
+      Promise.all([
+        getAvailability(),
+        listAvailabilityDays(),
+        listAvailabilityTimezones(),
+      ])
+        .then(([data, dayOptions, timezones]) => {
+          if (cancelled) return;
+          setAvailable(data.is_available ?? false);
+
+          // DayKey -> day_id, from the master list first, then from any ids
+          // embedded in the availability payload.
+          const idByKey: Partial<Record<DayKey, number>> = {};
+          for (const d of dayOptions) {
+            const key = toDayKey(d.short_name ?? d.day_name);
+            if (key && typeof d.id === "number") idByKey[key] = d.id;
+          }
+          for (const d of data.days ?? []) {
+            const key = toDayKey(d.short_name ?? d.day_name);
+            if (key && idByKey[key] == null && typeof d.day_id === "number") {
+              idByKey[key] = d.day_id;
+            }
+          }
+          setDayIdByKey(idByKey);
+
+          const applyToAll = data.apply_to_all ?? false;
+          const sharedSlots = data.slots ?? [];
           const days = new Set<DayKey>();
-          const map: Record<DayKey, HourRange[]> = {} as Record<
-            DayKey,
-            HourRange[]
-          >;
-          for (const d of DAYS) map[d] = [];
-          for (const slot of data.weeklyAvailabilitySlots) {
-            const key = DAYS[slot.dayOfWeek];
+          const map = emptyDayRanges();
+          for (const d of data.days ?? []) {
+            const key = toDayKey(d.short_name ?? d.day_name);
             if (!key) continue;
             days.add(key);
-            map[key].push({
-              id: `${key}-${slot.id}`,
-              start: parseHHmm(slot.startTime),
-              end: parseHHmm(slot.endTime),
-            });
+            map[key] = toHourRanges(
+              applyToAll ? sharedSlots : (d.slots ?? []),
+              key,
+            );
           }
           setSelectedDays(days);
           setDayRanges(map);
+          setSameHours(applyToAll);
 
-          const seen = new Set<string>();
-          const ranges: HourRange[] = [];
-          for (const slot of data.weeklyAvailabilitySlots) {
-            const key = `${slot.startTime}-${slot.endTime}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            ranges.push({
-              id: String(slot.id),
-              start: parseHHmm(slot.startTime),
-              end: parseHHmm(slot.endTime),
-            });
-          }
-          setHourRanges(
-            ranges.length > 0
-              ? ranges
-              : [{ id: "0", start: DEFAULT_START, end: DEFAULT_END }],
-          );
-
-          // Same hours when every selected day shares an identical range set.
-          const sel = Array.from(days);
-          let same = true;
-          if (sel.length > 1) {
-            const sig = (rs: HourRange[]) =>
-              rs
-                .map((r) => `${formatHHmm(r.start)}-${formatHHmm(r.end)}`)
-                .sort()
-                .join("|");
-            const first = sig(map[sel[0]]);
-            for (let i = 1; i < sel.length; i++) {
-              if (sig(map[sel[i]]) !== first) {
-                same = false;
-                break;
+          // Shared hours: the API's shared slots when apply_to_all, otherwise
+          // the distinct ranges across all days so toggling "same hours" on
+          // has something sensible to start from.
+          let shared: HourRange[];
+          if (applyToAll) {
+            shared = toHourRanges(sharedSlots, "shared");
+          } else {
+            const seen = new Set<string>();
+            shared = [];
+            for (const key of days) {
+              for (const r of map[key]) {
+                const sig = `${formatHHmm(r.start)}-${formatHHmm(r.end)}`;
+                if (seen.has(sig)) continue;
+                seen.add(sig);
+                shared.push({ ...r, id: `shared-${shared.length}` });
               }
             }
           }
-          setSameHours(same);
+          setHourRanges(
+            shared.length > 0
+              ? shared
+              : [{ id: "0", start: DEFAULT_START, end: DEFAULT_END }],
+          );
 
-          setOverrideDays(data.availabilityOverrideDays ?? []);
-
-          const overrideMap: Record<string, HourRange[]> = {};
-          for (const od of data.availabilityOverrideDays ?? []) {
-            if (!od.isAvailable) continue;
-            overrideMap[toDateKey(od.date)] = od.slots.map((s) => ({
-              id: `od-${od.id}-${s.id}`,
-              start: parseAnyTime(s.startTime),
-              end: parseAnyTime(s.endTime),
-            }));
+          const tzId = data.timezone?.id ?? null;
+          if (tzId != null) {
+            setTimezoneId(tzId);
+            setTimezoneName(data.timezone?.name ?? null);
+          } else {
+            const fallback = pickDefaultTimezone(timezones);
+            setTimezoneId(fallback?.id ?? null);
+            setTimezoneName(fallback?.timezone ?? null);
           }
-          setOverrideRangesByDate(overrideMap);
+
+          // TODO: no endpoint lists every date override, so the calendar can't
+          // pre-mark overridden dates. Overrides are fetched one date at a
+          // time as the user selects them (see the effect below).
+          setOverrideDays([]);
+          setOverrideRangesByDate({});
+          setDirtyOverrideDates(new Set());
+          setLastOverrideDate(null);
+          setWeeklyDirty(false);
         })
-        .catch(() => {
+        .catch((error: any) => {
+          if (cancelled) return;
           setSelectedDays(new Set());
           setOverrideDays([]);
           setOverrideRangesByDate({});
+          setErrorMessage(error?.message || "Failed to load availability.");
         })
-        .finally(() => setLoading(false));
-    }, [userId]),
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, []),
   );
+
+  // Fetch the override for the selected date the first time it's selected.
+  useEffect(() => {
+    if (loading) return;
+    const date = selectedModifyDate;
+    if (fetchedOverrideDatesRef.current.has(date)) return;
+    fetchedOverrideDatesRef.current.add(date);
+
+    getDateAvailability(date)
+      .then((data) => {
+        if (!data.is_override) return;
+        const isAvailable = data.is_available ?? false;
+        setOverrideDays((prev) => [
+          ...prev.filter((o) => o.date !== date),
+          { date, isAvailable },
+        ]);
+        if (isAvailable) {
+          const ranges = toHourRanges(data.slots ?? [], `od-${date}`);
+          // Don't clobber edits the user made while the request was in flight.
+          setOverrideRangesByDate((prev) =>
+            prev[date] ? prev : { ...prev, [date]: ranges },
+          );
+        }
+      })
+      .catch(() => {
+        fetchedOverrideDatesRef.current.delete(date);
+      });
+  }, [selectedModifyDate, loading]);
 
   function hasOverrides(): boolean {
     return (
@@ -314,17 +417,24 @@ export default function ScheduleScreen() {
   }
 
   function attemptWeeklyChange(action: () => void) {
+    const run = () => {
+      setWeeklyDirty(true);
+      action();
+    };
     if (hasOverrides()) {
-      pendingWeeklyActionRef.current = action;
+      pendingWeeklyActionRef.current = run;
       setConfirmClearOverridesVisible(true);
     } else {
-      action();
+      run();
     }
   }
 
   function confirmClearOverrides() {
+    // TODO: no endpoint deletes date overrides, so this only clears them
+    // locally. Overrides already saved on the server will still apply.
     setOverrideDays([]);
     setOverrideRangesByDate({});
+    setDirtyOverrideDates(new Set());
     setLastOverrideDate(null);
     setConfirmClearOverridesVisible(false);
     const action = pendingWeeklyActionRef.current;
@@ -422,10 +532,17 @@ export default function ScheduleScreen() {
   }
 
   function addOverrideRange(dateKey: string) {
+    if (isPastDate(dateKey)) return;
     setEditing({ day: null, date: dateKey, id: `new-${Date.now()}` });
   }
 
+  function editOverrideRange(dateKey: string, id: string) {
+    if (isPastDate(dateKey)) return;
+    setEditing({ day: null, date: dateKey, id });
+  }
+
   function removeOverrideRange(dateKey: string, id: string) {
+    if (isPastDate(dateKey)) return;
     modifyOverrideRanges(dateKey, (prev) =>
       prev.length === 0 ? prev : prev.filter((r) => r.id !== id),
     );
@@ -440,6 +557,7 @@ export default function ScheduleScreen() {
       const current = prev[dateKey] ?? weeklyRangesForDate(dateKey);
       return { ...prev, [dateKey]: updater(current) };
     });
+    setDirtyOverrideDates((prev) => new Set(prev).add(dateKey));
   }
 
   function saveEditing(start: TimeValue, end: TimeValue) {
@@ -483,74 +601,131 @@ export default function ScheduleScreen() {
     }));
   }
 
-  async function handleSave() {
-    const slots: {
-      dayOfWeek: number;
-      startTime: string;
-      endTime: string;
-    }[] = [];
-    for (const day of selectedDays) {
-      const dayOfWeek = DAYS.indexOf(day);
-      if (dayOfWeek < 0) continue;
-      const ranges = sameHours ? hourRanges : (dayRanges[day] ?? []);
-      for (const range of ranges) {
-        slots.push({
-          dayOfWeek,
-          startTime: formatHHmm(range.start),
-          endTime: formatHHmm(range.end),
-        });
-      }
+  function buildWeeklySaveBody(tzId: number): AvailabilitySaveRequest | null {
+    const toSlots = (ranges: HourRange[]) =>
+      ranges.map((r) => ({
+        start_time: formatHHmm(r.start),
+        end_time: formatHHmm(r.end),
+      }));
+
+    const dayIds: { key: DayKey; id: number }[] = [];
+    for (const key of selectedDays) {
+      const id = dayIdByKey[key];
+      if (id == null) return null;
+      dayIds.push({ key, id });
     }
 
-    const overrides: {
-      date: string;
-      isAvailable: boolean;
-      slots: { startTime: string; endTime: string }[];
-    }[] = [];
-    const explicitOverrideDates = new Set<string>();
-    for (const [date, ranges] of Object.entries(overrideRangesByDate)) {
-      explicitOverrideDates.add(date);
-      overrides.push({
-        date,
-        isAvailable: ranges.length > 0,
-        slots: ranges.map((r) => ({
-          startTime: formatHHmm(r.start),
-          endTime: formatHHmm(r.end),
-        })),
-      });
+    if (sameHours) {
+      return {
+        timezone_id: tzId,
+        is_available: available,
+        apply_to_all: true,
+        days: dayIds.map(({ id }) => ({ day_id: id })),
+        slots: toSlots(hourRanges),
+      };
     }
-    // Preserve any pre-loaded unavailable overrides the user didn't touch.
-    for (const od of overrideDays) {
-      if (od.isAvailable) continue;
-      const key = toDateKey(od.date);
-      if (explicitOverrideDates.has(key)) continue;
-      overrides.push({ date: key, isAvailable: false, slots: [] });
+    return {
+      timezone_id: tzId,
+      is_available: available,
+      apply_to_all: false,
+      days: dayIds.map(({ key, id }) => ({
+        day_id: id,
+        slots: toSlots(dayRanges[key] ?? []),
+      })),
+    };
+  }
+
+  async function handleSave() {
+    if (timezoneId == null) {
+      setErrorMessage("Please choose a timezone before saving.");
+      return;
     }
+
+    const dirtyDates = Array.from(dirtyOverrideDates);
+    // Always save the weekly schedule when nothing else changed so "Save"
+    // still persists the current form state.
+    const shouldSaveWeekly = weeklyDirty || dirtyDates.length === 0;
 
     setSaving(true);
     try {
-      // TODO: legacy API removed — implement setWeeklySlots via Laravel API
-      console.log("TODO: implement setWeeklySlots via Laravel API", { userId, slots });
-      // TODO: legacy API removed — implement setOverrides via Laravel API
-      console.log("TODO: implement setOverrides via Laravel API", { userId, overrides });
+      if (shouldSaveWeekly) {
+        const body = buildWeeklySaveBody(timezoneId);
+        if (!body) {
+          setErrorMessage("Could not resolve the selected days. Please reload.");
+          return;
+        }
+        await saveAvailability(body);
+        setWeeklyDirty(false);
+      }
 
-      const latest =
-        (lastOverrideDate &&
-          overrides.find((o) => o.date === lastOverrideDate)) ||
-        null;
-      if (!latest) {
-        setSuccessMessage("Your weekly availability has been updated.");
-      } else if (!latest.isAvailable) {
-        setSuccessMessage(
-          `Marked ${formatOverrideDate(latest.date)} as unavailable.`,
+      // Save each date independently so one rejected date (e.g. a past date)
+      // doesn't block the others. Only failed dates stay dirty.
+      const results = await Promise.allSettled(
+        dirtyDates.map(async (date) => {
+          const ranges = overrideRangesByDate[date] ?? [];
+          const isAvailable = ranges.length > 0;
+          await saveDateAvailability({
+            available_date: date,
+            is_available: isAvailable,
+            timezone_id: timezoneId,
+            slots: ranges.map((r) => ({
+              start_time: formatHHmm(r.start),
+              end_time: formatHHmm(r.end),
+            })),
+          });
+          return { date, isAvailable };
+        }),
+      );
+
+      const failed: { date: string; message: string }[] = [];
+      const savedDates = new Set<string>();
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          const { date, isAvailable } = result.value;
+          savedDates.add(date);
+          setOverrideDays((prev) => [
+            ...prev.filter((o) => o.date !== date),
+            { date, isAvailable },
+          ]);
+        } else {
+          failed.push({
+            date: dirtyDates[i],
+            message: result.reason?.message || "Unknown error",
+          });
+        }
+      });
+      setDirtyOverrideDates((prev) => {
+        const next = new Set(prev);
+        for (const date of savedDates) next.delete(date);
+        return next;
+      });
+
+      if (failed.length > 0) {
+        setErrorMessage(
+          failed
+            .map((f) => `${formatOverrideDate(f.date)}: ${f.message}`)
+            .join("\n"),
         );
+        return;
+      }
+
+      const latestDate =
+        lastOverrideDate && savedDates.has(lastOverrideDate)
+          ? lastOverrideDate
+          : null;
+      if (!latestDate) {
+        setSuccessMessage("Your weekly availability has been updated.");
       } else {
-        const n = latest.slots.length;
+        const n = (overrideRangesByDate[latestDate] ?? []).length;
         setSuccessMessage(
-          `Updated ${formatOverrideDate(latest.date)} with ${n} ${n === 1 ? "slot" : "slots"}.`,
+          n === 0
+            ? `Marked ${formatOverrideDate(latestDate)} as unavailable.`
+            : `Updated ${formatOverrideDate(latestDate)} with ${n} ${n === 1 ? "slot" : "slots"}.`,
         );
       }
       setSuccessVisible(true);
+    } catch (error: any) {
+      setErrorMessage(error?.message || "Failed to save availability.");
     } finally {
       setSaving(false);
     }
@@ -568,36 +743,23 @@ export default function ScheduleScreen() {
     }
   }
 
-  async function confirmTurnOn() {
+  // The API flips is_available and returns the new value, so both confirm
+  // dialogs share this handler.
+  async function confirmToggleAvailability() {
+    setConfirmOnVisible(false);
+    setConfirmOffVisible(false);
     try {
-      // TODO: legacy API removed — implement toggleAvailability via Laravel API
-      console.log("TODO: implement toggleAvailability via Laravel API", {
-        userId,
-        availabilityEnabled: true,
-      });
-      setAvailable(true);
-    } catch {
-      Alert.alert("Couldn't update", "Network error. Please try again.");
-    } finally {
-      setConfirmOnVisible(false);
+      const next = await toggleAvailabilityStatus();
+      setAvailable(next);
+    } catch (error: any) {
+      setErrorMessage(
+        error?.message || "Couldn't update availability. Please try again.",
+      );
     }
   }
 
   function cancelTurnOn() {
     setConfirmOnVisible(false);
-  }
-
-  async function confirmTurnOff() {
-    try {
-      // TODO: legacy API removed — implement toggleAvailability via Laravel API
-      console.log("TODO: implement toggleAvailability via Laravel API", {
-        userId,
-        availabilityEnabled: false,
-      });
-      setAvailable(false);
-    } finally {
-      setConfirmOffVisible(false);
-    }
   }
 
   function cancelTurnOff() {
@@ -626,14 +788,14 @@ export default function ScheduleScreen() {
     return map;
   }, [overrideDays]);
 
-  type DateAvailability = {
+  type DateInfo = {
     isAvailable: boolean;
     isOverride: boolean;
     slots: { id: string; label: string }[];
   };
 
-  const getDateAvailability = useCallback(
-    (dateKey: string): DateAvailability => {
+  const getDateInfo = useCallback(
+    (dateKey: string): DateInfo => {
       const overrideRanges = overrideRangesByDate[dateKey];
       if (overrideRanges) {
         return {
@@ -725,6 +887,7 @@ export default function ScheduleScreen() {
     !!overridesByDate[selectedModifyDate] &&
     !overridesByDate[selectedModifyDate].isAvailable &&
     !overrideRangesByDate[selectedModifyDate];
+  const selectedIsPast = isPastDate(selectedModifyDate);
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -835,7 +998,11 @@ export default function ScheduleScreen() {
                 <View style={styles.divider} />
 
                 <View style={styles.timezoneRow}>
-                  <Text style={styles.timezoneLabel}>Eastern Time (EST)</Text>
+                  <Text style={styles.timezoneLabel}>
+                    {timezoneName ?? "Select timezone"}
+                  </Text>
+                  {/* TODO: timezone picker UI — options come from
+                      listAvailabilityTimezones() in @/api/schedule. */}
                   <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
                     <Feather name="edit-2" size={16} color={primary[400]} />
                   </TouchableOpacity>
@@ -996,7 +1163,7 @@ export default function ScheduleScreen() {
                       | undefined;
                     if (!date) return null;
                     const dateString = date.dateString;
-                    const info = getDateAvailability(dateString);
+                    const info = getDateInfo(dateString);
                     const hasSlots = info.slots.length > 0;
                     const isSelected = dateString === selectedModifyDate;
                     const isToday = state === "today";
@@ -1078,19 +1245,16 @@ export default function ScheduleScreen() {
                         <TouchableOpacity
                           style={styles.hoursInput}
                           activeOpacity={0.85}
+                          disabled={selectedIsPast}
                           onPress={() =>
-                            setEditing({
-                              day: null,
-                              date: selectedModifyDate,
-                              id: range.id,
-                            })
+                            editOverrideRange(selectedModifyDate, range.id)
                           }
                         >
                           <Text style={styles.hoursInputText}>
                             {formatRange(range.start, range.end)}
                           </Text>
                         </TouchableOpacity>
-                        {idx === 0 ? (
+                        {idx === 0 && !selectedIsPast ? (
                           <TouchableOpacity
                             hitSlop={8}
                             activeOpacity={0.7}
@@ -1105,19 +1269,23 @@ export default function ScheduleScreen() {
                         ) : (
                           <View style={styles.iconSpacer} />
                         )}
-                        <TouchableOpacity
-                          hitSlop={8}
-                          activeOpacity={0.7}
-                          onPress={() =>
-                            removeOverrideRange(selectedModifyDate, range.id)
-                          }
-                        >
-                          <Feather
-                            name="trash-2"
-                            size={20}
-                            color={secondary[500]}
-                          />
-                        </TouchableOpacity>
+                        {selectedIsPast ? (
+                          <View style={styles.iconSpacer} />
+                        ) : (
+                          <TouchableOpacity
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                            onPress={() =>
+                              removeOverrideRange(selectedModifyDate, range.id)
+                            }
+                          >
+                            <Feather
+                              name="trash-2"
+                              size={20}
+                              color={secondary[500]}
+                            />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ))}
 
@@ -1127,6 +1295,7 @@ export default function ScheduleScreen() {
                         <TouchableOpacity
                           style={styles.hoursInput}
                           activeOpacity={0.85}
+                          disabled={selectedIsPast}
                           onPress={() => addOverrideRange(selectedModifyDate)}
                         >
                           <Text
@@ -1135,22 +1304,28 @@ export default function ScheduleScreen() {
                               styles.hoursInputEmpty,
                             ]}
                           >
-                            {selectedIsExplicitlyUnavailable
-                              ? "Marked unavailable — tap to add"
-                              : "Tap to add"}
+                            {selectedIsPast
+                              ? "Past dates can't be changed"
+                              : selectedIsExplicitlyUnavailable
+                                ? "Marked unavailable — tap to add"
+                                : "Tap to add"}
                           </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          hitSlop={8}
-                          activeOpacity={0.7}
-                          onPress={() => addOverrideRange(selectedModifyDate)}
-                        >
-                          <Feather
-                            name="plus-circle"
-                            size={22}
-                            color={primary[400]}
-                          />
-                        </TouchableOpacity>
+                        {selectedIsPast ? (
+                          <View style={styles.iconSpacer} />
+                        ) : (
+                          <TouchableOpacity
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                            onPress={() => addOverrideRange(selectedModifyDate)}
+                          >
+                            <Feather
+                              name="plus-circle"
+                              size={22}
+                              color={primary[400]}
+                            />
+                          </TouchableOpacity>
+                        )}
                         <View style={styles.iconSpacer} />
                       </View>
                     )}
@@ -1245,7 +1420,7 @@ export default function ScheduleScreen() {
         message="Turning this off will hide your service from customers. Are you sure you want to continue?"
         confirmLabel="Yes, turn off"
         cancelLabel="Cancel"
-        onConfirm={confirmTurnOff}
+        onConfirm={confirmToggleAvailability}
         onCancel={cancelTurnOff}
       />
 
@@ -1255,8 +1430,17 @@ export default function ScheduleScreen() {
         message="Turning this on will make your service visible to customers. Continue?"
         confirmLabel="Yes, turn on"
         cancelLabel="Cancel"
-        onConfirm={confirmTurnOn}
+        onConfirm={confirmToggleAvailability}
         onCancel={cancelTurnOn}
+      />
+
+      <ConfirmModal
+        visible={errorMessage !== null}
+        type="error"
+        title="Something went wrong"
+        message={errorMessage ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setErrorMessage(null)}
       />
 
       <ConfirmModal

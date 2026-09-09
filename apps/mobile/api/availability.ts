@@ -104,6 +104,10 @@ export async function saveAvailability(
     method: "POST",
     body,
   });
+  console.log(
+    "[availability] POST /availability/save response:",
+    JSON.stringify(data, null, 2),
+  );
   return normalizeAvailability(data);
 }
 
@@ -170,5 +174,9 @@ export async function saveDateAvailability(
     method: "POST",
     body,
   });
+  console.log(
+    "[availability] POST /date-availability response:",
+    JSON.stringify(data, null, 2),
+  );
   return normalizeDateAvailability(data);
 }

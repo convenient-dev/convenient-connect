@@ -37,6 +37,11 @@ interface SearchableSelectProps {
    * selected country changes, the state list must be reloaded).
    */
   reloadKey?: string | number;
+  /**
+   * Replaces the default label + input trigger. Call `open` to show the
+   * picker sheet; `label` is still used as the sheet title.
+   */
+  renderTrigger?: (open: () => void) => React.ReactNode;
 }
 
 export function SearchableSelect({
@@ -49,6 +54,7 @@ export function SearchableSelect({
   disabled = false,
   disabledHint,
   reloadKey,
+  renderTrigger,
 }: SearchableSelectProps) {
   const [visible, setVisible] = useState(false);
   const [search, setSearch] = useState("");
@@ -94,20 +100,34 @@ export function SearchableSelect({
 
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>
-        {label} {required && <Text style={styles.required}>*</Text>}
-      </Text>
-      <TouchableOpacity
-        style={[styles.input, disabled && styles.inputDisabled]}
-        activeOpacity={0.7}
-        onPress={open}
-        disabled={disabled}
-      >
-        <Text style={value ? styles.inputValue : styles.inputPlaceholder}>
-          {value ? value.name : disabled && disabledHint ? disabledHint : placeholder}
-        </Text>
-        <MaterialIcons name="arrow-drop-down" size={22} color={neutral[500]} />
-      </TouchableOpacity>
+      {renderTrigger ? (
+        renderTrigger(open)
+      ) : (
+        <>
+          <Text style={styles.label}>
+            {label} {required && <Text style={styles.required}>*</Text>}
+          </Text>
+          <TouchableOpacity
+            style={[styles.input, disabled && styles.inputDisabled]}
+            activeOpacity={0.7}
+            onPress={open}
+            disabled={disabled}
+          >
+            <Text style={value ? styles.inputValue : styles.inputPlaceholder}>
+              {value
+                ? value.name
+                : disabled && disabledHint
+                  ? disabledHint
+                  : placeholder}
+            </Text>
+            <MaterialIcons
+              name="arrow-drop-down"
+              size={22}
+              color={neutral[500]}
+            />
+          </TouchableOpacity>
+        </>
+      )}
 
       <Modal
         visible={visible}

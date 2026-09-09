@@ -8,13 +8,17 @@ import {
   toggleAvailabilityStatus,
   type AvailabilitySaveRequest,
   type AvailabilityTimezone,
-} from "@/api/schedule";
+} from "@/api/availability";
 import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
 import { CardGrid } from "@/components/CardGrid";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import {
+  SearchableSelect,
+  type SelectOption,
+} from "@/components/SearchableSelect";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -152,7 +156,9 @@ function emptyDayRanges(): Record<DayKey, HourRange[]> {
   return obj;
 }
 
-// Prefer the device timezone when the provider hasn't picked one yet.
+// Preselect the device timezone when the provider hasn't picked one yet.
+// Returns null when the device zone isn't in the list so the UI shows
+// "Select timezone" instead of silently picking an arbitrary entry.
 function pickDefaultTimezone(
   timezones: AvailabilityTimezone[],
 ): AvailabilityTimezone | null {
@@ -162,9 +168,8 @@ function pickDefaultTimezone(
   } catch {
     deviceZone = undefined;
   }
-  return (
-    timezones.find((tz) => tz.timezone === deviceZone) ?? timezones[0] ?? null
-  );
+  if (!deviceZone) return null;
+  return timezones.find((tz) => tz.timezone === deviceZone) ?? null;
 }
 
 type BookingStatus = "active" | "completed" | "pending" | "cancelled";
@@ -240,6 +245,7 @@ export default function ScheduleScreen() {
   const [dayIdByKey, setDayIdByKey] = useState<Partial<Record<DayKey, number>>>(
     {},
   );
+  const [timezones, setTimezones] = useState<AvailabilityTimezone[]>([]);
   const [timezoneId, setTimezoneId] = useState<number | null>(null);
   const [timezoneName, setTimezoneName] = useState<string | null>(null);
   const [weeklyDirty, setWeeklyDirty] = useState(false);
@@ -304,6 +310,7 @@ export default function ScheduleScreen() {
             }
           }
           setDayIdByKey(idByKey);
+          setTimezones(timezones);
 
           const applyToAll = data.apply_to_all ?? false;
           const sharedSlots = data.slots ?? [];
@@ -410,18 +417,53 @@ export default function ScheduleScreen() {
       });
   }, [selectedModifyDate, loading]);
 
+  // The timezone list is fetched once on load; the select filters it locally.
+  const loadTimezoneOptions = useCallback(
+    async (search: string): Promise<SelectOption[]> => {
+      const q = search.toLowerCase();
+      return timezones
+        .filter(
+          (tz) =>
+            typeof tz.id === "number" &&
+            (!q ||
+              tz.timezone?.toLowerCase().includes(q) ||
+              tz.country_name?.toLowerCase().includes(q)),
+        )
+        .map((tz) => ({
+          id: tz.id as number,
+          name: tz.country_name
+            ? `${tz.timezone} (${tz.country_name})`
+            : (tz.timezone ?? ""),
+        }));
+    },
+    [timezones],
+  );
+
+  function handleTimezoneSelect(option: SelectOption) {
+    if (option.id === timezoneId) return;
+    const tz = timezones.find((t) => t.id === option.id);
+    attemptWeeklyChange(() => {
+      setTimezoneId(option.id);
+      setTimezoneName(tz?.timezone ?? option.name);
+    });
+  }
+
   function hasOverrides(): boolean {
     return (
       overrideDays.length > 0 || Object.keys(overrideRangesByDate).length > 0
     );
   }
 
+  // Saving the weekly schedule is a full replace on the server and deletes
+  // every date override. We can only see overrides fetched this session (no
+  // list endpoint), so always warn before the first weekly change, and again
+  // whenever we know overrides exist locally.
   function attemptWeeklyChange(action: () => void) {
     const run = () => {
       setWeeklyDirty(true);
       action();
     };
-    if (hasOverrides()) {
+    if (!weeklyDirty || hasOverrides()) {
       pendingWeeklyActionRef.current = run;
       setConfirmClearOverridesVisible(true);
     } else {
@@ -430,8 +472,8 @@ export default function ScheduleScreen() {
   }
 
   function confirmClearOverrides() {
-    // TODO: no endpoint deletes date overrides, so this only clears them
-    // locally. Overrides already saved on the server will still apply.
+    // Only local state is cleared here; the server-side overrides are removed
+    // by the weekly save that follows (see attemptWeeklyChange).
     setOverrideDays([]);
     setOverrideRangesByDate({});
     setDirtyOverrideDates(new Set());
@@ -636,19 +678,22 @@ export default function ScheduleScreen() {
   }
 
   async function handleSave() {
+    const dirtyDates = Array.from(dirtyOverrideDates);
+    // Nothing changed: don't hit the weekly save, since it would wipe every
+    // date override on the server.
+    if (!weeklyDirty && dirtyDates.length === 0) {
+      router.back();
+      return;
+    }
+
     if (timezoneId == null) {
       setErrorMessage("Please choose a timezone before saving.");
       return;
     }
 
-    const dirtyDates = Array.from(dirtyOverrideDates);
-    // Always save the weekly schedule when nothing else changed so "Save"
-    // still persists the current form state.
-    const shouldSaveWeekly = weeklyDirty || dirtyDates.length === 0;
-
     setSaving(true);
     try {
-      if (shouldSaveWeekly) {
+      if (weeklyDirty) {
         const body = buildWeeklySaveBody(timezoneId);
         if (!body) {
           setErrorMessage("Could not resolve the selected days. Please reload.");
@@ -997,16 +1042,31 @@ export default function ScheduleScreen() {
 
                 <View style={styles.divider} />
 
-                <View style={styles.timezoneRow}>
-                  <Text style={styles.timezoneLabel}>
-                    {timezoneName ?? "Select timezone"}
-                  </Text>
-                  {/* TODO: timezone picker UI — options come from
-                      listAvailabilityTimezones() in @/api/schedule. */}
-                  <TouchableOpacity hitSlop={8} activeOpacity={0.7}>
-                    <Feather name="edit-2" size={16} color={primary[400]} />
-                  </TouchableOpacity>
-                </View>
+                <SearchableSelect
+                  label="Timezone"
+                  placeholder="Search timezone"
+                  value={
+                    timezoneId != null
+                      ? { id: timezoneId, name: timezoneName ?? "" }
+                      : null
+                  }
+                  loadOptions={loadTimezoneOptions}
+                  onSelect={handleTimezoneSelect}
+                  renderTrigger={(open) => (
+                    <View style={styles.timezoneRow}>
+                      <Text style={styles.timezoneLabel}>
+                        {timezoneName ?? "Select timezone"}
+                      </Text>
+                      <TouchableOpacity
+                        hitSlop={8}
+                        activeOpacity={0.7}
+                        onPress={open}
+                      >
+                        <Feather name="edit-2" size={16} color={primary[400]} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
 
                 <View style={styles.hoursSection}>
                   {sameHours

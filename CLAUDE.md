@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-ConvenientConnect — an npm-workspaces monorepo:
+ConvenientConnect — a repo with two independent apps (no root `package.json`; each app has its own `node_modules` and lockfile):
 
 - `apps/mobile` — the product: an Expo (React Native) app using Expo Router. Uses `expo-dev-client`, so it runs as a native development build, not Expo Go.
 - `apps/web` — a **temporary** Next.js backend (Prisma + Supabase + Stripe Connect) that will eventually be removed. The real backend is a hosted Laravel API. Prefer the Laravel API for new mobile work; only touch `apps/web` to keep not-yet-migrated screens working.
 
-Root `package.json` pins `react` 19.1.0 and `react-native` 0.81.5 via `overrides`. There is no test suite.
+`apps/mobile/package.json` pins `react` 19.1.0 and `react-native` 0.81.5 via `overrides`. There is no test suite.
 
 ## Commands
 
-Install from the repo root: `npm install`.
+Install per app: run `npm install` inside `apps/mobile` (and inside `apps/web` if you need the legacy backend). Do not run npm from the repo root.
 
 ### Mobile (`apps/mobile`)
 

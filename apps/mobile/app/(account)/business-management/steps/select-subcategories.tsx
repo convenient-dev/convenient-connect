@@ -2,26 +2,17 @@ import { getBusinessForEdit, updateBusinessProfile } from "@/api/business";
 import { getServiceCategories } from "@/api/services";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { IconGrid } from "@/components/IconGrid";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background } = Colors;
-
-const NUM_COLUMNS = 4;
+const { primary, text, background } = Colors;
 
 interface Subcategory {
   id: number;
@@ -53,42 +44,6 @@ interface ModalState {
   message: string;
   confirmLabel: string;
   onConfirm?: () => void;
-}
-
-function SubcategoryItem({
-  item,
-  selected,
-  onPress,
-}: {
-  item: Subcategory;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.cell, selected && styles.cellSelected]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
-      >
-        {item.iconUrl && (
-          <ExpoImage
-            source={{ uri: item.iconUrl }}
-            style={styles.icon}
-            contentFit="contain"
-          />
-        )}
-      </View>
-      <Text
-        style={[styles.cellLabel, selected && styles.cellLabelSelected]}
-        numberOfLines={2}
-      >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
 }
 
 export default function SelectSubcategoriesScreen() {
@@ -173,12 +128,12 @@ export default function SelectSubcategoriesScreen() {
     showLoadError,
   ]);
 
-  const isSelected = (id: number) => selected.some((s) => s.id === id);
-
-  function toggle(subcategory: Subcategory) {
+  function toggle(id: number) {
+    const subcategory = subcategories.find((s) => s.id === id);
+    if (!subcategory) return;
     setSelected((prev) =>
-      prev.some((s) => s.id === subcategory.id)
-        ? prev.filter((s) => s.id !== subcategory.id)
+      prev.some((s) => s.id === id)
+        ? prev.filter((s) => s.id !== id)
         : [...prev, subcategory],
     );
   }
@@ -218,7 +173,8 @@ export default function SelectSubcategoriesScreen() {
       setModal({
         type: "error",
         title: "Error",
-        message: error?.message || "Failed to update services. Please try again.",
+        message:
+          error?.message || "Failed to update services. Please try again.",
         confirmLabel: "OK",
       });
     } finally {
@@ -261,19 +217,10 @@ export default function SelectSubcategoriesScreen() {
           style={styles.loader}
         />
       ) : (
-        <FlatList
-          data={subcategories}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={NUM_COLUMNS}
-          contentContainerStyle={[styles.grid, contentWidthStyle]}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <SubcategoryItem
-              item={item}
-              selected={isSelected(item.id)}
-              onPress={() => toggle(item)}
-            />
-          )}
+        <IconGrid
+          items={subcategories}
+          selectedIds={selected.map((s) => s.id)}
+          onSelect={toggle}
         />
       )}
 
@@ -322,50 +269,6 @@ const styles = StyleSheet.create({
   },
   loader: {
     flex: 1,
-  },
-  grid: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  cell: {
-    flex: 1,
-    position: "relative",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 6,
-    borderRadius: 10,
-    margin: 2,
-  },
-  cellSelected: {
-    backgroundColor: primary[50],
-  },
-  iconWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: background.subtle,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  iconWrapperSelected: {
-    backgroundColor: primary[50],
-  },
-  icon: {
-    width: 44,
-    height: 44,
-  },
-  cellLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: neutral[600],
-    textAlign: "center",
-    lineHeight: 14,
-  },
-  cellLabelSelected: {
-    color: primary[500],
-    fontWeight: "600",
   },
   footer: {
     paddingHorizontal: 20,

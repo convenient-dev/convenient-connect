@@ -28,10 +28,12 @@ my-app/
 
 ## Getting Started
 
-Install dependencies from the repo root:
+Each app installs its own dependencies. There is no root `package.json`, so run npm inside the app folder:
 
 ```bash
-npm install
+cd apps/mobile && npm install
+# only if you need the temporary Next.js backend:
+cd apps/web && npm install
 ```
 
 ## Environment Variables

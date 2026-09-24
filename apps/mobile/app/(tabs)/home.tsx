@@ -4,7 +4,6 @@ import {
   type Address,
   type ResolvedLocation,
 } from "@/api/address";
-import { getUserServices } from "@/api/legacy";
 import bookingsData from "@/assets/data/bookings.json";
 import { useAuth } from "@/auth/AuthContext";
 import { AddressModal } from "@/components/AddressModal";
@@ -125,9 +124,7 @@ export default function HomeScreen() {
         firstName: authUser.user.user_fname ?? "",
         lastName: authUser.user.user_lname ?? "",
         avatarUrl: authUser.profileImage,
-        accountType: authUser.providerType ?? "",
-        isPersonVerified: authUser.backgroundVerification,
-        isBusinessVerified: authUser.businessVerification,
+        backgroundVerification: authUser.backgroundVerification,
       }
     : null;
 
@@ -135,7 +132,7 @@ export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-  const [acceptedRequests, setAcceptedRequests] = useState<Set<string>>(
+  const [acceptedRequests] = useState<Set<string>>(
     new Set(),
   );
 
@@ -184,9 +181,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!authUser?.user.user_id) return;
-    getUserServices(authUser.user.user_id, false)
-      .then((data: MyServiceCardData[]) => setServices(data ?? []))
-      .catch(() => {});
+    // TODO: legacy API removed — implement getUserServices via Laravel API
+    console.log("TODO: implement getUserServices via Laravel API", {
+      userId: authUser.user.user_id,
+    });
+    setServices([]);
   }, [authUser?.user.user_id]);
 
   const handleBannerScroll = (event: any) => {
@@ -219,10 +218,7 @@ export default function HomeScreen() {
                 style={styles.avatar}
                 contentFit="cover"
               />
-              {((user?.accountType === "individual" &&
-                user?.isPersonVerified) ||
-                (user?.accountType === "business" &&
-                  user?.isBusinessVerified)) && (
+              {user?.backgroundVerification === "Verified" && (
                 <ExpoImage
                   source={require("@/assets/global-icons/verified.svg")}
                   style={styles.avatarBadge}
@@ -406,9 +402,7 @@ export default function HomeScreen() {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 avatarUrl: user.avatarUrl,
-                accountType: user.accountType,
-                isPersonVerified: user.isPersonVerified,
-                isBusinessVerified: user.isBusinessVerified,
+                backgroundVerification: user.backgroundVerification,
               }
             : null
         }

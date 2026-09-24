@@ -51,7 +51,7 @@ export default function ConfirmEmailOtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
-  const inputs = useRef<Array<TextInput | null>>([]);
+  const inputs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -179,14 +179,11 @@ export default function ConfirmEmailOtpScreen() {
                 const result = await confirmEmail(email, digits.join(""));
                 await login(result.accessToken, {
                   user: result.user,
-                  providerType: result.providerType,
                   profileImage: result.profileImage,
                   backgroundVerification: result.backgroundVerification,
-                  businessVerification: result.businessVerification,
                 });
 
                 // Check if user has completed profile by checking if they have both names.
-                // We can't rely on providerType since the backend doesn't always set it.
                 const hasCompletedProfile =
                   !!result.user.user_fname?.trim() &&
                   !!result.user.user_lname?.trim();
@@ -218,7 +215,7 @@ export default function ConfirmEmailOtpScreen() {
 
       <ConfirmModal
         visible={modal !== null}
-        icon={modal?.icon ?? "alert"}
+        icon={modal?.icon ?? "warning"}
         title={modal?.title ?? ""}
         message={modal?.message ?? ""}
         confirmLabel="Okay"

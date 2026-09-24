@@ -6,7 +6,6 @@ import {
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
 import { useCurrentUser } from "@/constants/session";
-import { getUserServices } from "@/api/legacy";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -114,9 +113,12 @@ export default function ServicesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      getUserServices(userId, false)
-        .then((data: Service[]) => setServices(data))
-        .finally(() => setLoading(false));
+      // TODO: legacy API removed — implement getUserServices via Laravel API
+      console.log("TODO: implement getUserServices via Laravel API", {
+        userId,
+      });
+      setServices([]);
+      setLoading(false);
     }, [userId]),
   );
 

@@ -1,14 +1,17 @@
-import { getUserCategories } from "@/api/legacy";
 import { getAboutMe } from "@/api/profile";
+import {
+  getCategoryLogoIndex,
+  lookupCategoryLogo,
+  type CategoryLogoIndex,
+} from "@/api/services";
 import { useAuth } from "@/auth/AuthContext";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -26,24 +29,11 @@ interface UserProfile {
   lastName: string | null;
   email: string | null;
   phoneNumber: string | null;
-  isPersonVerified: boolean;
   emailVerified?: boolean;
   phoneVerified?: boolean;
   avatarUrl: string | null;
-  accountType: "individual" | "business" | string;
-  backgroundCheckStatus?: "complete" | "pending" | "incomplete" | string;
+  backgroundVerification: "Pending" | "Verified" | "Not Verified";
   aboutMe?: string | null;
-  // Set after the user starts the background-check flow. The Stripe Connect
-  // account is the source of truth for "background check complete" — if
-  // present, we fetch its live status below instead of trusting any cached
-  // field on the user row.
-  stripeAccountId?: string | null;
-}
-
-interface StripeAccountStatus {
-  readyToReceivePayments: boolean;
-  onboardingComplete: boolean;
-  requirementsStatus: string | null;
 }
 
 interface UserCategory {
@@ -120,11 +110,15 @@ export default function ProfileScreen() {
   const { user: authUser } = useAuth();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoryLogos, setCategoryLogos] = useState<CategoryLogoIndex>({});
   const [aboutMe, setAboutMe] = useState<string | null>(null);
-  const [stripeStatus, setStripeStatus] = useState<StripeAccountStatus | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getCategoryLogoIndex()
+      .then(setCategoryLogos)
+      .catch(() => {});
+  }, []);
 
   const user: UserProfile | null = authUser
     ? {
@@ -132,13 +126,11 @@ export default function ProfileScreen() {
         lastName: authUser.user.user_lname ?? null,
         email: authUser.user.user_email ?? null,
         phoneNumber: authUser.user.user_contact ?? null,
-        isPersonVerified: authUser.backgroundVerification,
         emailVerified: authUser.user.email_verified,
         phoneVerified: authUser.user.phone_verified,
         avatarUrl: authUser.profileImage,
-        accountType: authUser.providerType ?? "individual",
+        backgroundVerification: authUser.backgroundVerification,
         aboutMe,
-        stripeAccountId: null,
       }
     : null;
 
@@ -157,10 +149,12 @@ export default function ProfileScreen() {
         return;
       }
       setLoading(true);
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 5000),
+      // TODO: legacy API removed — implement getUserCategories via Laravel API
+      console.log(
+        "TODO: implement getUserCategories via Laravel API",
+        authUser.user.user_id,
       );
-      Promise.race([getUserCategories(authUser.user.user_id), timeout])
+      Promise.resolve<UserCategory[]>([])
         .then((cats: UserCategory[]) => {
           setCategories((cats ?? []).map((c) => c.name));
         })
@@ -193,11 +187,17 @@ export default function ProfileScreen() {
     );
   }
 
-  const backgroundComplete = authUser?.backgroundVerification ?? false;
+  const backgroundStatus = user?.backgroundVerification ?? "Pending";
 
-  const backgroundLabel = backgroundComplete
-    ? "Background check complete"
-    : "Please complete your background check";
+  const backgroundLabel =
+    backgroundStatus === "Verified"
+      ? "Background check verified"
+      : backgroundStatus === "Pending"
+        ? "Background check pending"
+        : "Background check not verified";
+
+  const backgroundIcon =
+    backgroundStatus === "Verified" ? "verified" : ("warning" as const);
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -205,7 +205,7 @@ export default function ProfileScreen() {
         title="My Profile"
         onBack={handleBack}
         titleAccessory={
-          user?.isPersonVerified ? (
+          user?.backgroundVerification === "Verified" ? (
             <ExpoImage
               source={require("@/assets/global-icons/verified.svg")}
               style={styles.headerBadge}
@@ -250,12 +250,21 @@ export default function ProfileScreen() {
 
         {categories.length > 0 && (
           <View style={styles.chipsRow}>
-            {categories.map((c) => (
-              <View key={c} style={styles.chip}>
-                <CategoryIcon name={c} size={14} />
-                <Text style={styles.chipText}>{titleCase(c)}</Text>
-              </View>
-            ))}
+            {categories.map((c) => {
+              const logo = lookupCategoryLogo(categoryLogos, c);
+              return (
+                <View key={c} style={styles.chip}>
+                  {logo && (
+                    <ExpoImage
+                      source={{ uri: logo }}
+                      style={styles.chipIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text style={styles.chipText}>{titleCase(c)}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -308,7 +317,7 @@ export default function ProfileScreen() {
             label="Background Check"
             value={backgroundLabel}
             valueMuted
-            trailingIcon={backgroundComplete ? "verified" : "warning"}
+            trailingIcon={backgroundIcon}
             onPress={() => router.push("/background-check/step-1")}
           />
           <View style={styles.rowDivider} />
@@ -399,6 +408,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: primary[100],
+  },
+  chipIcon: {
+    width: 14,
+    height: 14,
   },
   chipText: {
     fontSize: 12,

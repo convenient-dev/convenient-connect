@@ -36,7 +36,6 @@ export default function EditAvatarScreen() {
 
   useEffect(() => {
     pickFromLibrary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function pickFromLibrary() {

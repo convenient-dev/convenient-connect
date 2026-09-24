@@ -1,6 +1,5 @@
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { useCurrentUser } from "@/constants/session";
-import { getUserAffiliations } from "@/api/legacy";
 import { Button } from "@/components/Button";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
@@ -62,13 +61,12 @@ export default function CreateServiceScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getUserAffiliations(userId)
-      .then((businesses: { id: number; name: string }[]) => {
-        setBusinessOptions(
-          businesses.map((b) => ({ id: String(b.id), label: b.name })),
-        );
-      })
-      .finally(() => setLoading(false));
+    // TODO: legacy API removed — implement getUserAffiliations via Laravel API
+    console.log("TODO: implement getUserAffiliations via Laravel API", {
+      userId,
+    });
+    setBusinessOptions([]);
+    setLoading(false);
   }, [userId]);
 
   const canProceed = selected !== null;
@@ -97,7 +95,7 @@ export default function CreateServiceScreen() {
         {/* Title */}
         <Text style={styles.title}>How You Want to Offer This Service</Text>
         <Text style={styles.subtitle}>
-          Select a business you're affiliated with, or choose to work
+          Select a business you&apos;re affiliated with, or choose to work
           independently.
         </Text>
 

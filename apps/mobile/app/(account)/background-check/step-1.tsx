@@ -23,7 +23,7 @@ export default function OnboardingBackgroundCheckScreen() {
   const router = useRouter();
   const { user: authUser } = useAuth();
   const verified =
-    authUser?.backgroundVerification || authUser?.businessVerification || false;
+    authUser?.backgroundVerification === "Verified";
 
   function handleAccept() {
     router.push("/background-check/step-2");

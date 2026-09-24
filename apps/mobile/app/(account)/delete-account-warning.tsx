@@ -17,9 +17,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { secondary, neutral, text, background } = Colors;
 
 const BULLETS = [
-  "This action is permanent",
-  "All your data will be deleted",
-  "You will lose access immediately",
+  "This will only delete your ConvenientConnect account",
+  "You can recover your account within 30 days after that, it will be permanently deleted",
+  "To delete all your data, delete your account in ConvenientApp",
 ];
 
 export default function DeleteAccountWarningScreen() {
@@ -49,14 +49,6 @@ export default function DeleteAccountWarningScreen() {
               <Text style={styles.bulletText}>{bullet}</Text>
             </View>
           ))}
-          <View style={styles.bulletRow}>
-            <Text style={styles.bulletDot}>{"•"}</Text>
-            <Text style={styles.bulletText}>
-              You can recover your account within{" "}
-              <Text style={styles.bulletHighlight}>30 days</Text> after that,
-              it will be permanently deleted.
-            </Text>
-          </View>
         </View>
 
         <TouchableOpacity

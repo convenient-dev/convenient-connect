@@ -1,18 +1,11 @@
 import { Button } from "@/components/Button";
-import { CategoryIcon } from "@/components/CategoryIcon";
-import { getCategories } from "@/api/legacy";
+import { IconGrid, type IconGridItem } from "@/components/IconGrid";
+import { getServiceCategories } from "@/api/services";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
@@ -20,43 +13,8 @@ const { primary, neutral, background } = Colors;
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
 const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
-const NUM_COLUMNS = 4;
 
-interface Category {
-  id: number;
-  name: string;
-  iconUrl: string;
-}
-
-function CategoryItem({
-  item,
-  selected,
-  onSelect,
-}: {
-  item: Category;
-  selected: boolean;
-  onSelect: (id: number) => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.cell, selected && styles.cellSelected]}
-      onPress={() => onSelect(item.id)}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[styles.iconWrapper, selected && styles.iconWrapperSelected]}
-      >
-        <CategoryIcon name={item.name} size={44} />
-      </View>
-      <Text
-        style={[styles.cellLabel, selected && styles.cellLabelSelected]}
-        numberOfLines={2}
-      >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
-}
+type Category = IconGridItem;
 
 export default function CreateServiceCategoryScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
@@ -72,9 +30,15 @@ export default function CreateServiceCategoryScreen() {
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    getCategories()
+    getServiceCategories()
       .then((data) => {
-        setCategories(data);
+        setCategories(
+          data.map((cat) => ({
+            id: cat.category_id,
+            name: cat.category_name,
+            iconUrl: cat.category_logo,
+          }))
+        );
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -112,19 +76,10 @@ export default function CreateServiceCategoryScreen() {
           <ActivityIndicator size="large" color={primary[400]} />
         </View>
       ) : (
-        <FlatList
-          data={categories}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={NUM_COLUMNS}
-          contentContainerStyle={[styles.grid, contentWidthStyle]}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <CategoryItem
-              item={item}
-              selected={selected === item.id}
-              onSelect={setSelected}
-            />
-          )}
+        <IconGrid
+          items={categories}
+          selectedIds={selected === null ? [] : [selected]}
+          onSelect={setSelected}
         />
       )}
 
@@ -230,47 +185,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  // Grid
-  grid: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  cell: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 6,
-    borderRadius: 10,
-  },
-  cellSelected: {
-    backgroundColor: primary[50],
-  },
-  iconWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: background.subtle,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  iconWrapperSelected: {
-    // borderWidth: 2,
-    // borderColor: primary[400],
-    backgroundColor: primary[50],
-  },
-  cellLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: neutral[600],
-    textAlign: "center",
-    lineHeight: 14,
-  },
-  cellLabelSelected: {
-    color: primary[500],
-    fontWeight: "600",
   },
   // Footer
   footer: {

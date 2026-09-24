@@ -1,12 +1,11 @@
-import { getUserAffiliations } from "@/api/legacy";
+import { listBusinesses, type ProviderBusinessListItem } from "@/api/business";
+import { toAbsoluteUrl } from "@/api/client";
 import { Button } from "@/components/Button";
-import { CategoryIcon } from "@/components/CategoryIcon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
-import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
-import { useBusinessSignup } from "@/contexts/BusinessSignupContext";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -22,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background } = Colors;
+const { primary, neutral, text, background, status } = Colors;
 
 type TabKey = "businesses" | "affiliations";
 
@@ -53,18 +52,29 @@ export default function BusinessManagementScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const { pendingBusinesses } = useBusinessSignup();
   const { userId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<TabKey>(
     tab === "affiliations" ? "affiliations" : "businesses",
   );
+  const [businesses, setBusinesses] = useState<ProviderBusinessListItem[]>([]);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
   const [affiliations, setAffiliations] = useState<Affiliation[]>([]);
   const [loadingAffiliations, setLoadingAffiliations] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
+      setLoadingBusinesses(true);
+      listBusinesses()
+        .then((data) => setBusinesses(data ?? []))
+        .catch(() => setBusinesses([]))
+        .finally(() => setLoadingBusinesses(false));
+
       setLoadingAffiliations(true);
-      getUserAffiliations(userId)
+      // TODO: legacy API removed — implement getUserAffiliations via Laravel API
+      console.log("TODO: implement getUserAffiliations via Laravel API", {
+        userId,
+      });
+      Promise.resolve<Affiliation[]>([])
         .then((data: Affiliation[]) => setAffiliations(data ?? []))
         .catch(() => setAffiliations([]))
         .finally(() => setLoadingAffiliations(false));
@@ -73,11 +83,14 @@ export default function BusinessManagementScreen() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "businesses", label: "My Businesses" },
-    { key: "affiliations", label: "My Affiliations" },
+    { key: "affiliations", label: "My Collaborations" },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top", "bottom"]}
+    >
       <StatusBar style="dark" />
 
       <ScreenHeader title="Business Management" />
@@ -86,7 +99,13 @@ export default function BusinessManagementScreen() {
 
       {activeTab === "businesses" ? (
         <>
-          {pendingBusinesses.length === 0 ? (
+          {loadingBusinesses ? (
+            <ActivityIndicator
+              size="large"
+              color={primary[400]}
+              style={styles.loader}
+            />
+          ) : businesses.length === 0 ? (
             <View style={styles.emptyBody}>
               <ExpoImage
                 source={require("@/assets/global-icons/create-business-icon.png")}
@@ -100,30 +119,63 @@ export default function BusinessManagementScreen() {
               contentContainerStyle={[styles.listContent, contentWidthStyle]}
               showsVerticalScrollIndicator={false}
             >
-              {pendingBusinesses.map((business) => (
+              {businesses.map((business) => (
                 <TouchableOpacity
-                  key={business.id}
+                  key={business.business_id}
                   style={styles.businessRow}
                   activeOpacity={0.7}
                   onPress={() =>
                     router.push({
                       pathname: "/business-management/[id]",
-                      params: { id: String(business.id) },
+                      params: { id: String(business.business_id) },
                     })
                   }
                 >
                   <View style={styles.businessInfo}>
-                    <Text style={styles.businessName} numberOfLines={1}>
-                      {business.name}
-                    </Text>
-                    <View style={styles.chipRow}>
-                      {business.categories.map((category) => (
-                        <View key={category} style={styles.chip}>
-                          <CategoryIcon name={category} size={18} />
-                          <Text style={styles.chipText}>{category}</Text>
-                        </View>
-                      ))}
+                    <View style={styles.nameRow}>
+                      <Text style={styles.businessName} numberOfLines={1}>
+                        {business.business_name}
+                      </Text>
+                      <MaterialIcons
+                        name={
+                          business.business_verification
+                            ? "check-circle"
+                            : "error"
+                        }
+                        size={14}
+                        color={
+                          business.business_verification
+                            ? status.active
+                            : status.error
+                        }
+                      />
                     </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chipRow}
+                    >
+                      {(business.services ?? []).map((service) => {
+                        const logo = toAbsoluteUrl(service.sub_category_logo);
+                        return (
+                          <View
+                            key={service.sub_category_id}
+                            style={styles.chip}
+                          >
+                            {logo && (
+                              <ExpoImage
+                                source={{ uri: logo }}
+                                style={styles.chipIcon}
+                                contentFit="contain"
+                              />
+                            )}
+                            <Text style={styles.chipText}>
+                              {service.sub_category_name}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
                   <MaterialIcons
                     name="chevron-right"
@@ -140,10 +192,7 @@ export default function BusinessManagementScreen() {
               title="Create Business"
               variant="secondary"
               size="lg"
-              icon={<MaterialIcons name="add" size={22} color={Colors.neutral[0]} />}
-              onPress={() =>
-                router.push("/business-management/business-details")
-              }
+              onPress={() => router.push("/business-management/create")}
             />
           </View>
         </>
@@ -156,12 +205,12 @@ export default function BusinessManagementScreen() {
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={[styles.affiliationListContent, contentWidthStyle]}
+          contentContainerStyle={[
+            styles.affiliationListContent,
+            contentWidthStyle,
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.subtitle}>
-            Businesses you&apos;re currently affiliated with
-          </Text>
           {affiliations.length === 0 ? (
             <View style={styles.emptyState}>
               <ExpoImage
@@ -242,7 +291,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   businessName: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: "600",
     color: text.primary,
@@ -250,8 +305,7 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    gap: 6,
   },
   chip: {
     flexDirection: "row",
@@ -262,8 +316,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: primary[50],
   },
+  chipIcon: {
+    width: 18,
+    height: 18,
+  },
   chipText: {
-    fontSize: 14,
+    fontSize: 12,
     color: text.primary,
     letterSpacing: -0.408,
   },

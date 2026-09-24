@@ -38,7 +38,7 @@ function IconGridCell({
 }) {
   return (
     <TouchableOpacity
-      style={[styles.cell, selected && styles.cellSelected]}
+      style={[styles.cell]}
       onPress={() => onSelect(item.id)}
       activeOpacity={0.7}
     >

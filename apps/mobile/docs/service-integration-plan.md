@@ -69,13 +69,14 @@ integrated in `api/availability.ts` and are out of scope.
 
 Everything else depends on this phase.
 
-- [ ] **0.1** Extend `api/client.ts`.
+- [x] **0.1** Extend `api/client.ts`. Done 2026-09-28: `laravelFetchWithMeta`, `ApiError.data`,
+  `isCommercialPublishabilityError`, `getPublishabilityFieldMessages`, `buildQuery`.
   - Add a variant (or option) that returns `{ data, meta }` for paginated endpoints.
   - Attach the error envelope's `data` to `ApiError` so callers can detect
     `type === "commercial_publishability"` and read `errors`.
   - Surface the suspended-provider `403` message unchanged.
-- [ ] **0.2** Create `api/service-management.ts`, typed from the generated schemas, with
-  one function per endpoint:
+- [x] **0.2** Create `api/service-management.ts`, typed from the generated schemas, with
+  one function per endpoint. Done 2026-09-28.
 
   | Function | Endpoint |
   |---|---|
@@ -98,7 +99,8 @@ Everything else depends on this phase.
   | `deleteService(id, body)` | `DELETE /services/{id}` |
 
   Resolve every returned `/storage/...` path with `toAbsoluteUrl`.
-- [ ] **0.3** Add a multipart builder helper (`api/multipart.ts` or similar).
+- [x] **0.3** Add a multipart builder helper. Done 2026-09-28 as `api/multipart.ts`
+  (`buildFormData`, `appendMultipart`, `appendDynamicFiles`).
   - Append arrays with the `[]` suffix (`fulfillment_type_ids[]`, `portfolio_images[]`).
   - JSON-encode `answers_json` as one string.
   - Pair `dynamic_file_keys[]` and `dynamic_files[]` by index, repeating the key once
@@ -107,24 +109,26 @@ Everything else depends on this phase.
 
 ### Phase 0 verification
 
-- [ ] `npx tsc --noEmit -p .` passes with the new module and client changes.
-- [ ] Contract check: for every function in `api/service-management.ts`, the path,
+- [x] `npx tsc --noEmit -p .` passes with the new module and client changes. (2026-09-28)
+- [x] Contract check: for every function in `api/service-management.ts`, the path,
   method, query names, and body keys match `api-doc.json`. Re-run the spec dump used
   during the endpoint audit and compare by hand. Any mismatch is reported, not
   papered over.
-- [ ] Paginated fetch returns `meta.total`, `meta.current_page`, and `meta.last_page`
-  for `GET /services?per_page=1` against UAT. The non-paginated fetch still returns
+- [x] Paginated fetch returns `meta.total`, `meta.current_page`, and `meta.last_page`
+  for `GET /services?per_page=1` against UAT. (Verified in Postman 2026-09-28.) The non-paginated fetch still returns
   bare `data` for an existing endpoint such as `GET /auth-user`.
-- [ ] Trigger a `422` publishability failure (activate an incomplete inactive service)
+- [ ] Deferred to Phase 4 UI integration. Trigger a `422` publishability failure (activate an incomplete inactive service)
   and confirm `ApiError.data.type === "commercial_publishability"` and
   `ApiError.data.errors` is populated. Trigger a plain `422` (empty `reason_ids` on
   delete) and confirm `data` is null and `message` is the first validation error.
-- [ ] Multipart builder: log the built `FormData` entries for a fixture with two
+- [x] Multipart builder: log the built `FormData` entries for a fixture with two
   fulfillment ids, one `answers_json` object, two dynamic files under the same key,
   and one boolean. Expect `fulfillment_type_ids[]` twice, a single JSON string for
   `answers_json`, `dynamic_file_keys[]` and `dynamic_files[]` each twice in the same
-  order, and `true` as a string.
-- [ ] A `401` from any new function still clears the token and redirects to login.
+  order, and `true` as a string. (Verified 2026-09-28 with a sucrase-transpiled
+  script and a recording FormData; all ten assertions passed.)
+- [ ] Deferred to Phase 2 UI integration. A `401` from any new function still clears
+  the token and redirects to login.
 
 ## Phase 1: Template engine
 

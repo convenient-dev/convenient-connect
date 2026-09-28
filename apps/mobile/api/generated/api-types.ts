@@ -541,6 +541,8 @@ export interface paths {
         /**
          * Send OTP for permanent account deletion.
          * @description Public endpoint (no bearer token). Sends OTP to the provider email for an account that is already in provider soft-deleted state (provider_profiles.deleted_at is set) but not yet permanently deleted (provider_status != 2). Used after the 30-day grace window approach when the user chooses to permanently delete instead of restoring. OTP type=3, valid 5 minutes.
+         *
+         *     Note: After permanent deletion, the user cannot access any data from the previous account. The same email or phone number may be used later to sign up again as a completely new user; no prior account data is restored.
          */
         post: operations["e76a4e32221dba9028b68e60c53e9528"];
         delete?: never;
@@ -1013,6 +1015,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List request chat threads for the provider
+         * @description Slim inbox rows for the chat list: invitation_id, counterpart name/avatar, service title, last message preview, display time, and unread_count. Open a thread with GET /chats/{invitation_id} for the full conversation. Includes invitations with zero messages. Does not filter by request or invitation status.
+         */
+        get: operations["listProviderChats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/chats/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread request count for the chat tab
+         * @description Returns only unread_total: how many of this provider's requests have at least one unread customer message. One request with several unread messages counts as 1. Does not return inbox rows.
+         */
+        get: operations["getProviderChatUnreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/chats/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one request chat thread, with the original request first
+         * @description Returns the authorized provider's conversation for this invitation. Each page is oldest-to-newest inside the window. Page 1 is the newest per_page messages (default 10, max 100); meta.last_page is the oldest window. Open the thread on page 1 and scroll up for the next page. The original service request is the first message only when current_page is meta.last_page: kind request, sender_role customer, the request text, images the customer uploaded on that request as attachments, and summary (date, start_time, end_time, price, total). It is not on newer pages and it is not counted in meta.total. When the thread fits in one page, that message is first on open. Marks inbound customer messages read. Send is allowed unless the request is cancelled or expired. A provider can only open invitations they own.
+         */
+        get: operations["getProviderChat"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/chats/{invitation_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a chat message on a request invitation
+         * @description Text and/or attachments. Does not change request or invitation status. Send multipart form data when attaching files. source is required with attachments and must be one of camera, gallery, or file. A message uses only one source. camera: one image. gallery: up to 3 images and 1 video. file: up to 2 documents. Images: jpeg, png, webp, gif, 10 MB. Videos: mp4, mov, webm, 100 MB. Documents: pdf, txt, doc, docx, zip, 25 MB. Attachment url is a relative /storage path. A body is required when there are no attachments.
+         */
+        post: operations["sendProviderChatMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/date-availability": {
         parameters: {
             query?: never;
@@ -1031,6 +1113,41 @@ export interface paths {
          * @description Creates or updates single-date availability override without modifying weekly availability.
          */
         post: operations["9c35d72333b190df15955dd2f7419062"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Load the provider home bootstrap payload
+         * @description Authenticated provider home screen bootstrap. No query parameters.
+         *
+         *     **Response sections (data)**
+         *
+         *     1. **my_services** — preview of the provider's own listings (non-deleted). `total` = full count; `items` capped at 8 newest by id.
+         *     2. **provider_promotions** — banners scoped to the provider default address country/state/city and current promotion date window. Returns `items: []` when no default address or no matches.
+         *     3. **new_requests** — new pending request cards. `total` = pending count; `items` capped at 8 newest by invited_at.
+         *
+         *     **Card navigation**
+         *
+         *     Each card's `invitation_id` is the path key for:
+         *     - GET /service-provider/requests/{invitation_id}/chat-context
+         *     - GET /service-provider/requests/{invitation_id}/summary
+         *     - GET /service-provider/requests/{invitation_id}/details
+         *
+         *     Use GET /service-provider/requests when the user opens the full Requests list (paginated, same card shape).
+         */
+        get: operations["getProviderHome"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1149,6 +1266,8 @@ export interface paths {
         /**
          * Send OTP for account deletion.
          * @description Generates a delete-account OTP and delivers it to the requested channel. The authenticated user phone or email is used as the destination based on delivery_type.
+         *
+         *     Note: After permanent deletion, the user cannot access any data from the previous account. The same email or phone number may be used later to sign up again as a completely new user; no prior account data is restored.
          */
         post: operations["d91dd9a94dfff4c0d5370f65ccc0940e"];
         delete?: never;
@@ -1177,6 +1296,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List pending requests for the authenticated provider (paginated)
+         * @description Full Requests screen list. Returns the **same new request card object** as GET /service-provider/home → data.new_requests.items[], but paginated and uncapped.
+         *
+         *     **Sorting**
+         *
+         *     invited_at DESC, then id DESC (newest invitation first).
+         *
+         *     **Pagination**
+         *
+         *     | Query | Default | Rules |
+         *     |-------|---------|-------|
+         *     | page | 1 | integer ≥ 1 |
+         *     | per_page | 10 | integer 1–50 (config max 50). Server clamps out-of-range defaults; invalid query values return 422. |
+         *
+         *     **meta.total** equals home **new_requests.total** for the same provider at the same moment.
+         *
+         *     **Frontend usage**
+         *
+         *     - Render each `data[]` entry using schema **ProviderHomeNewRequestItem**.
+         *     - Use `invitation_id` for chat-context, summary, and details routes.
+         *     - Show `invitation_status` / `request_status` badges from `*_label` fields.
+         *     - When home shows new_requests.total > 8, navigate here for the full list.
+         */
+        get: operations["listProviderRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/chat-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get request chat header context
+         * @description Short customer + service summary shown at the top of the provider chat screen before messages.
+         */
+        get: operations["getProviderRequestChatContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get request summary for provider review
+         * @description Provider summary screen for one invitation. No query parameters.
+         *
+         *     **Stable top-level keys:** invitation_id, request_id, request_number, invitation_status, request_status, header, schedule, request_info, pricing, service_ownership.
+         *
+         *     **request_info — two shapes (important for frontend)**
+         *
+         *     See schema **ProviderRequestSummaryInfoVariantRules**.
+         *
+         *     | Case | title | items[] |
+         *     |------|-------|---------|
+         *     | **Profile-based** (pets, students, vehicles, etc.) | `Request info (N)` | N rows, each with **profile_id**, name, summary_line |
+         *     | **Booking-only** (no profiles) | `Request details` | **One** row, **no profile_id**, name=`Request details`, summary_line=booking field preview |
+         *     | **Empty** | `Request info` | `[]`, count=0, has_detail=false |
+         *
+         *     **Navigation from summary → details**
+         *
+         *     - Row **with** profile_id → `GET /requests/{invitation_id}/details?profile_id={profile_id}`
+         *     - Row **without** profile_id → `GET /requests/{invitation_id}/details`
+         *
+         *     **schedule vs home card**
+         *
+         *     `schedule.drop_off` / `pick_up` use expanded interval labels; `pick_up` may be null for single-window services.
+         */
+        get: operations["getProviderRequestSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get full request info detail
+         * @description Detail screen opened from summary request_info rows. Optional profile filter.
+         *
+         *     **Query**
+         *
+         *     | Param | Required | Effect |
+         *     |-------|----------|--------|
+         *     | profile_id | No | When set, profiles[] returns only that profile. sections[] always returns full booking-level detail. 404 if profile_id not on request. |
+         *
+         *     **Response shape rules — see ProviderRequestDetailsVariantRules**
+         *
+         *     | Case | title | profiles[] | sections[] |
+         *     |------|-------|------------|------------|
+         *     | Profile request, no filter | Request info (N) | N profile blocks | Booking groups (may be non-empty) |
+         *     | Profile request, ?profile_id=X | Request info (1) | Single profile | Booking groups (unchanged) |
+         *     | Booking-only | Request details | [] (empty array) | Booking groups from template answers |
+         *
+         *     **Profile section layouts**
+         *
+         *     - **Pet/dog/cat:** About (about + fields), Socialization (lines), Care (label/value fields) — empty sections omitted
+         *     - **Other profiles:** Details section only
+         *
+         *     **Hidden from provider**
+         *
+         *     Consent groups, acknowledgement checkboxes, and generic seeker note prompts are never returned.
+         */
+        get: operations["getProviderRequestDetails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/services/{id}/candidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate and save complete Provider listing candidate atomically
+         * @description Fetch GET /service-provider/services/{id}/information candidate_template and current_values plus GET /service-provider/services/{id}/pricing. Retain the current immutable service identity. Reevaluate the complete descriptor graph after changes to pricing/unit/format. A newly required execution control remains in its descriptor About/Capability section. This endpoint validates and saves information, pricing, dynamic answers and file changes in one transaction. Failure preserves the prior listing and existing files. Saved answers and publishability are returned using the detail response.
+         */
+        post: operations["updateProviderServiceCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/service-form-template": {
         parameters: {
             query?: never;
@@ -1186,7 +1469,7 @@ export interface paths {
         };
         /**
          * Get resolved service form template
-         * @description Returns frontend-ready flat fields merged from generic, category, and optional matching child templates. Each field includes field_scope and submit_as so clients know whether to send top-level multipart keys, answers_json, dynamic_files, pricing_fields, certificate_bundle values, or display-only fields. The address field is display-only: render the provider default address from GET /service-provider/addresses/default and do not submit address_id. Dynamic textarea values in answers_json are stored verbatim. The only acknowledgement checkbox is the generic information_accuracy_acknowledgement field on the final screen; file-upload fields do not expose separate document-consent checkboxes. Use label for display, is_required/required_when for required indicators, and fulfillment codes for conditions. Individual currency country comes from the provider default customer_addresses.country_id. Business currency country comes from the selected business country_id, and the requested subcategory must be assigned to that business. Currency is fetched through currencies.country_id. Submit service_radius and service_radius_unit separately. Charge in USD is frontend-only: show it only for online_remote when currency_context.can_charge_in_usd is true, and submit only the final currency code.
+         * @description Returns frontend-ready fields merged from generic, category, and optional child templates, plus provider_listing_capability (capability key/version, source taxonomy, canonical owner/alias, business format selectors, unit and fulfillment compatibility, duration/bounds/supported-option controls, and prohibited technical selectors). Submit generic values at the multipart top level, dynamic non-file values in answers_json (including business format and capability controls), and dynamic files with matching dynamic_file_keys[n]/dynamic_files[n]. The address field is display-only: render GET /service-provider/addresses/default and never submit address_id. Provider-location fulfillment requires a configured provider default address before publish. booking_policy is prohibited. Do not render booking_policy_capabilities. Exactly five taxonomy aliases resolve to their canonical owners while retaining source identity: events|catering → culinary|catering, misc|gardening → maintenance|gardening, misc|movers → delivery|movers, music|education → education|skill-based, music|live music → events|live music.
          */
         get: operations["getResolvedServiceFormTemplate"];
         put?: never;
@@ -1206,7 +1489,7 @@ export interface paths {
         };
         /**
          * List active service categories
-         * @description Without business_id, returns all active, non-deleted service categories. With business_id, returns only categories containing at least one active subcategory assigned to that owned active business. The response shape is unchanged and does not include subcategories.
+         * @description Without business_id, returns all active, non-deleted service categories. With business_id, returns only categories containing at least one active subcategory assigned to that owned active business. Alias taxonomy entries (Events/Catering, Misc./Gardening, Misc./Movers, Music/Education, Music/Live Music) remain listed under their source category names. Owner metadata is on the subcategory list.
          */
         get: operations["listProviderServiceCategories"];
         put?: never;
@@ -1226,7 +1509,7 @@ export interface paths {
         };
         /**
          * List active subcategories for one category
-         * @description Without business_id, returns all active, non-deleted subcategories belonging to the supplied active category. With business_id, returns only subcategories in that category which are assigned to the owned active business. The response shape is unchanged.
+         * @description Without business_id, returns all active, non-deleted subcategories belonging to the supplied active category. With business_id, returns only subcategories in that category which are assigned to the owned active business. Each row includes capability.source_key, canonical_owner_key, and is_alias. Aliases keep source identity and resolve the owner contract.
          */
         get: operations["listProviderServiceSubcategories"];
         put?: never;
@@ -1252,7 +1535,7 @@ export interface paths {
         put?: never;
         /**
          * Create a service from the resolved template
-         * @description CREATION FLOW: First call GET /service-provider/service-form-template with category_id, subcategory_id, provider_type, and business_id when applicable. Render its merged Generic -> Category -> optional Subcategory fields. Submit generic configuration.value_key values at the multipart top level, dynamic non-file values in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. When fulfillment includes provider_location or pickup_delivery, the backend snapshots the provider's default customer_addresses record into service_info. category_id and subcategory_id are fixed after creation. New services use status=3 pending_review. Individual currency comes from the provider default address country; business currency comes from the selected owned business country. Submit the final currency code. charge_in_usd is never stored.
+         * @description CREATION FLOW: First call GET /service-provider/service-form-template. Render fields[] and provider_listing_capability. Submit generic values at the multipart top level, dynamic non-file values (including business format selectors such as learner_delivery and capability controls) in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. Provider-location fulfillment snapshots the provider default address. booking_policy, schedule_family, and profile_mode are prohibited and return 422. New services use status=3 pending_review. Commercial publishability is evaluated from business fields, unit/format compatibility, durations, bounds, fulfillment, and provider-location prerequisites.
          */
         post: operations["createProviderService"];
         delete?: never;
@@ -1270,7 +1553,7 @@ export interface paths {
         };
         /**
          * Get complete read-only service details
-         * @description Returns all persisted service details for the Service Details screen. Relations are eager loaded with selected columns to avoid N+1 queries: category/subcategory, provider/business context, service information and location, fulfillment, portfolios, certificates, pricing, and labeled dynamic template answers.
+         * @description Returns persisted service details for the Service Details screen, including provider_listing_capability (source taxonomy, canonical owner/alias, business format, unit/fulfillment compatibility) and commercial publishability issues. Do not treat booking_policy as a public Provider field.
          */
         get: operations["getProviderServiceDetails"];
         put?: never;
@@ -1294,7 +1577,7 @@ export interface paths {
         };
         /**
          * Get Edit Service overview
-         * @description Small payload for the first Edit Service screen. search_setting.is_active mirrors status=1. can_update is true only for active/inactive services. Use the existing status endpoint for the Active toggle. Follow the section endpoints for category, information, and pricing.
+         * @description Small payload for the first Edit Service screen. search_setting.is_active mirrors status=1. can_update is true only for active/inactive services. Use the existing status endpoint for the Active toggle; activation re-runs commercial publishability. Follow the section endpoints for category, information, and pricing. Business format and capability answers are edited through GET/POST /services/{id}/information.
          */
         get: operations["getProviderServiceEditOverview"];
         put?: never;
@@ -1334,13 +1617,13 @@ export interface paths {
         };
         /**
          * Get template-driven service information for editing
-         * @description Returns the current merged template without the pricing field and the saved form values. Render template.fields in order. Generic values come from current_values; category/subcategory dynamic values come from current_values.answers_json. Existing portfolio/certificate IDs are used for optional deletion. Category, subcategory, provider type, business, and pricing are not editable here.
+         * @description Returns the current merged template without the pricing field, current_values, provider_listing_capability, and commercial publishability. Render template.fields in order. Generic values come from current_values; category/subcategory dynamic values and business format selectors come from current_values.answers_json. Booking policy is not inside fields[] and must not be submitted.
          */
         get: operations["getProviderServiceInformation"];
         put?: never;
         /**
          * Update generic and dynamic service information
-         * @description Updates only the fields returned by GET /services/{id}/information. The backend resolves category, subcategory, provider type, business, and template from the stored service. Those fields and all pricing fields are prohibited. Existing files remain unless their IDs are listed for deletion; at least one portfolio image must remain. Dynamic values and files are validated against the currently resolved template.
+         * @description Updates only the fields returned by GET /services/{id}/information. The backend resolves category, subcategory, provider type, business, and template from the stored service. Those fields, all pricing fields, and booking_policy are prohibited. Existing files remain unless their IDs are listed for deletion. Submit business format and capability answers in answers_json. Hidden/stale format controls must be omitted.
          */
         post: operations["updateProviderServiceInformation"];
         delete?: never;
@@ -1358,13 +1641,13 @@ export interface paths {
         };
         /**
          * Get saved service pricing
-         * @description Returns the stored pricing record only. The pricing edit form is fixed on the frontend. fulfillment_codes and charge_in_usd are included as edit hints for USD override display.
+         * @description Returns the stored pricing record, provider_listing_capability (unit/format compatibility), and commercial publishability. The pricing edit form is fixed on the frontend. fulfillment_codes and charge_in_usd are included as edit hints for USD override display. booking_policy is not a pricing field.
          */
         get: operations["getProviderServicePricing"];
         put?: never;
         /**
          * Update service pricing only
-         * @description For fixed_price submit amount, final currency code, and a price_unit_id returned by GET /services/{id}/pricing. For quote_required these fields are optional; any supplied values are validated and stored. Category/subcategory/provider/business and charge_in_usd are prohibited and never changed here. USD is accepted only when the stored service fulfillment and currency context permit it.
+         * @description For fixed_price submit amount, final currency code, and a price_unit_id allowed by GET /services/{id}/pricing provider_listing_capability.formats. Resolve profile_pricing_scope from the selected format's profile_pricing_scope.by_pricing_type[pricing_type][price_unit_code]: submit one allowed value when state=required, optionally submit it when state=optional, and omit it when state=prohibited. A required value has no silent default. For quote_required, amount and currency may be omitted as reference. Category/subcategory/provider/business, charge_in_usd, and booking_policy are prohibited.
          */
         post: operations["updateProviderServicePricing"];
         delete?: never;
@@ -1384,7 +1667,7 @@ export interface paths {
         put?: never;
         /**
          * Toggle the Edit Service Active/Search Setting
-         * @description This endpoint has no request body. It reads the stored service status and toggles 1 (active) to 0 (inactive), or 0 to 1. Pending-review services cannot be changed manually, and deleted services are not accessible through this route.
+         * @description This endpoint has no request body. It reads the stored service status and toggles 1 (active) to 0 (inactive), or 0 to 1. Activating an inactive listing runs ProviderListingPublishabilityValidator. Pending-review services cannot be changed manually. Multiple outstanding commercial issues return 422 with data.type=commercial_publishability.
          */
         post: operations["changeProviderServiceStatus"];
         delete?: never;
@@ -1434,6 +1717,173 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Server-calculated additive Pet pricing snapshot, independent of profile pricing multipliers. Provider listing owns amount; selected validated profiles determine counts. Customer must never write surcharge/fee into top-level payload or answers. */
+        PublicPetAdditivePricing: {
+            /** @enum {string} */
+            field?: "additional_pet_fee" | "additional_pet_surcharge";
+            /** @example 5.00 */
+            amount?: string | null;
+            required?: boolean;
+            /** @enum {string} */
+            authority?: "provider_listing";
+            /** @enum {string} */
+            pet_count_authority?: "validated_selected_profiles";
+            multiply_by_quantity?: boolean;
+            validated_pet_count?: number;
+            additional_pet_count?: number;
+            /** @example 10.00 */
+            additional_pet_charge?: string;
+        } | null;
+        /** @description Recursive v1 predicate: exactly one of all, any, not, or an operand. Null means no condition. Empty all is true; empty any is false. Operands are typed; false and zero are values, not missing. field_key/legacy field reads current scoped answers; context_key reads API context (pricing_type, price_unit_code, schedule_kind, fulfillment_type_code, Provider fulfillment_type_codes array). Derive codes from the API options for selected IDs. Unknown operators are invalid, not truthy. For Provider flat pricing and fulfillment fields the form context includes these keys too. */
+        PublicDescriptorPredicate: {
+            all?: components["schemas"]["PublicDescriptorPredicate"][];
+            any?: components["schemas"]["PublicDescriptorPredicate"][];
+            not?: components["schemas"]["PublicDescriptorPredicate"];
+            field_key?: string;
+            /** @description Legacy spelling of field_key. */
+            field?: string;
+            context_key?: string;
+            /** @enum {string} */
+            operator?: "equals" | "not_equals" | "in" | "not_in" | "empty" | "not_empty" | "contains" | "not_contains" | "contains_any" | "less_than" | "greater_than";
+            value?: (string | number | boolean) | null;
+            values?: (string | number | boolean)[];
+        } | null;
+        /** @description Additive descriptor v1 for existing controls. Render fields and their validation errors on descriptor.step/section rather than inferring placement from taxonomy names, IDs, or field names. Provider fields whose applicability depends on pricing authority are placed in Pricing; fulfillment-only dependencies are placed in Fulfillment / Location. Applicability restricts base requiredness: invisible or prohibited means omit on write; required_when adds requiredness only when applicable. read_only/server values cannot be submitted. Null payload_path means no single wire path: read-only values have no write path, while writable composite/file controls use transport. Canonical owner determines alias field keys, scopes, predicates, options and descriptors. Source identity may have different display labels. Current canonical schema replaces stale persisted template fields; historical request snapshots are not rewritten. */
+        PublicFieldDescriptor: {
+            /** @enum {integer} */
+            version: 1;
+            key: string;
+            /** @description Wire path; profiles.*.answers uses the current profile index. Provider dynamic paths are answers_json.*; transport encoding still follows submit_as. */
+            payload_path: string | null;
+            /** @description Provider submit_as adapter, repeated here for standalone descriptors. top_level uses key; answers_json uses key under answers_json; pricing_fields uses the listed top-level keys; certificate_bundle uses description_key and files_key; dynamic_files uses key_field/file_field arrays aligned by index; display_only reads source and never writes. */
+            transport?: {
+                /** @enum {string} */
+                type?: "top_level" | "answers_json" | "pricing_fields" | "certificate_bundle" | "dynamic_files" | "display_only";
+                key?: string;
+                keys?: string[];
+                description_key?: string;
+                files_key?: string;
+                key_field?: string;
+                file_field?: string;
+                field_key?: string;
+                source?: string;
+                multiple_files?: boolean;
+            } | null;
+            /** @description Selecting other requires a companion text answer named key_other in the same answer scope, maximum 255 characters. */
+            other_input?: boolean;
+            label: string;
+            help_text: string | null;
+            /** @enum {string} */
+            control: "text" | "textarea" | "number" | "boolean" | "single_select" | "multi_select" | "date" | "time" | "datetime" | "phone" | "url" | "files" | "address" | "profiles" | "route_stops" | "pricing";
+            /** @enum {string} */
+            value_type: "string" | "integer" | "number" | "boolean" | "array" | "object";
+            /**
+             * @description yes_no_string retains the existing yes/no wire encoding; no new Boolean business rule.
+             * @enum {string}
+             */
+            value_encoding?: "native" | "boolean" | "yes_no_string";
+            /** @enum {string} */
+            step: "about" | "fulfillment" | "pricing" | "schedule" | "request_info" | "summary";
+            /** @enum {string} */
+            section: "service_capability" | "service_information" | "fulfillment_location" | "pricing" | "schedule" | "project_dates" | "request_details" | "profiles" | "price_details";
+            group?: string | null;
+            display_order: number;
+            /** @enum {string} */
+            owner: "provider" | "customer" | "server" | "read_only";
+            /**
+             * @description Prohibited on a read-only descriptor forbids writes; the value can still be displayed.
+             * @enum {string}
+             */
+            requiredness: "required" | "optional" | "prohibited";
+            applicability: {
+                visible_when?: components["schemas"]["PublicDescriptorPredicate"];
+                required_when?: components["schemas"]["PublicDescriptorPredicate"];
+                prohibited_when?: components["schemas"]["PublicDescriptorPredicate"];
+            };
+            options: {
+                value?: string | number | boolean;
+                label?: string;
+                code?: string;
+            }[];
+            /** @description open/free_entry permits structured string entry. closed/options_only permits only supplied values; empty closed options is unsatisfiable, never free text. directed_pair is explicit source->target; reverse direction needs a separate pair, endpoints differ. Customer pairs use source_language and target_language against supported_option_constraints.language_pair. */
+            set: {
+                /** @enum {string} */
+                mode?: "open" | "closed";
+                /** @enum {string} */
+                entry?: "free_entry" | "options_only";
+                /** @enum {string} */
+                item_type?: "string" | "integer";
+                /** @enum {string} */
+                relation?: "member_of" | "subset" | "directed_pair";
+                /** @enum {string|null} */
+                pair_encoding?: "source->target" | null;
+            } | null;
+            /** @description Numeric minimum/maximum/step and integer constraint; null means no added bound. Other existing generic validation constraints (length, file count/type, selection count, profile bounds) retain their names. Bounds do not create inventory or change commercial authority. */
+            constraints: {
+                minimum?: number | null;
+                maximum?: number | null;
+                exclusiveMinimum?: boolean;
+                integer?: boolean;
+                step?: number | null;
+            };
+            relations: {
+                /** @enum {string} */
+                operator?: "on_or_after" | "less_than_or_equal";
+                other_path?: string;
+                /** @enum {string} */
+                when?: "both_present";
+            }[];
+            /** @enum {string} */
+            pricing_relevance: "none" | "provider_monetary_authority" | "customer_quantity" | "derived_quantity";
+            /** @enum {string} */
+            fulfillment_relevance: "none" | "location_authority" | "provider_owned_depot";
+            /** @description Write-policy intent. Provider complete updates use POST /service-provider/services/{id}/candidate with answers_mode=replace; dynamic scalar omission clears, applicable existing files remain unless cleared, and hidden values are pruned. Other endpoints retain their documented omission semantics. */
+            edit: {
+                writable?: boolean;
+                /** @enum {string} */
+                hidden_value?: "omit";
+                /** @enum {string} */
+                read_only_value?: "reject";
+            };
+            readback: {
+                /** @enum {string} */
+                step?: "summary";
+                section?: string;
+                omit_when_empty?: boolean;
+            };
+        };
+        /** @description Provider-owned rental pickup/return depot, independent of generic fulfillment. Display in Schedule/Fulfillment and Summary. It is not a Customer selection or rental_site. Uses the existing ProviderLocationAuthority. */
+        PublicProviderDepot: {
+            descriptor?: components["schemas"]["PublicFieldDescriptor"];
+            is_configured?: boolean;
+            display_address?: string | null;
+        } | null;
+        /** @description Additive v1 issue shared by Provider and Customer validation. path and its compatibility alias field are stable wire paths. Array indices are zero-based (profiles.0.answers.age, intermediate_stop_address_ids.1). $ denotes a request-wide/cross-field issue without one input owner. Codes are stable machine strings, not human-message parsing. Unknown future codes should display message and highlight path where supported. */
+        PublicValidationIssue: {
+            /** @example profiles.0.answers.age */
+            path: string;
+            /** @example profiles.0.answers.age */
+            field: string;
+            /**
+             * @description Examples: required, prohibited, read_only, invalid_value, invalid_address, invalid_date, date_order, quantity_validation, schedule_validation, capability_validation, validation_failed. Laravel validation rules use snake_case codes, e.g. integer, min, max. Publishability retains its existing codes.
+             * @example required
+             */
+            code: string;
+            /** @example Age is required. */
+            message: string;
+            /** @description Constraint details where available: minimum/maximum/integer/step, date format/relation/other_path, supported options, or Laravel rule parameters. Empty object means no additional details. */
+            details: Record<string, never>;
+        };
+        /** @description Appears under the existing response data. The top-level human message and status remain compatible. Publishability additionally retains data.type and data.errors. Authentication/not-found/server/dependency errors keep their separately documented envelopes. */
+        PublicValidationIssueEnvelope: {
+            /** @enum {integer} */
+            issue_version: 1;
+            issues: components["schemas"]["PublicValidationIssue"][];
+            /** @example commercial_publishability */
+            type?: string;
+            /** @description Legacy publishability map keyed by authority field, preserved unchanged. */
+            errors?: Record<string, never>;
+        };
         ProviderUpdateNameRequest: {
             /** @example John */
             first_name: string;
@@ -1986,8 +2436,8 @@ export interface components {
              */
             profile_image?: string | null;
             /**
-             * @description Provider profile background verification status.
-             * @example Pending
+             * @description Provider profile background verification status. New accounts start as Not Verified. Pending means a background check is in progress.
+             * @example Not Verified
              * @enum {string}
              */
             background_verification?: "Pending" | "Verified" | "Not Verified";
@@ -3050,6 +3500,156 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        /** @description JSON when there are no files. Use multipart form data when attaching files. source is required with attachments: camera (1 image), gallery (up to 3 images and 1 video), or file (up to 2 documents). One source per message. body is required only when attachments are absent. */
+        ServiceRequestChatMessageRequest: {
+            /** @example Sounds good! My ETA is 11:40 */
+            body?: string | null;
+            /** @enum {string|null} */
+            source?: "camera" | "gallery" | "file" | null;
+        };
+        ServiceRequestChatMessage: {
+            /** @example 12 */
+            id: number;
+            /** @example 901 */
+            invitation_id: number;
+            /** @example 44 */
+            sender_user_id?: number;
+            /** @enum {string} */
+            sender_role: "customer" | "provider";
+            is_mine: boolean;
+            /**
+             * @description request is the original service request. It is the first message only on the oldest page (meta.last_page).
+             * @enum {string}
+             */
+            kind?: "message" | "request";
+            body: string;
+            /** @description Schedule and price for kind request. Omitted on later chat messages. */
+            summary?: {
+                date?: string | null;
+                start_time?: string | null;
+                end_time?: string | null;
+                /** @example $30.00 x 3 Sessions */
+                price?: string | null;
+                /** @example $90.00 */
+                total?: string | null;
+            } | null;
+            /** Format: date-time */
+            created_at?: string | null;
+            /** @example 3:41 PM */
+            display_time?: string | null;
+            /** Format: date-time */
+            read_at?: string | null;
+            attachments?: components["schemas"]["ServiceRequestChatAttachment"][];
+        };
+        ServiceRequestChatAttachment: {
+            id: number;
+            /**
+             * @description How to render the file.
+             * @enum {string}
+             */
+            type: "image" | "video" | "file";
+            /**
+             * @description Which attach option created the file.
+             * @enum {string|null}
+             */
+            source?: "camera" | "gallery" | "file" | null;
+            name: string;
+            /**
+             * @description Relative /storage path. Prefix the API host before display.
+             * @example /storage/service-request-chat/901/file.jpg
+             */
+            url: string;
+            mime_type: string;
+            /** @description Size in bytes. */
+            size: number;
+        };
+        ProviderChatInboxItem: {
+            /** @example 901 */
+            invitation_id: number;
+            /** @example Ronald Richards */
+            name?: string | null;
+            profile_image_url?: string | null;
+            /** @example Overnight Boarding */
+            service_title?: string | null;
+            /**
+             * @description Latest chat message. When the thread has no message body, this is the original request_message. Null only when that is missing too.
+             * @example Sounds good! My ETA is 11:40
+             */
+            last_message?: string | null;
+            /** @example 3:41 PM */
+            last_message_time?: string | null;
+            /** @example 1 */
+            unread_count: number;
+        };
+        ProviderChatInboxPaginationMeta: {
+            /** @example 1 */
+            current_page?: number;
+            /** @example 1 */
+            last_page?: number;
+            /** @example 20 */
+            per_page?: number;
+            /** @example 2 */
+            total?: number;
+            /** @example 1 */
+            unread_total?: number;
+        };
+        ProviderChatInboxResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Provider chats retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderChatInboxItem"][];
+            meta?: components["schemas"]["ProviderChatInboxPaginationMeta"];
+        };
+        ProviderChatUnreadCountResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Unread chat count retrieved successfully. */
+            message?: string;
+            data?: {
+                /**
+                 * @description Requests with at least one unread message.
+                 * @example 1
+                 */
+                unread_total: number;
+            };
+        };
+        ProviderChatThread: components["schemas"]["ProviderRequestChatContext"] & {
+            /** @example pending */
+            invitation_status?: string;
+            /** @example sent */
+            request_status?: string;
+            /** @example true */
+            can_send?: boolean;
+            messages?: components["schemas"]["ServiceRequestChatMessage"][];
+        };
+        ProviderChatThreadResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Provider chat retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderChatThread"];
+            meta?: components["schemas"]["ProviderChatThreadMeta"];
+        };
+        /** @description Message page metadata. Page 1 is the newest window. meta.last_page is the oldest window. Each page is ordered oldest to newest. */
+        ProviderChatThreadMeta: {
+            /** @example 1 */
+            current_page?: number;
+            /** @example 1 */
+            last_page?: number;
+            /** @example 10 */
+            per_page?: number;
+            /** @example 3 */
+            total?: number;
+        };
+        ProviderChatMessageResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Message sent successfully. */
+            message?: string;
+            data?: components["schemas"]["ServiceRequestChatMessage"];
+            meta?: Record<string, never>;
+        };
         /** @description Authenticated user details returned by login and profile APIs. */
         AuthUser: {
             /** @example 123 */
@@ -3154,8 +3754,7 @@ export interface components {
             status?: string;
             /** @example The email field must be a valid email address. */
             message?: string;
-            /** @example null */
-            data?: unknown;
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
             /** @example [] */
             meta?: unknown[];
         };
@@ -3375,6 +3974,222 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        /** @description Whether the listing belongs to the provider directly (Freelance) or to an affiliated business. */
+        ProviderHomeServiceOwnership: {
+            /**
+             * @description individual when services.provider_type != business. business when provider_type = business.
+             * @example individual
+             * @enum {string}
+             */
+            type: "individual" | "business";
+            /**
+             * @description Populated only when type=business and services.business_id is set. Otherwise null.
+             * @example null
+             */
+            business_id: number | null;
+            /**
+             * @description Populated only when type=business and the linked business record has business_name. Otherwise null.
+             * @example null
+             */
+            business_name: string | null;
+        };
+        /** @description Placeholder rating on home service cards until live review aggregates are wired. Values come from config provider_home.placeholder_service_rating (currently average=4, total_reviews=0). */
+        ProviderHomeServiceRating: {
+            /**
+             * Format: float
+             * @example 4
+             */
+            average: number;
+            /** @example 0 */
+            total_reviews: number;
+        };
+        /** @description One My Services preview card on the home screen. */
+        ProviderHomeServiceCard: {
+            /**
+             * @description services.id
+             * @example 615
+             */
+            service_id: number;
+            /**
+             * @description service_info.title. Nullable when missing.
+             * @example Dog Walking With Smith
+             */
+            title: string | null;
+            portfolio: components["schemas"]["ProviderHomePortfolioImage"];
+            rating: components["schemas"]["ProviderHomeServiceRating"];
+            /**
+             * @description Formatted service_prices.amount with two decimals. Null when no price row exists.
+             * @example 50.00
+             */
+            price: string | null;
+            /**
+             * @description Derived from price unit code/name by stripping a leading per_ or per prefix (e.g. per_day → day). Null when no price unit.
+             * @example day
+             */
+            service_unit: string | null;
+            pricing: components["schemas"]["ServicePricingData"];
+            service_ownership: components["schemas"]["ProviderHomeServiceOwnership"];
+        };
+        /** @description My Services strip on home. */
+        ProviderHomeMyServicesSection: {
+            /**
+             * @description Count of all provider services where status != deleted (2).
+             * @example 12
+             */
+            total: number;
+            /** @description Latest services by id DESC, capped at config provider_home.my_services_limit (8). total may exceed items.length. */
+            items: components["schemas"]["ProviderHomeServiceCard"][];
+        };
+        /** @description One location-scoped promotion banner. */
+        ProviderHomePromotionItem: {
+            /** @example 3 */
+            promotion_id: number;
+            /** @example Grow your bookings */
+            title: string;
+            /**
+             * @description Null when promotion has no banner file.
+             * @example /storage/service-provider-promotions/banner.jpg
+             */
+            banner_url: string | null;
+            /** @example true */
+            is_forever: boolean;
+            /**
+             * Format: date
+             * @description Y-m-d when scheduled; null for forever promotions or unset start.
+             * @example null
+             */
+            start_date: string | null;
+            /**
+             * Format: date
+             * @description Y-m-d when scheduled; null for forever promotions or unset end.
+             * @example null
+             */
+            end_date: string | null;
+        };
+        /** @description Promotion carousel data. Empty items[] when the provider has no default address, default address has no country_id, or no promotions match country/state/city + active date window. */
+        ProviderHomePromotionsSection: {
+            /** @description Latest matching promotions by id DESC, capped at config provider_home.max_provider_promotions (10). */
+            items: components["schemas"]["ProviderHomePromotionItem"][];
+        };
+        /** @description Display-only timing for request cards. Converts frozen schedule_snapshot UTC instants into the provider profile timezone (ca_timezones.continent_city). Null when schedule_snapshot is missing/empty, timezone cannot be resolved, or start instant cannot be parsed. */
+        ProviderHomeRequestScheduleDisplay: {
+            /**
+             * @description Formatted start date (F j, Y) in provider timezone.
+             * @example July 25, 2026
+             */
+            date?: string;
+            /**
+             * @description Formatted start time (g:i A) in provider timezone.
+             * @example 9:00 AM
+             */
+            start_time?: string;
+            /**
+             * @description Formatted end time when end_at_utc or end_date/end_time resolves. Omitted/null when end is unknown.
+             * @example 10:00 AM
+             */
+            end_time?: string | null;
+        } | null;
+        /** @description Customer block on a request card. */
+        ProviderHomeNewRequestCustomer: {
+            /**
+             * @description users.id of the seeker. Null when customer relation missing.
+             * @example 42
+             */
+            id: number | null;
+            /**
+             * @description users full_name trimmed. Null when empty.
+             * @example Jane Doe
+             */
+            name: string | null;
+            client_type: components["schemas"]["ProviderRequestClientType"];
+            /**
+             * @description users.profile_image when non-empty; otherwise null.
+             * @example /storage/profile/1710000000_abcd.jpg
+             */
+            profile_image_url: string | null;
+            /**
+             * @description Short service-location label from frozen location_snapshot. Prefers location_snapshot.customer_address, else first request_addresses[] entry. Builds City, STATE ZIP from address_components; falls back to full address string. Null when snapshot missing or no usable address parts.
+             * @example Allston, MA 02135
+             */
+            address: string | null;
+        };
+        /** @description One pending request card. Same object shape in home → new_requests.items and GET /service-provider/requests → data[]. Use invitation_id for downstream detail/chat/summary routes. */
+        ProviderHomeNewRequestItem: {
+            /**
+             * @description service_request_invitations.id. Primary key for provider request routes.
+             * @example 901
+             */
+            invitation_id: number;
+            invitation_status: components["schemas"]["ProviderInvitationStatus"];
+            /**
+             * @description Human label from invitation STATUS_LABELS map.
+             * @example Pending
+             */
+            invitation_status_label: string;
+            /**
+             * @description service_requests.id parent request.
+             * @example 501
+             */
+            request_id: number | null;
+            /** @example SR-2026-000501 */
+            request_number: string | null;
+            request_status: components["schemas"]["ProviderServiceRequestStatus"];
+            /**
+             * @description Human label from request STATUS_LABELS map.
+             * @example Requested
+             */
+            request_status_label: string | null;
+            customer: components["schemas"]["ProviderHomeNewRequestCustomer"];
+            service: components["schemas"]["ProviderHomeNewRequestService"];
+            service_ownership: components["schemas"]["ProviderHomeServiceOwnership"];
+            schedule: components["schemas"]["ProviderHomeRequestScheduleDisplay"];
+            /**
+             * Format: date-time
+             * @description Parent request submitted_at ISO-8601.
+             * @example 2026-09-15T08:00:00+00:00
+             */
+            submitted_at: string | null;
+            /**
+             * Format: date-time
+             * @description When this provider was invited.
+             * @example 2026-09-15T08:01:00+00:00
+             */
+            invited_at: string | null;
+            /**
+             * Format: date-time
+             * @description Parent request expires_at ISO-8601.
+             * @example 2026-09-22T08:00:00+00:00
+             */
+            expires_at: string | null;
+        };
+        /** @description New pending requests preview on home. Sorted invited_at DESC, id DESC. */
+        ProviderHomeNewRequestsSection: {
+            /**
+             * @description Full count of new pending requests for this provider (not capped).
+             * @example 15
+             */
+            total: number;
+            /** @description Preview cards capped at config provider_home.new_requests_limit (8). Use GET /service-provider/requests for the full paginated list. */
+            items: components["schemas"]["ProviderHomeNewRequestItem"][];
+        };
+        /** @description Home bootstrap payload under data. */
+        ProviderHomeData: {
+            my_services: components["schemas"]["ProviderHomeMyServicesSection"];
+            provider_promotions: components["schemas"]["ProviderHomePromotionsSection"];
+            new_requests: components["schemas"]["ProviderHomeNewRequestsSection"];
+        };
+        ProviderHomeResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Provider home retrieved successfully. */
+            message: string;
+            data: components["schemas"]["ProviderHomeData"];
+            /**
+             * @description Always an empty object for this endpoint.
+             * @example []
+             */
+            meta: Record<string, never>;
+        };
         ProviderCountryItem: {
             /** @example 233 */
             id?: number;
@@ -3528,7 +4343,7 @@ export interface components {
             /** @example /storage/profile/1710000000_abcd.jpg */
             profile_image?: string | null;
             /**
-             * @example Pending
+             * @example Not Verified
              * @enum {string}
              */
             background_verification?: "Pending" | "Verified" | "Not Verified";
@@ -3572,6 +4387,819 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        /**
+         * @description Provider-side invitation lifecycle. Labels: pending→Pending, offered→Offered, accepted→Accepted, declined→Declined, closed→Closed, expired→Expired.
+         * @enum {string}
+         */
+        ProviderInvitationStatus: "pending" | "offered" | "accepted" | "declined" | "closed" | "expired";
+        /**
+         * @description Parent customer request lifecycle. Labels: sent→Requested, negotiating→Negotiating, awaiting_payment→Awaiting Payment, confirmed→Confirmed, cancelled→Cancelled, expired→Expired.
+         * @enum {string}
+         */
+        ProviderServiceRequestStatus: "sent" | "negotiating" | "awaiting_payment" | "confirmed" | "cancelled" | "expired";
+        /** @description First service portfolio image (lowest sort_order). Null when the listing has no portfolio rows. */
+        ProviderHomePortfolioImage: {
+            /**
+             * @description Relative public storage path.
+             * @example /storage/service_portfolios/615/swKB7hhhM0K6Si0mtMdqQlf6tcheGYGdBcztLC1f.jpg
+             */
+            url: string;
+        } | null;
+        /** @description Listing attached to the invitation. */
+        ProviderHomeNewRequestService: {
+            /**
+             * @description services.id for the invited listing.
+             * @example 101
+             */
+            service_id: number;
+            /**
+             * @description Prefers live service_info.title; falls back to frozen service_snapshot.title on the parent request. Null when both are empty.
+             * @example Dog walking
+             */
+            title: string | null;
+            portfolio: components["schemas"]["ProviderHomePortfolioImage"];
+        };
+        /**
+         * @description Per-card repeat detection scoped to the same service_id. repeat = the customer previously submitted another request on this listing that progressed beyond initial sent+pending (negotiating, offered, accepted, confirmed, etc.). new = first meaningful request on this listing for this customer. Sibling pending-only requests do not count as prior history.
+         * @enum {string}
+         */
+        ProviderRequestClientType: "new" | "repeat";
+        /** @description Pagination block returned only by GET /service-provider/requests (home meta is always an empty object). */
+        ProviderRequestListPaginationMeta: {
+            /** @example 1 */
+            current_page: number;
+            /**
+             * @description ceil(total / per_page). Minimum 1 even when total=0.
+             * @example 3
+             */
+            last_page: number;
+            /**
+             * @description Resolved page size after clamping to config max (50).
+             * @example 10
+             */
+            per_page: number;
+            /**
+             * @description Count of new pending requests (same as home new_requests.total).
+             * @example 25
+             */
+            total: number;
+        };
+        /** @description Optional query parameters for GET /service-provider/requests. All fields are optional. */
+        ProviderRequestListQuery: {
+            /**
+             * @description 1-based page number. Values below 1 fail validation (422).
+             * @default 1
+             * @example 1
+             */
+            page: number;
+            /**
+             * @description Page size. Default from config (10). Clamped server-side to max 50. Values outside 1–50 fail validation (422).
+             * @default 10
+             * @example 10
+             */
+            per_page: number;
+        };
+        /** @description Documentation-only. Explains how request_info changes between profile-based and booking-only requests. No API returns this object. */
+        ProviderRequestSummaryInfoVariantRules: {
+            /**
+             * @description title = Request info (N) where N = profile count. items[] has one row per profile with profile_id, name, summary_line. Tap row → GET /requests/{invitation_id}/details?profile_id={profile_id}.
+             * @example Request has one or more service_request_profiles rows.
+             */
+            variant_a_profile_based?: string;
+            /**
+             * @description title = Request details. count = 1. items[] has a single row WITHOUT profile_id: name is always Request details, summary_line is a comma-separated preview of up to 3 booking fields. Tap row → GET /requests/{invitation_id}/details (no profile_id).
+             * @example Request has zero profiles but visible booking answers exist.
+             */
+            variant_b_booking_only?: string;
+            /**
+             * @description title = Request info. count = 0. items = []. has_detail = false.
+             * @example No profiles and no visible booking answers.
+             */
+            variant_c_empty?: string;
+            /**
+             * @description When false, hide the chevron / detail navigation on the summary card.
+             * @example true when profiles exist OR at least one provider-visible booking answer exists.
+             */
+            has_detail?: string;
+            /**
+             * @description Built from pet_type + weight, or first short profile field values, or legacy about summary.
+             * @example Dog, 15.00 kg
+             */
+            summary_line_profile?: string;
+            /**
+             * @description First up to 3 provider-visible booking answer values joined by comma.
+             * @example Retail commercial, Furniture, Appliances, Electronics, Yard waste, 25.00
+             */
+            summary_line_booking?: string;
+        };
+        /** @description One preview row inside request_info.items. Shape depends on whether the parent request uses profiles (Variant A) or booking-only fields (Variant B). See ProviderRequestSummaryInfoVariantRules. */
+        ProviderRequestSummaryInfoItem: {
+            /**
+             * @description **Profile requests only.** service_request_profiles.id. Key is omitted (not null) on booking-only rows. When present, open GET /requests/{invitation_id}/details?profile_id={profile_id}.
+             * @example 9
+             */
+            profile_id?: number;
+            /**
+             * @description Profile requests: capitalized pet/student/vehicle name. Booking-only: always the literal string Request details.
+             * @example Oobs
+             */
+            name: string | null;
+            /**
+             * @description Single-line preview shown under the name. Nullable when no preview values could be built.
+             * @example Dog, 15.00 kg
+             */
+            summary_line: string | null;
+        };
+        /** @description Request info preview block on the summary screen. Two production shapes — compare examples summary_with_profiles and summary_booking_only on GET /requests/{invitation_id}/summary. */
+        ProviderRequestSummaryInfoCard: {
+            /**
+             * @description Request info (N) when profiles exist (N = count). Request details when booking-only with preview. Request info when empty.
+             * @example Request info (2)
+             */
+            title: string;
+            /**
+             * @description Profile count, or 1 for booking-only preview, or 0 when empty.
+             * @example 2
+             */
+            count: number;
+            /**
+             * @description True when detail navigation should be shown.
+             * @example true
+             */
+            has_detail: boolean;
+            /** @description Profile requests: one item per profile (each includes profile_id). Booking-only: exactly one item without profile_id. Empty: []. */
+            items: components["schemas"]["ProviderRequestSummaryInfoItem"][];
+        };
+        /** @description Documentation-only. Explains how GET /requests/{invitation_id}/details response changes. No API returns this object. */
+        ProviderRequestDetailsVariantRules: {
+            /**
+             * @description Omit profile_id to load all profiles + booking sections (full detail screen).
+             * @example Optional ?profile_id=9 filters profiles[] to that single profile. 404 when id not on the request. sections[] is always the full booking-level detail regardless of filter.
+             */
+            query_profile_id?: string;
+            /**
+             * @description Never omit profiles key; it is an empty array for booking-only.
+             * @example Profile-based request: profiles[] has one entry per linked profile (or one when filtered). Booking-only request: profiles = [].
+             */
+            profiles_populated?: string;
+            /**
+             * @description Seeker-only consent, acknowledgements, and generic note prompts are excluded.
+             * @example Booking-level answers grouped by template group label (e.g. Request details, Property Information). Present for both profile and booking-only requests when visible answers exist.
+             */
+            sections_populated?: string;
+            /**
+             * @description Detected by profile_type or pet-specific answer keys.
+             * @example Pet/dog/cat profiles: sections may include About (fields + about text), Socialization (lines[]), Care (label/value fields). Empty sections are omitted.
+             */
+            profile_section_layout_pet?: string;
+            /**
+             * @description Empty sections are omitted.
+             * @example Non-pet profiles (vehicle, student, etc.): single Details section with about + fields.
+             */
+            profile_section_layout_generic?: string;
+            /**
+             * @description Matches summary request_info.title logic but uses filtered profile count when profile_id query is set.
+             * @example Request info (2) when profiles returned; Request details when profiles[] empty.
+             */
+            title?: string;
+        };
+        /** @description One labeled block in details. At least one of about, fields, or lines is non-empty; otherwise the section is omitted from the response. */
+        ProviderRequestInfoSection: {
+            /**
+             * @description Stable section key (about, socialization, care, details, or slug from booking group title).
+             * @example about
+             */
+            key: string;
+            /**
+             * @description Display heading.
+             * @example About
+             */
+            title: string;
+            /**
+             * @description Free-text about paragraph when present.
+             * @example Sweet French bulldog.
+             */
+            about: string | null;
+            /** @description Label/value pairs for structured answers. */
+            fields: components["schemas"]["ProviderRequestInfoField"][];
+            /** @description Bullet-style lines used by Socialization. Care uses fields[] with labels. */
+            lines: string[];
+        };
+        /** @description One linked profile on the details screen. Only present in profiles[] for profile-based requests. */
+        ProviderRequestDetailsProfile: {
+            /** @example 9 */
+            profile_id: number;
+            /**
+             * @description Capitalized display name.
+             * @example Oobs
+             */
+            name: string | null;
+            /**
+             * @description Raw profile_type from snapshot (pet, dog, vehicle, etc.).
+             * @example dog
+             */
+            profile_type: string | null;
+            /** @description Pet layout: About + Socialization + Care. Generic layout: Details only. See ProviderRequestDetailsVariantRules. */
+            sections: components["schemas"]["ProviderRequestInfoSection"][];
+        };
+        /** @description Unified detail payload. profiles[] and sections[] are complementary: profile answers live under profiles; booking-template answers live under sections. */
+        ProviderRequestDetails: {
+            /** @example 10 */
+            invitation_id: number;
+            /**
+             * @description Request info (N) when profiles[] non-empty (respects profile_id filter). Request details when profiles[] empty.
+             * @example Request info (2)
+             */
+            title: string;
+            /** @description Empty array for booking-only requests. One or more profile blocks otherwise. */
+            profiles: components["schemas"]["ProviderRequestDetailsProfile"][];
+            /** @description Booking-level grouped sections. May coexist with profiles[] on profile-based requests. */
+            sections: components["schemas"]["ProviderRequestInfoSection"][];
+        };
+        ProviderRequestChatContext: {
+            /** @example 901 */
+            invitation_id: number;
+            /** @example 501 */
+            request_id?: number | null;
+            /** @example SR-2026-000501 */
+            request_number?: string | null;
+            customer: components["schemas"]["ProviderHomeNewRequestCustomer"];
+            service: {
+                /** @example 101 */
+                service_id?: number;
+                /** @example Dog walking */
+                title?: string | null;
+                portfolio?: {
+                    url?: string;
+                } | null;
+            };
+            schedule: components["schemas"]["ProviderHomeRequestScheduleDisplay"];
+            /** @example Hi! Is there any chance you could offer a better price? */
+            request_message?: string | null;
+        };
+        ProviderRequestSummaryHeader: {
+            /** @example Dog Walking */
+            service_title?: string | null;
+            /** @example July 25, 2026 */
+            date_label?: string | null;
+            /** @example Dog Walking | July 25, 2026 */
+            subtitle?: string | null;
+        };
+        /** @description Expanded schedule block for the summary screen (distinct from home card schedule). Times use provider timezone. */
+        ProviderRequestSummarySchedule: {
+            /**
+             * @description Single day or start–end range label.
+             * @example September 22, 2026
+             */
+            dates: string | null;
+            /**
+             * @description Start/drop-off interval label. May be a single time (9:00 AM) or range (6:30 PM – 7:30 PM). Null when schedule snapshot missing.
+             * @example 10:00 AM – 10:00 AM
+             */
+            drop_off: string | null;
+            /**
+             * @description End/pick-up interval label. Null when end time unknown or same-window service (e.g. single-point booking).
+             * @example 9:30 AM
+             */
+            pick_up: string | null;
+        };
+        ProviderRequestInfoField: {
+            /** @example Vehicle type */
+            label: string;
+            /** @example Suv */
+            value: string;
+        };
+        ProviderRequestSummaryTips: {
+            /**
+             * @description Tip amount when known; usually zero until after service.
+             * @example 0.00
+             */
+            amount?: string | null;
+            /**
+             * @description Platform commission rate on tips from service configuration.
+             * @example 2.00
+             */
+            commission_rate_percent?: string | null;
+            /** @example 0.00 */
+            platform_commission?: string | null;
+            /**
+             * @description Tip amount minus platform commission.
+             * @example 0.00
+             */
+            expected_earning?: string | null;
+        };
+        ProviderRequestSummaryPricing: {
+            /** @example $ */
+            currency_symbol?: string;
+            /** @example 300.00 */
+            subtotal?: string | null;
+            /** @example $50.00 / night x 6 nights */
+            subtotal_label?: string | null;
+            /**
+             * @description Platform fee deducted from provider earnings.
+             * @example 15.00
+             */
+            service_fee?: string | null;
+            /** @example 5.00 */
+            service_fee_rate_percent?: string | null;
+            /** @example Platform fee */
+            service_fee_label?: string;
+            tips?: components["schemas"]["ProviderRequestSummaryTips"];
+            /**
+             * @description Subtotal minus platform service fee.
+             * @example 285.00
+             */
+            expected_earning?: string | null;
+        };
+        /** @description Provider request summary screen. request_info shape varies by profile vs booking-only — see ProviderRequestSummaryInfoVariantRules and path examples summary_with_profiles / summary_booking_only. */
+        ProviderRequestSummary: {
+            /** @example 10 */
+            invitation_id: number;
+            /** @example 10 */
+            request_id: number | null;
+            /** @example SR-20260916-DMOL01Q3 */
+            request_number: string | null;
+            invitation_status: components["schemas"]["ProviderInvitationStatus"];
+            /** @example Pending */
+            invitation_status_label: string;
+            request_status: components["schemas"]["ProviderServiceRequestStatus"];
+            /** @example Requested */
+            request_status_label: string | null;
+            header: components["schemas"]["ProviderRequestSummaryHeader"];
+            schedule: components["schemas"]["ProviderRequestSummarySchedule"];
+            request_info: components["schemas"]["ProviderRequestSummaryInfoCard"];
+            pricing: components["schemas"]["ProviderRequestSummaryPricing"];
+            service_ownership: components["schemas"]["ProviderHomeServiceOwnership"];
+        };
+        /** @description Paginated pending request list. data[] cards are identical to home → new_requests.items (schema ProviderHomeNewRequestItem). */
+        ProviderRequestListResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Provider requests retrieved successfully. */
+            message: string;
+            /** @description Zero or more new pending request cards for the requested page. Empty array when total=0 or page is beyond last_page. */
+            data: components["schemas"]["ProviderHomeNewRequestItem"][];
+            meta: components["schemas"]["ProviderRequestListPaginationMeta"];
+        };
+        ProviderRequestChatContextResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Request chat context retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderRequestChatContext"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        ProviderRequestSummaryResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Request summary retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderRequestSummary"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        ProviderRequestDetailsResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Request details retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderRequestDetails"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        ProviderListingCapabilityIdentity: {
+            /**
+             * @description Business-facing Provider listing contract for the external Provider App.
+             *     Technical schedule_family and profile_mode values are server-derived and
+             *     are never Provider form choices.
+             * @example Education
+             */
+            category: string;
+            /** @example Tutoring */
+            subcategory: string;
+            /** @example education|tutoring */
+            key: string;
+        };
+        ProviderBusinessFormatOption: {
+            /** @example individual */
+            value: string;
+            /** @example Individual */
+            label: string;
+        };
+        /** @description Canonical Provider-facing format selector. Submit the chosen option.value in answers_json under field_key. Null when the listing has a single derived format (for example fulfillment-derived Laundry) or no selector. Never submit schedule_family or profile_mode. */
+        ProviderBusinessFormatSelector: {
+            /** @example learner_delivery */
+            field_key: string;
+            /** @example Learner Delivery */
+            label: string;
+            /** @example true */
+            required: boolean;
+            options: components["schemas"]["ProviderBusinessFormatOption"][];
+        } | null;
+        /** @description Price units allowed for this business format, keyed by pricing_type. Render pricing.price_units from the template as the submit allow-list; this matrix is the compatibility authority. */
+        ProviderListingFormatPricing: {
+            /**
+             * @example [
+             *       "per_session",
+             *       "per_hour"
+             *     ]
+             */
+            fixed_price?: string[];
+            /**
+             * @example [
+             *       "per_session",
+             *       "per_hour"
+             *     ]
+             */
+            quote_required?: string[];
+        };
+        /** @description Resolved profile-pricing authority for one business format, pricing type, and price unit. prohibited means the Provider control must be hidden and omitted. required means no implicit per_request default is allowed. */
+        ProviderProfilePricingScopeState: {
+            /**
+             * @example required
+             * @enum {string}
+             */
+            state: "required" | "optional" | "prohibited";
+            /** @example true */
+            applicable: boolean;
+            /** @example true */
+            required: boolean;
+            /**
+             * @example [
+             *       "per_request",
+             *       "per_profile"
+             *     ]
+             */
+            allowed_values: ("per_request" | "per_profile")[];
+        };
+        ProviderProfilePricingScopeByUnit: {
+            [key: string]: components["schemas"]["ProviderProfilePricingScopeState"];
+        };
+        /** @description Public Provider control metadata with internal profile modes already resolved. Look up by_pricing_type[pricing_type][price_unit_code]. Use default_state when no entry exists. Do not infer rules from taxonomy names and do not default a required selection. */
+        ProviderProfilePricingScopeContract: {
+            descriptor?: components["schemas"]["PublicFieldDescriptor"];
+            /**
+             * @example profile_pricing_scope
+             * @enum {string}
+             */
+            field_key: "profile_pricing_scope";
+            /** @example Price Applies To */
+            label: string;
+            /** @example Choose whether the fixed price applies to the entire request or each selected profile. */
+            help_text: string;
+            options: components["schemas"]["ProviderBusinessFormatOption"][];
+            default_state: components["schemas"]["ProviderProfilePricingScopeState"];
+            by_pricing_type: {
+                [key: string]: components["schemas"]["ProviderProfilePricingScopeByUnit"];
+            };
+        };
+        ProviderListingFormatContract: {
+            /** @example Individual */
+            label?: string;
+            pricing?: components["schemas"]["ProviderListingFormatPricing"];
+            profile_pricing_scope?: components["schemas"]["ProviderProfilePricingScopeContract"];
+            /** @description Unit-specific allowed fulfillment override. Pet Sitting per_session supports customer_location only; per_night/per_hour preserve their supported modes. Laundry may advertise multiple alternatives, each with its own duration/turnaround requirements; selected unit must be compatible with every advertised alternative. Pickup-return Rentals independently require a usable Provider depot even without generic fulfillment. Legacy empty map may serialize as []; treat [] as no entries, never as permission for arbitrary input. */
+            fulfillment_by_price_unit?: Record<string, never> | unknown[];
+            /**
+             * @description Exact Provider-selectable fulfillment codes for this format. An empty list means the generic Provider fulfillment control is prohibited/not applicable.
+             * @example [
+             *       "online_remote",
+             *       "provider_location"
+             *     ]
+             */
+            fulfillment?: string[];
+            /** @description Duration, bounds, supported-option, and turnaround controls for this format. Hidden/stale keys must be omitted from answers_json, not sent as null authority. */
+            provider_fields?: components["schemas"]["ProviderCapabilityControlField"][];
+        };
+        /** @description Existing provider-owned capability answers only. Submit keys returned by the resolved form template. Events Mobility already owns mobility_service_mode, min_passenger_count, and max_passenger_count. Events Rentals already owns rental_fulfillment_mode, rental_duration_mode, rental_duration_minutes, max_rental_duration_minutes, setup_included, teardown_included, setup_duration_minutes, teardown_duration_minutes, and per_item item bounds. Do not invent new provider controls. */
+        ProviderCapabilityAnswers: {
+            /** @enum {string} */
+            mobility_service_mode?: "point_to_point" | "hourly_chauffeur";
+            /**
+             * @description Optional Mobility minimum; omission derives 1 without backfilling storage. Must not exceed max_passenger_count.
+             * @default 1
+             */
+            min_passenger_count: number;
+            max_passenger_count?: number;
+            /** @enum {string} */
+            rental_fulfillment_mode?: "customer_pickup_return" | "provider_delivery_collection";
+            /** @enum {string} */
+            rental_duration_mode?: "fixed_duration" | "customer_selected_up_to_max";
+            /** @description Required when rental_duration_mode=fixed_duration. */
+            rental_duration_minutes?: number;
+            /** @description Required when rental_duration_mode=customer_selected_up_to_max. */
+            max_rental_duration_minutes?: number;
+            /** @description Required explicit boolean on every Rentals listing. Must be false for customer_pickup_return. */
+            setup_included?: boolean;
+            /** @description Required explicit boolean on every Rentals listing. Must be false for customer_pickup_return. */
+            teardown_included?: boolean;
+            /** @description Optional, omitted=0 for Events Media/Production/Live Music (including Music Live Music alias), Media Visuals, and Music Production recording_session. Expands availability only. Rentals instead requires a positive value for provider_delivery_collection with setup_included=true and prohibits it otherwise. Not available on other products or Music production_project. */
+            setup_duration_minutes?: number;
+            /** @description Optional, omitted=0 on the same timed products as setup_duration_minutes; availability only, never billable quantity. Rentals instead requires a positive value for provider_delivery_collection with teardown_included=true and prohibits it otherwise. */
+            teardown_duration_minutes?: number;
+            /**
+             * @description Provider amount required explicitly for fixed Pet Sitting, Dog Walking, Grooming and Pet Training. Zero is intentional; omission/null is invalid for fixed pricing. Base plus surcharge times additional validated pet profiles is multiplied by commercial quantity for Sitting/Walking/Training; Grooming adds it once. Not customer input or a profile price multiplier. Quote-required listings do not require this amount.
+             * @example 0
+             */
+            additional_pet_surcharge?: number;
+            /**
+             * @description Provider amount required explicitly for fixed Pet Transport and Veterinary. Add fee times max(validated pet-profile count minus one,0) once. Transport route miles never multiply the additional-pet fee. Zero is valid; omission is not zero. Not required for quote-required pricing.
+             * @example 10
+             */
+            additional_pet_fee?: number;
+            /**
+             * @description Required structural party minimum on Chef and Catering, independent of pricing unit. Must not exceed max_guest_count. Chef guest count never multiplies price.
+             * @example 2
+             */
+            min_guest_count?: number;
+            /**
+             * @description Required structural party maximum on Chef and Catering.
+             * @example 12
+             */
+            max_guest_count?: number;
+            /** @description Structural party minimum for applicable formats, independent of unit. Personal multi-recipient formats require at least 2; Fitness permits at least 1. Minimum must not exceed maximum. */
+            min_participants?: number;
+            /** @description Structural party maximum. Applicable profile-based Fitness/Personal formats may not exceed configured service_requests.maximum_profiles; this is not seat inventory. */
+            max_participants?: number;
+            /**
+             * @description Required structured nonempty string set for Education Language, fixed and quote. Textarea/string authority is not supported.
+             * @example [
+             *       "english",
+             *       "spanish"
+             *     ]
+             */
+            languages_offered?: string[];
+            /** @description Tutoring subject membership authority for each selected learner. */
+            supported_subjects?: string[];
+            exams_covered?: string[];
+            supported_platforms?: string[];
+            supported_mobile_platforms?: string[];
+            supported_source_formats?: string[];
+            supported_source_media_types?: string[];
+            supported_campaign_platforms?: string[];
+            supported_alcohol_sources?: string[];
+            /**
+             * @description Explicit source->target language pairs for Interpreters. Direction is significant; reverse direction requires its own entry. Source and target must differ. This compatibility set has no pricing multiplier.
+             * @example [
+             *       "english->french"
+             *     ]
+             */
+            supported_language_pairs?: string[];
+            /**
+             * @description Required structured nonempty string set for Education Skill-Based and its Music Education alias, fixed and quote. Never a textarea string.
+             * @example [
+             *       "piano",
+             *       "voice"
+             *     ]
+             */
+            skills_taught?: string[];
+            item_unit_label?: string;
+            /** @description Required only for applicable per_item shape; not required for per_service, per_person or per_weight. */
+            min_item_quantity?: number;
+            /** @description Applicable per_item upper bound, greater than or equal to minimum. */
+            max_item_quantity?: number;
+            /**
+             * @description Laundry per_weight only.
+             * @enum {string}
+             */
+            weight_unit?: "lb" | "kg";
+            /** @description Laundry per_weight only; positive fractional weights allowed. */
+            min_weight_value?: number;
+            /** @description Laundry per_weight only; at least minimum weight. */
+            max_weight_value?: number;
+        };
+        ProviderCapabilityControlField: {
+            descriptor?: components["schemas"]["PublicFieldDescriptor"];
+            /**
+             * @description Existing keys include mobility_service_mode, min_passenger_count, max_passenger_count, rental_fulfillment_mode, rental_duration_mode, rental_duration_minutes, max_rental_duration_minutes, setup_included, teardown_included, setup_duration_minutes, teardown_duration_minutes, item_unit_label, min_item_quantity, and max_item_quantity.
+             * @example session_duration_minutes
+             */
+            field_key: string;
+            /** @example Session Duration Minutes */
+            label: string;
+            /**
+             * @example number
+             * @enum {string}
+             */
+            field_type: "number" | "single_select" | "multi_select" | "yes_no" | "text";
+            /** @example false */
+            is_required?: boolean;
+            options?: components["schemas"]["ProviderBusinessFormatOption"][];
+            /**
+             * @description Legacy empty map may serialize as []; treat [] as no entries, never as permission for arbitrary input.
+             * @example {
+             *       "minimum": 1
+             *     }
+             */
+            validation?: (Record<string, never> | unknown[]) | null;
+            /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
+            required_for?: (Record<string, never> | unknown[])[];
+            /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
+            visible_for?: (Record<string, never> | unknown[])[];
+            /** @description Only documented canonical optional defaults, such as omitted setup/teardown=0 or Mobility minimum=1. Pet amounts have no implicit default. */
+            default?: number;
+        };
+        /** @description Resolved selected-taxonomy listing contract. Build create/edit forms from this object plus fields[]. Do not hardcode the 104 subcategories. Technical booking_policy.schedule_family and booking_policy.profile_mode are listed only as prohibited. */
+        ProviderListingCapability: {
+            /** @enum {integer} */
+            descriptor_version?: 1;
+            descriptors?: components["schemas"]["PublicFieldDescriptor"][];
+            /** @example 1 */
+            version: number;
+            source: components["schemas"]["ProviderListingCapabilityIdentity"];
+            canonical_owner: components["schemas"]["ProviderListingCapabilityIdentity"];
+            /** @example false */
+            is_alias: boolean;
+            business_format?: components["schemas"]["ProviderBusinessFormatSelector"];
+            /**
+             * @example {
+             *       "individual": {
+             *         "label": "Individual",
+             *         "pricing": {
+             *           "fixed_price": [
+             *             "per_session",
+             *             "per_hour"
+             *           ],
+             *           "quote_required": [
+             *             "per_session",
+             *             "per_hour"
+             *           ]
+             *         },
+             *         "fulfillment": [
+             *           "online_remote",
+             *           "provider_location"
+             *         ]
+             *       }
+             *     }
+             */
+            formats: {
+                [key: string]: components["schemas"]["ProviderListingFormatContract"];
+            };
+            /**
+             * @example [
+             *       "booking_policy",
+             *       "booking_policy.schedule_family",
+             *       "booking_policy.profile_mode"
+             *     ]
+             */
+            prohibited_provider_fields: string[];
+        };
+        /** @description Compact capability identity for list and category screens. */
+        ProviderListingCapabilitySummary: {
+            /** @example 1 */
+            version?: number;
+            /** @example events|catering */
+            source_key?: string;
+            /** @example culinary|catering */
+            canonical_owner_key?: string;
+            /** @example true */
+            is_alias?: boolean;
+        } | null;
+        ProviderPublishabilityIssue: {
+            /**
+             * @description Stable business field path/key.
+             * @example session_duration_minutes
+             */
+            field: string;
+            /** @example provider_duration_required */
+            code: string;
+            /** @example Session Duration Minutes is required for scheduling and availability. */
+            message: string;
+            /** @description Authoritative allowed values when the issue is a compatibility/enum failure. */
+            allowed?: string[] | null;
+            minimum?: number | null;
+            maximum?: number | null;
+        };
+        /** @description Commercial publishability only. Compliance and administrative approval are a separate gate. Activation and dashboard approval both consume this collection. */
+        ProviderPublishability: {
+            /** @example false */
+            is_publishable: boolean;
+            /** @description Map of business field path to one or more issues. Empty object when is_publishable is true. */
+            issues: {
+                [key: string]: components["schemas"]["ProviderPublishabilityIssue"][];
+            };
+        };
+        /** @description 422 envelope when create, information/pricing update, or activation fails commercial publishability. Shares data.issue_version/issues with template and Customer validation; data.type/errors remain for compatibility. Compliance/admin failures retain their own contract. */
+        ProviderCommercialPublishabilityError: {
+            /** @example Error */
+            status: string;
+            /** @example The service listing is not commercially publishable. */
+            message: string;
+            data: {
+                /** @enum {integer} */
+                issue_version: 1;
+                issues: components["schemas"]["PublicValidationIssue"][];
+                /**
+                 * @example commercial_publishability
+                 * @enum {string}
+                 */
+                type: "commercial_publishability";
+                errors: {
+                    [key: string]: components["schemas"]["ProviderPublishabilityIssue"][];
+                };
+            };
+            meta?: Record<string, never>;
+        };
+        ProviderFieldCondition: components["schemas"]["PublicDescriptorPredicate"];
+        /** @description Complete candidate update using current candidate_template descriptors. Taxonomy, provider identity, business identity, address_id, acknowledgement and raw booking policy are immutable/prohibited. Validate every applicable About/Fulfillment and Pricing field before submitting. Scalars in answers_json replace the prior scalar map; false and 0 are values. Dynamic file paths are never accepted in answers_json; use upload/clear transports. File removal is deferred until transaction success; at least one portfolio image must remain. Unknown predicate operators are errors. Existing section endpoints remain available but cannot pre-seed prohibited values for a later pricing update. */
+        ServiceCandidateUpdateRequest: {
+            /** @example Online algebra tutoring */
+            title: string;
+            /**
+             * @example [
+             *       4
+             *     ]
+             */
+            fulfillment_type_ids?: number[];
+            /**
+             * @description Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved.
+             * @example One-to-one algebra tutoring with guided practice and lesson notes.
+             */
+            description: string;
+            /** @description Stored verbatim. Line breaks, paragraphs, bullets, and spacing are preserved. */
+            additional_information?: string | null;
+            /** @example Peace of mind while you are away */
+            tagline?: string | null;
+            /**
+             * Format: float
+             * @description Required when fulfillment includes customer_location or pickup_delivery.
+             * @example 15
+             */
+            service_radius?: number | null;
+            /**
+             * @example mile
+             * @enum {string|null}
+             */
+            service_radius_unit?: "mile" | "km" | null;
+            /**
+             * @example fixed_price
+             * @enum {string}
+             */
+            pricing_type: "fixed_price" | "quote_required";
+            /**
+             * Format: float
+             * @description Required for fixed_price; optional for quote_required.
+             * @example 50
+             */
+            amount?: number | null;
+            /**
+             * @description Required for fixed_price; optional for quote_required. Submit the final currency code. USD is allowed only when currency_context and online_remote permit it.
+             * @example CAD
+             */
+            currency?: string | null;
+            /**
+             * @description Required. Must be a value returned for this subcategory on GET /service-provider/service-form-template pricing.price_units and allowed by provider_listing_capability.formats for the selected business format and pricing_type. per_weight is valid only for Laundry. Roadside never accepts per_mile. Automotive arrival hourly is quote_required only.
+             * @example 1
+             */
+            price_unit_id: number;
+            /**
+             * @description Conditionally required. Resolve applicability, requiredness, and allowed values from provider_listing_capability.formats[format].profile_pricing_scope for the selected pricing type and unit. Omission/null is invalid when that state is required; omit when prohibited.
+             * @enum {string|null}
+             */
+            profile_pricing_scope?: "per_request" | "per_profile" | null;
+            /**
+             * @deprecated
+             * @description Frontend-only toggle. It is never stored; submit the final currency code.
+             */
+            charge_in_usd?: boolean | null;
+            /**
+             * @description Only field_scope=dynamic non-file values from the resolved template, including business format selectors (for example learner_delivery, mobility_service_mode, rental_fulfillment_mode) and capability controls (durations, bounds, supported option sets, turnaround). Existing Events Mobility keys: mobility_service_mode, min_passenger_count, max_passenger_count. Existing Events Rentals keys: rental_fulfillment_mode, rental_duration_mode, rental_duration_minutes, max_rental_duration_minutes, setup_included, teardown_included, setup_duration_minutes, teardown_duration_minutes, item_unit_label, min_item_quantity, max_item_quantity. Textarea values are stored verbatim. In multipart requests, send this as a JSON string. Do not send booking_policy, schedule_family, or profile_mode. Hidden/stale capability keys must be omitted.
+             * @example {
+             *       "learner_delivery": "individual",
+             *       "session_duration_minutes": 60,
+             *       "supported_subjects": [
+             *         "math"
+             *       ]
+             *     }
+             */
+            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | null;
+            portfolio_images?: string[];
+            /**
+             * @description One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.
+             * @example Certified tutor credential
+             */
+            certificate_description?: string | null;
+            /** @description Multiple files using the single certificate_description. Total stored certificate files cannot exceed 10. */
+            certificate_files?: string[];
+            /**
+             * @description Exact resolved dynamic file_upload field_key values, for example cori_background_check. Never send the placeholder string.
+             * @example [
+             *       "cori_background_check"
+             *     ]
+             */
+            dynamic_file_keys?: string[];
+            dynamic_files?: string[];
+            /**
+             * @description Complete replacement of dynamic scalar answers. Hidden, prohibited, and omitted scalar answers are pruned. Existing applicable file references are retained unless explicitly cleared.
+             * @enum {string}
+             */
+            answers_mode: "replace";
+            /** @description Current dynamic file field keys to clear on successful save. In multipart, send a JSON array string or repeated clear_dynamic_file_keys[]. Existing uploaded CORI remains unless explicitly cleared; CORI is optional and its absence never blocks listing publishability. No Provider profile/background-check settings are changed. */
+            clear_dynamic_file_keys?: string[];
+            delete_portfolio_ids?: number[];
+            delete_certificate_ids?: number[];
+        };
         ServiceFormTemplateCategory: {
             /** @example 6 */
             id: number;
@@ -3590,7 +5218,7 @@ export interface components {
             /** @example 9 */
             id: number;
             /**
-             * @description Template IDs from generic root through category and optional matching subcategory child.
+             * @description Template IDs from generic root through category and optional matching subcategory child. Display order follows fields[].
              * @example [
              *       1,
              *       5,
@@ -3614,26 +5242,30 @@ export interface components {
              */
             value: number;
             /**
-             * @description Use this code for visible_when and required_when.
+             * @description Use this code for visible_when, required_when, and provider-location prerequisites.
              * @example online_remote
              */
             code: string;
         };
+        /** @description One price unit allowed for the selected subcategory and current capability matrix. Submit price_unit_id from value. Compatibility with pricing_type and business format is in provider_listing_capability.formats. Roadside never includes per_mile. */
         ServicePriceUnitOption: {
-            /** @example Per hour */
+            /** @example Per weight */
             label: string;
             /**
              * @description Submit this as price_unit_id.
-             * @example 2
+             * @example 10
              */
             value: number;
-            /** @example per_hour */
-            code: string;
+            /**
+             * @example per_weight
+             * @enum {string}
+             */
+            code: "per_service" | "per_hour" | "per_session" | "per_item" | "per_mile" | "per_night" | "per_day" | "per_visit" | "per_person" | "per_weight";
         };
         ServiceDefaultCurrency: {
-            /** @example INR */
+            /** @example CAD */
             code: string;
-            /** @example ? */
+            /** @example $ */
             symbol: string;
         };
         /** @description Individual country comes from the provider default customer_addresses.country_id. Business country comes only from the selected owned ProviderBusiness::country_id. Currency is matched using currencies.country_id. */
@@ -3656,16 +5288,16 @@ export interface components {
              */
             can_charge_in_usd: boolean;
         };
-        /** @description Frontend submit routing hint. Use this instead of value_key for special fields such as pricing, certificates, and dynamic uploads. */
+        /** @description Frontend submit routing hint. Use this instead of value_key for pricing, certificates, and dynamic uploads. */
         ServiceFormSubmitAs: {
             /**
-             * @example top_level
+             * @example answers_json
              * @enum {string}
              */
             type: "top_level" | "answers_json" | "dynamic_files" | "pricing_fields" | "certificate_bundle" | "display_only";
             /**
-             * @description Used when type=top_level or answers_json.
-             * @example title
+             * @description Used when type=top_level or answers_json. Business format selectors and capability controls use answers_json.
+             * @example learner_delivery
              */
             key?: string | null;
             /**
@@ -3679,42 +5311,25 @@ export interface components {
              *       "pricing_type",
              *       "amount",
              *       "currency",
-             *       "price_unit_id"
+             *       "price_unit_id",
+             *       "profile_pricing_scope"
              *     ]
              */
             keys?: string[] | null;
-            /**
-             * @description Used when type=dynamic_files.
-             * @example dynamic_file_keys
-             */
+            /** @example dynamic_file_keys */
             key_field?: string | null;
-            /**
-             * @description Used when type=dynamic_files.
-             * @example dynamic_files
-             */
+            /** @example dynamic_files */
             file_field?: string | null;
-            /**
-             * @description Used when type=dynamic_files.
-             * @example cori_background_check
-             */
+            /** @example cori_background_check */
             field_key?: string | null;
-            /**
-             * @description Used when type=certificate_bundle.
-             * @example certificate_description
-             */
+            /** @example certificate_description */
             description_key?: string | null;
-            /**
-             * @description Used when type=certificate_bundle.
-             * @example certificate_files
-             */
+            /** @example certificate_files */
             files_key?: string | null;
-            /**
-             * @description Used when type=certificate_bundle.
-             * @example true
-             */
+            /** @example true */
             multiple_files?: boolean | null;
         };
-        /** @description Optional pricing inputs shown when pricing_type=quote_required. */
+        /** @description Optional listing amount inputs shown when pricing_type=quote_required. Amount is reference context only and never becomes Customer Offer v1. */
         ServiceFormQuoteRequiredFields: {
             amount?: {
                 /** @example Base Price */
@@ -3739,96 +5354,88 @@ export interface components {
                 visible?: boolean;
             } | null;
         };
-        /** @description Frontend-ready flat field. Render from this object directly. submit_as overrides value_key for pricing, certificates, and dynamic files. */
+        /** @description Machine-readable section. Render sections in display_order. field_keys is the contained field order for that section. */
+        ServiceFormTemplateSection: {
+            /** @example service_capability */
+            section_key: string;
+            /** @example Service Capability */
+            title: string;
+            help_text?: string | null;
+            /** @example 5 */
+            display_order: number;
+            /**
+             * @example [
+             *       "learner_delivery",
+             *       "session_duration_minutes",
+             *       "supported_subjects"
+             *     ]
+             */
+            field_keys: string[];
+        };
+        /** @description Frontend-ready flat field in display order. Group using data.sections, not by inventing section order from titles. Evaluate visible_when, required_when, and prohibited_when when present. Do not render booking_policy, schedule_family, or profile_mode fields. */
         ServiceFormTemplateField: {
-            /** @example service_radius */
+            descriptor?: components["schemas"]["PublicFieldDescriptor"];
+            /** @example session_duration_minutes */
             field_key: string;
-            /** @example Service Area Radius */
+            /** @example Session Duration Minutes */
             label: string;
             /**
              * @example number
              * @enum {string}
              */
-            field_type: "text" | "textarea" | "number" | "multi_select" | "yes_no" | "address" | "file_upload" | "pricing";
+            field_type: "text" | "textarea" | "number" | "multi_select" | "single_select" | "yes_no" | "address" | "file_upload" | "pricing";
             /**
-             * @example generic
+             * @example dynamic
              * @enum {string}
              */
             field_scope: "generic" | "dynamic";
             submit_as: components["schemas"]["ServiceFormSubmitAs"];
-            /**
-             * @description Render the required indicator from this value or required_when. When true, textarea fields use validation.minimum_length >= 1, multi_select fields use validation.minimum_selections >= 1, and file_upload fields use minimum_files >= 1.
-             * @example true
-             */
+            /** @example true */
             is_required: boolean;
-            /** @example Service Information */
+            /**
+             * @example optional
+             * @enum {string}
+             */
+            requiredness: "required" | "optional" | "prohibited";
+            /** @example Service Capability */
             section?: string;
-            /** @example Enter your service area radius */
+            /** @example service_capability */
+            section_key?: string;
             placeholder?: string | null;
-            /** @example Enter how far you are willing to travel to provide this service. */
             help_text?: string | null;
-            /** @example service_radius */
+            /** @example session_duration_minutes */
             value_key?: string;
+            visible_when?: components["schemas"]["ProviderFieldCondition"];
+            required_when?: components["schemas"]["ProviderFieldCondition"];
+            prohibited_when?: components["schemas"]["ProviderFieldCondition"];
+            /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
+            capability_required_for?: (Record<string, never> | unknown[])[];
+            /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
+            capability_visible_for?: (Record<string, never> | unknown[])[];
+            /** @description Only explicitly canonical optional defaults. Pet fees have no default. */
+            default?: number | string | boolean;
             /**
-             * @example {
-             *       "field_key": "fulfillment_types",
-             *       "operator": "contains_any",
-             *       "values": [
-             *         "customer_location",
-             *         "pickup_delivery"
-             *       ]
-             *     }
-             */
-            visible_when?: Record<string, never> | null;
-            /**
-             * @example {
-             *       "field_key": "fulfillment_types",
-             *       "operator": "contains_any",
-             *       "values": [
-             *         "customer_location",
-             *         "pickup_delivery"
-             *       ]
-             *     }
-             */
-            required_when?: Record<string, never> | null;
-            /**
+             * @description Legacy empty map may serialize as []; treat [] as no entries, never as permission for arbitrary input.
              * @example {
              *       "data_type": "number",
-             *       "minimum": 0.01,
-             *       "maximum": 99999999.99
+             *       "minimum": 1,
+             *       "maximum": 1440
              *     }
              */
-            validation?: Record<string, never> | null;
-            /** @description Resolved options. Master-backed options use label, value, and code; static dynamic options use label and value. */
+            validation?: (Record<string, never> | unknown[]) | null;
+            /** @description Resolved options. Master-backed options use label, value, and code; static dynamic options use label and value. Never include schedule_family or profile_mode. */
             options?: Record<string, never>[];
             /** @example service_radius_unit */
             unit_value_key?: string | null;
-            /** @example Select unit */
             unit_placeholder?: string | null;
             unit_options?: components["schemas"]["ServiceFormValueOption"][];
-            /**
-             * @example {
-             *       "data_type": "string",
-             *       "allowed_values": [
-             *         "mile",
-             *         "km"
-             *       ],
-             *       "minimum_length": 2,
-             *       "maximum_length": 4
-             *     }
-             */
             unit_validation?: Record<string, never> | null;
-            /** @example true */
             multiple?: boolean | null;
-            /** @example 0 */
             minimum_files?: number | null;
-            /** @example 10 */
             maximum_files?: number | null;
             allowed_file_types?: string[];
             allowed_extensions?: string[];
-            /** @example certificate_description */
             description_key?: string | null;
-            /** @example certificate_files */
             files_key?: string | null;
             pricing_types?: components["schemas"]["ServiceFormValueOption"][];
             fixed_price_fields?: Record<string, never> | null;
@@ -3839,55 +5446,404 @@ export interface components {
             currency?: Record<string, never> | null;
             price_units?: components["schemas"]["ServicePriceUnitOption"][];
         };
+        /** @description Generic API-driven form contract. Render sections[] in display_order, then fields by each section's field_keys. Use provider_listing_capability for identity, alias/owner metadata, business format selectors, unit/fulfillment compatibility, bounds, and prohibited technical selectors. booking_policy_capabilities and profile_pricing_capabilities are not public response keys. */
         ServiceFormTemplatePayload: {
             category: components["schemas"]["ServiceFormTemplateCategory"];
             subcategory: components["schemas"]["ServiceFormTemplateSubcategory"];
             currency_context: components["schemas"]["ServiceCurrencyContext"];
             resolved_template: components["schemas"]["ResolvedTemplateInformation"];
+            sections: components["schemas"]["ServiceFormTemplateSection"][];
             fields: components["schemas"]["ServiceFormTemplateField"][];
+            provider_listing_capability: components["schemas"]["ProviderListingCapability"];
         };
         /**
          * @example {
          *       "status": "Success",
-         *       "message": "Service form template fetched successfully.",
+         *       "message": "Form template fetched successfully.",
          *       "data": {
          *         "category": {
-         *           "id": 6,
-         *           "name": "Education"
+         *           "id": 15,
+         *           "name": "Pet Care"
          *         },
          *         "subcategory": {
-         *           "id": 41,
-         *           "category_id": 6,
-         *           "name": "Tutoring"
+         *           "id": 93,
+         *           "category_id": 15,
+         *           "name": "Pet sitting"
          *         },
          *         "currency_context": {
-         *           "provider_type": "business",
-         *           "business_id": 12,
-         *           "country_id": 101,
+         *           "provider_type": "individual",
+         *           "business_id": null,
+         *           "country_id": 1,
          *           "default_currency": {
-         *             "code": "INR",
-         *             "symbol": "?"
+         *             "code": "USD",
+         *             "symbol": "$"
          *           },
-         *           "is_usd_currency": false,
-         *           "can_charge_in_usd": true
+         *           "is_usd_currency": true,
+         *           "can_charge_in_usd": false
          *         },
          *         "resolved_template": {
-         *           "id": 9,
+         *           "id": 96,
          *           "template_chain": [
          *             1,
-         *             5,
-         *             9
+         *             16,
+         *             96
          *           ]
          *         },
+         *         "sections": [
+         *           {
+         *             "section_key": "service_information",
+         *             "title": "Service Information",
+         *             "help_text": "Core listing identity, fulfillment, and location inputs.",
+         *             "display_order": 1,
+         *             "field_keys": [
+         *               "title",
+         *               "description",
+         *               "additional_information",
+         *               "tagline",
+         *               "portfolio_images",
+         *               "certificates",
+         *               "information_accuracy_acknowledgement"
+         *             ]
+         *           },
+         *           {
+         *             "section_key": "fulfillment_location",
+         *             "title": "Fulfillment Location",
+         *             "help_text": null,
+         *             "display_order": 2,
+         *             "field_keys": [
+         *               "fulfillment_types",
+         *               "address",
+         *               "service_radius"
+         *             ]
+         *           },
+         *           {
+         *             "section_key": "pricing",
+         *             "title": "Pricing",
+         *             "help_text": "Pricing type, amount, currency, and price unit.",
+         *             "display_order": 3,
+         *             "field_keys": [
+         *               "pricing",
+         *               "additional_pet_surcharge"
+         *             ]
+         *           }
+         *         ],
          *         "fields": [
+         *           {
+         *             "field_key": "title",
+         *             "label": "Service Title",
+         *             "field_type": "text",
+         *             "field_scope": "generic",
+         *             "is_required": true,
+         *             "requiredness": "required",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "title"
+         *             },
+         *             "help_text": "Use a short title that clearly describes the service you provide.",
+         *             "value_key": "title",
+         *             "validation": {
+         *               "data_type": "string",
+         *               "maximum_length": 150,
+         *               "minimum_length": 3
+         *             },
+         *             "placeholder": "Enter a clear and specific service title",
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "title",
+         *               "payload_path": "title",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "title"
+         *               },
+         *               "label": "Service Title",
+         *               "help_text": "Use a short title that clearly describes the service you provide.",
+         *               "control": "text",
+         *               "value_type": "string",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 10,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "data_type": "string",
+         *                 "maximum_length": 150,
+         *                 "minimum_length": 3,
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "fulfillment_types",
+         *             "label": "Fulfillment Type",
+         *             "field_type": "multi_select",
+         *             "field_scope": "generic",
+         *             "is_required": true,
+         *             "requiredness": "required",
+         *             "section": "Fulfillment Location",
+         *             "section_key": "fulfillment_location",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "fulfillment_type_ids"
+         *             },
+         *             "help_text": "Choose how customers can receive this service.",
+         *             "value_key": "fulfillment_type_ids",
+         *             "validation": {
+         *               "maximum_selections": 2,
+         *               "minimum_selections": 1
+         *             },
+         *             "placeholder": "Select one or more fulfillment types",
+         *             "options_source": {
+         *               "table": "fulfillment_types",
+         *               "code_column": "code",
+         *               "label_column": "name",
+         *               "value_column": "id"
+         *             },
+         *             "options": [
+         *               {
+         *                 "label": "At my location",
+         *                 "value": 1,
+         *                 "code": "provider_location"
+         *               },
+         *               {
+         *                 "label": "At customer location",
+         *                 "value": 2,
+         *                 "code": "customer_location"
+         *               }
+         *             ],
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "fulfillment_types",
+         *               "payload_path": "fulfillment_type_ids",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "fulfillment_type_ids"
+         *               },
+         *               "label": "Fulfillment Type",
+         *               "help_text": "Choose how customers can receive this service.",
+         *               "control": "multi_select",
+         *               "value_type": "array",
+         *               "step": "fulfillment",
+         *               "section": "fulfillment_location",
+         *               "group": "Fulfillment Location",
+         *               "display_order": 20,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [
+         *                 {
+         *                   "label": "At my location",
+         *                   "value": 1,
+         *                   "code": "provider_location"
+         *                 },
+         *                 {
+         *                   "label": "At customer location",
+         *                   "value": 2,
+         *                   "code": "customer_location"
+         *                 }
+         *               ],
+         *               "set": {
+         *                 "mode": "closed",
+         *                 "item_type": "integer",
+         *                 "entry": "options_only",
+         *                 "relation": "member_of",
+         *                 "pair_encoding": null
+         *               },
+         *               "constraints": {
+         *                 "maximum_selections": 2,
+         *                 "minimum_selections": 1,
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "location_authority",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "fulfillment_location",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "address",
+         *             "label": "Service Address",
+         *             "field_type": "address",
+         *             "field_scope": "generic",
+         *             "is_required": false,
+         *             "requiredness": "prohibited",
+         *             "section": "Fulfillment Location",
+         *             "section_key": "fulfillment_location",
+         *             "submit_as": {
+         *               "type": "display_only",
+         *               "source": "provider_default_address"
+         *             },
+         *             "help_text": "When fulfillment includes at your location or pickup and delivery, the backend saves your default provider address automatically. Clients do not submit address_id.",
+         *             "validation": {
+         *               "maximum": 2147483647,
+         *               "minimum": 1,
+         *               "data_type": "integer"
+         *             },
+         *             "placeholder": "Your default provider address",
+         *             "visible_when": {
+         *               "values": [
+         *                 "provider_location",
+         *                 "pickup_delivery"
+         *               ],
+         *               "operator": "contains_any",
+         *               "field_key": "fulfillment_types"
+         *             },
+         *             "required_when": {
+         *               "values": [
+         *                 "provider_location",
+         *                 "pickup_delivery"
+         *               ],
+         *               "operator": "contains_any",
+         *               "field_key": "fulfillment_types"
+         *             },
+         *             "prohibited_when": {
+         *               "not": {
+         *                 "values": [
+         *                   "provider_location",
+         *                   "pickup_delivery"
+         *                 ],
+         *                 "operator": "contains_any",
+         *                 "field_key": "fulfillment_types"
+         *               }
+         *             },
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "address",
+         *               "payload_path": null,
+         *               "transport": {
+         *                 "type": "display_only",
+         *                 "source": "provider_default_address"
+         *               },
+         *               "label": "Service Address",
+         *               "help_text": "When fulfillment includes at your location or pickup and delivery, the backend saves your default provider address automatically. Clients do not submit address_id.",
+         *               "control": "address",
+         *               "value_type": "object",
+         *               "step": "fulfillment",
+         *               "section": "fulfillment_location",
+         *               "group": "Fulfillment Location",
+         *               "display_order": 30,
+         *               "owner": "read_only",
+         *               "requiredness": "prohibited",
+         *               "applicability": {
+         *                 "visible_when": {
+         *                   "values": [
+         *                     "provider_location",
+         *                     "pickup_delivery"
+         *                   ],
+         *                   "operator": "contains_any",
+         *                   "field_key": "fulfillment_types"
+         *                 },
+         *                 "required_when": {
+         *                   "values": [
+         *                     "provider_location",
+         *                     "pickup_delivery"
+         *                   ],
+         *                   "operator": "contains_any",
+         *                   "field_key": "fulfillment_types"
+         *                 },
+         *                 "prohibited_when": {
+         *                   "not": {
+         *                     "values": [
+         *                       "provider_location",
+         *                       "pickup_delivery"
+         *                     ],
+         *                     "operator": "contains_any",
+         *                     "field_key": "fulfillment_types"
+         *                   }
+         *                 }
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "maximum": 2147483647,
+         *                 "minimum": 1,
+         *                 "data_type": "integer",
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "location_authority",
+         *               "edit": {
+         *                 "writable": false,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "fulfillment_location",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
          *           {
          *             "field_key": "service_radius",
          *             "label": "Service Area Radius",
          *             "field_type": "number",
+         *             "field_scope": "generic",
          *             "is_required": false,
-         *             "section": "Service Information",
+         *             "requiredness": "optional",
+         *             "section": "Fulfillment Location",
+         *             "section_key": "fulfillment_location",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "service_radius"
+         *             },
+         *             "help_text": "Enter how far you are willing to travel to provide this service.",
          *             "value_key": "service_radius",
-         *             "unit_value_key": "service_radius_unit",
+         *             "validation": {
+         *               "maximum": 99999999.99,
+         *               "minimum": 0.01,
+         *               "data_type": "number"
+         *             },
+         *             "placeholder": "Enter your service area radius",
          *             "unit_options": [
          *               {
          *                 "label": "mile",
@@ -3898,51 +5854,1360 @@ export interface components {
          *                 "value": "km"
          *               }
          *             ],
-         *             "required_when": {
-         *               "field_key": "fulfillment_types",
-         *               "operator": "contains_any",
+         *             "visible_when": {
          *               "values": [
          *                 "customer_location",
          *                 "pickup_delivery"
-         *               ]
+         *               ],
+         *               "operator": "contains_any",
+         *               "field_key": "fulfillment_types"
          *             },
+         *             "required_when": {
+         *               "values": [
+         *                 "customer_location",
+         *                 "pickup_delivery"
+         *               ],
+         *               "operator": "contains_any",
+         *               "field_key": "fulfillment_types"
+         *             },
+         *             "unit_value_key": "service_radius_unit",
+         *             "unit_validation": {
+         *               "data_type": "string",
+         *               "allowed_values": [
+         *                 "mile",
+         *                 "km"
+         *               ],
+         *               "maximum_length": 4,
+         *               "minimum_length": 2
+         *             },
+         *             "unit_placeholder": "Select unit",
+         *             "prohibited_when": {
+         *               "not": {
+         *                 "values": [
+         *                   "customer_location",
+         *                   "pickup_delivery"
+         *                 ],
+         *                 "operator": "contains_any",
+         *                 "field_key": "fulfillment_types"
+         *               }
+         *             },
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "service_radius",
+         *               "payload_path": "service_radius",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "service_radius"
+         *               },
+         *               "label": "Service Area Radius",
+         *               "help_text": "Enter how far you are willing to travel to provide this service.",
+         *               "control": "number",
+         *               "value_type": "number",
+         *               "step": "fulfillment",
+         *               "section": "fulfillment_location",
+         *               "group": "Fulfillment Location",
+         *               "display_order": 40,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": {
+         *                   "values": [
+         *                     "customer_location",
+         *                     "pickup_delivery"
+         *                   ],
+         *                   "operator": "contains_any",
+         *                   "field_key": "fulfillment_types"
+         *                 },
+         *                 "required_when": {
+         *                   "values": [
+         *                     "customer_location",
+         *                     "pickup_delivery"
+         *                   ],
+         *                   "operator": "contains_any",
+         *                   "field_key": "fulfillment_types"
+         *                 },
+         *                 "prohibited_when": {
+         *                   "not": {
+         *                     "values": [
+         *                       "customer_location",
+         *                       "pickup_delivery"
+         *                     ],
+         *                     "operator": "contains_any",
+         *                     "field_key": "fulfillment_types"
+         *                   }
+         *                 }
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "maximum": 99999999.99,
+         *                 "minimum": 0.01,
+         *                 "data_type": "number",
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "location_authority",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "fulfillment_location",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "description",
+         *             "label": "Service Description",
+         *             "field_type": "textarea",
+         *             "field_scope": "generic",
+         *             "is_required": true,
+         *             "requiredness": "required",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "description"
+         *             },
+         *             "help_text": "Provide a clear and complete description of the service.",
+         *             "value_key": "description",
          *             "validation": {
-         *               "data_type": "number",
-         *               "minimum": 0.01,
-         *               "maximum": 99999999.99
+         *               "data_type": "string",
+         *               "maximum_length": 5000,
+         *               "minimum_length": 20
+         *             },
+         *             "placeholder": "Describe your service, what is included, and what customers can expect",
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "description",
+         *               "payload_path": "description",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "description"
+         *               },
+         *               "label": "Service Description",
+         *               "help_text": "Provide a clear and complete description of the service.",
+         *               "control": "textarea",
+         *               "value_type": "string",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 50,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "data_type": "string",
+         *                 "maximum_length": 5000,
+         *                 "minimum_length": 20,
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "additional_information",
+         *             "label": "Additional information customer should know",
+         *             "field_type": "textarea",
+         *             "field_scope": "generic",
+         *             "is_required": false,
+         *             "requiredness": "optional",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "additional_information"
+         *             },
+         *             "help_text": "Include preparation instructions, limitations, requirements, or any other useful information.",
+         *             "value_key": "additional_information",
+         *             "validation": {
+         *               "data_type": "string",
+         *               "maximum_length": 3000,
+         *               "minimum_length": 0
+         *             },
+         *             "placeholder": "Add any additional details customers should know",
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "additional_information",
+         *               "payload_path": "additional_information",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "additional_information"
+         *               },
+         *               "label": "Additional information customer should know",
+         *               "help_text": "Include preparation instructions, limitations, requirements, or any other useful information.",
+         *               "control": "textarea",
+         *               "value_type": "string",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 60,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "data_type": "string",
+         *                 "maximum_length": 3000,
+         *                 "minimum_length": 0,
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "tagline",
+         *             "label": "Your Tagline",
+         *             "field_type": "text",
+         *             "field_scope": "generic",
+         *             "is_required": false,
+         *             "requiredness": "optional",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "tagline"
+         *             },
+         *             "help_text": "Write a short phrase that summarizes what makes your service valuable.",
+         *             "value_key": "tagline",
+         *             "validation": {
+         *               "data_type": "string",
+         *               "maximum_length": 150,
+         *               "minimum_length": 0
+         *             },
+         *             "placeholder": "Enter a short tagline for your service",
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "tagline",
+         *               "payload_path": "tagline",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "tagline"
+         *               },
+         *               "label": "Your Tagline",
+         *               "help_text": "Write a short phrase that summarizes what makes your service valuable.",
+         *               "control": "text",
+         *               "value_type": "string",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 70,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "data_type": "string",
+         *                 "maximum_length": 150,
+         *                 "minimum_length": 0,
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "portfolio_images",
+         *             "label": "Images / Portfolio",
+         *             "field_type": "file_upload",
+         *             "field_scope": "generic",
+         *             "is_required": true,
+         *             "requiredness": "required",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "portfolio_images"
+         *             },
+         *             "multiple": true,
+         *             "help_text": "Upload clear images that help customers understand the quality of your service.",
+         *             "value_key": "portfolio_images",
+         *             "placeholder": "Upload images that showcase your work",
+         *             "maximum_files": 10,
+         *             "minimum_files": 1,
+         *             "allowed_extensions": [
+         *               "jpg",
+         *               "jpeg",
+         *               "png",
+         *               "webp"
+         *             ],
+         *             "allowed_file_types": [
+         *               "image/jpeg",
+         *               "image/png",
+         *               "image/webp"
+         *             ],
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "portfolio_images",
+         *               "payload_path": "portfolio_images",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "portfolio_images"
+         *               },
+         *               "label": "Images / Portfolio",
+         *               "help_text": "Upload clear images that help customers understand the quality of your service.",
+         *               "control": "files",
+         *               "value_type": "array",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 900,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "certificates",
+         *             "label": "Certifications / Licenses",
+         *             "field_type": "file_upload",
+         *             "field_scope": "generic",
+         *             "is_required": false,
+         *             "requiredness": "optional",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "certificate_bundle",
+         *               "description_key": "certificate_description",
+         *               "files_key": "certificate_files",
+         *               "multiple_files": true
+         *             },
+         *             "multiple": true,
+         *             "files_key": "certificate_files",
+         *             "help_text": "Enter one description for all certification files. Upload multiple files under that same description.",
+         *             "value_key": "certificate_description",
+         *             "placeholder": "Describe and upload your certifications or licenses",
+         *             "maximum_files": 10,
+         *             "minimum_files": 0,
+         *             "description_key": "certificate_description",
+         *             "allowed_extensions": [
+         *               "pdf",
+         *               "jpg",
+         *               "jpeg",
+         *               "png"
+         *             ],
+         *             "allowed_file_types": [
+         *               "application/pdf",
+         *               "image/jpeg",
+         *               "image/png"
+         *             ],
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "certificates",
+         *               "payload_path": null,
+         *               "transport": {
+         *                 "type": "certificate_bundle",
+         *                 "description_key": "certificate_description",
+         *                 "files_key": "certificate_files",
+         *                 "multiple_files": true
+         *               },
+         *               "label": "Certifications / Licenses",
+         *               "help_text": "Enter one description for all certification files. Upload multiple files under that same description.",
+         *               "control": "files",
+         *               "value_type": "array",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 910,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
          *             }
          *           },
          *           {
          *             "field_key": "pricing",
          *             "label": "Service Price",
          *             "field_type": "pricing",
+         *             "field_scope": "generic",
          *             "is_required": true,
+         *             "requiredness": "required",
          *             "section": "Pricing",
-         *             "charge_in_usd": {
-         *               "label": "Charge in USD",
-         *               "default": false
-         *             },
-         *             "base_price": {
-         *               "label": "Base Price",
-         *               "minimum": 0.01,
-         *               "maximum": 9999999999.99
+         *             "section_key": "pricing",
+         *             "submit_as": {
+         *               "type": "pricing_fields",
+         *               "keys": [
+         *                 "pricing_type",
+         *                 "amount",
+         *                 "currency",
+         *                 "price_unit_id",
+         *                 "profile_pricing_scope"
+         *               ]
          *             },
          *             "currency": {
-         *               "value_key": "currency",
          *               "source": "currency_context.default_currency",
+         *               "value_key": "currency",
+         *               "validation": {
+         *                 "data_type": "string",
+         *                 "maximum_length": 3,
+         *                 "minimum_length": 3
+         *               },
          *               "allow_usd_override": true
+         *             },
+         *             "help_text": "Choose a fixed price or require customers to request a quote.",
+         *             "value_key": "pricing",
+         *             "base_price": {
+         *               "label": "Base Price",
+         *               "maximum": 9999999999.99,
+         *               "minimum": 0.01,
+         *               "value_key": "amount",
+         *               "placeholder": "Enter base price"
+         *             },
+         *             "placeholder": "Select how customers will be charged",
+         *             "charge_in_usd": {
+         *               "label": "Charge in USD",
+         *               "default": false,
+         *               "value_key": "charge_in_usd",
+         *               "validation": {
+         *                 "allowed_values": [
+         *                   true,
+         *                   false
+         *                 ]
+         *               },
+         *               "control_type": "boolean",
+         *               "visible_when": {
+         *                 "all": [
+         *                   {
+         *                     "value": "online_remote",
+         *                     "operator": "contains",
+         *                     "field_key": "fulfillment_types"
+         *                   },
+         *                   {
+         *                     "value": true,
+         *                     "operator": "equals",
+         *                     "context_key": "can_charge_in_usd"
+         *                   }
+         *                 ]
+         *               }
+         *             },
+         *             "pricing_types": [
+         *               {
+         *                 "label": "Fixed Price",
+         *                 "value": "fixed_price"
+         *               },
+         *               {
+         *                 "label": "Quote Required",
+         *                 "value": "quote_required"
+         *               }
+         *             ],
+         *             "fixed_price_fields": {
+         *               "amount": {
+         *                 "label": "Base Price",
+         *                 "maximum": 9999999999.99,
+         *                 "minimum": 0.01,
+         *                 "required": true,
+         *                 "value_key": "amount",
+         *                 "validation": {
+         *                   "maximum": 9999999999.99,
+         *                   "minimum": 0.01,
+         *                   "data_type": "number"
+         *                 },
+         *                 "placeholder": "Enter base price"
+         *               },
+         *               "currency": {
+         *                 "source": "currency_context.default_currency",
+         *                 "required": true,
+         *                 "value_key": "currency",
+         *                 "validation": {
+         *                   "data_type": "string",
+         *                   "maximum_length": 3,
+         *                   "minimum_length": 3
+         *                 },
+         *                 "allow_usd_override": true
+         *               },
+         *               "price_unit_id": {
+         *                 "label": "Price Unit",
+         *                 "required": true,
+         *                 "validation": {
+         *                   "maximum": 2147483647,
+         *                   "minimum": 1,
+         *                   "data_type": "integer"
+         *                 },
+         *                 "placeholder": "Select price unit"
+         *               }
+         *             },
+         *             "price_units_source": {
+         *               "table": "service_price_units",
+         *               "code_column": "code",
+         *               "label_column": "name",
+         *               "value_column": "id"
+         *             },
+         *             "quote_required_fields": {
+         *               "amount": {
+         *                 "label": "Base Price",
+         *                 "visible": true,
+         *                 "required": false,
+         *                 "value_key": "amount",
+         *                 "validation": {
+         *                   "maximum": 9999999999.99,
+         *                   "minimum": 0.01,
+         *                   "data_type": "number"
+         *                 },
+         *                 "placeholder": "Enter an optional base price"
+         *               },
+         *               "currency": {
+         *                 "source": "currency_context.default_currency",
+         *                 "visible": true,
+         *                 "required": false,
+         *                 "value_key": "currency",
+         *                 "validation": {
+         *                   "data_type": "string",
+         *                   "maximum_length": 3,
+         *                   "minimum_length": 3
+         *                 },
+         *                 "allow_usd_override": true
+         *               },
+         *               "price_unit_id": {
+         *                 "label": "Price Unit",
+         *                 "visible": true,
+         *                 "required": true,
+         *                 "validation": {
+         *                   "maximum": 2147483647,
+         *                   "minimum": 1,
+         *                   "data_type": "integer"
+         *                 },
+         *                 "placeholder": "Select price unit"
+         *               }
          *             },
          *             "price_units": [
          *               {
          *                 "label": "Per hour",
          *                 "value": 2,
          *                 "code": "per_hour"
+         *               },
+         *               {
+         *                 "label": "Per session",
+         *                 "value": 3,
+         *                 "code": "per_session"
+         *               },
+         *               {
+         *                 "label": "Per night",
+         *                 "value": 8,
+         *                 "code": "per_night"
          *               }
-         *             ]
+         *             ],
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "pricing",
+         *               "payload_path": null,
+         *               "transport": {
+         *                 "type": "pricing_fields",
+         *                 "keys": [
+         *                   "pricing_type",
+         *                   "amount",
+         *                   "currency",
+         *                   "price_unit_id",
+         *                   "profile_pricing_scope"
+         *                 ]
+         *               },
+         *               "label": "Service Price",
+         *               "help_text": "Choose a fixed price or require customers to request a quote.",
+         *               "control": "pricing",
+         *               "value_type": "object",
+         *               "step": "pricing",
+         *               "section": "pricing",
+         *               "group": "Pricing",
+         *               "display_order": 1000,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "provider_monetary_authority",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "pricing",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "information_accuracy_acknowledgement",
+         *             "label": "I confirm that the information provided is accurate. I acknowledge that providing false or misleading information may result in removal from the platform.",
+         *             "field_type": "yes_no",
+         *             "field_scope": "generic",
+         *             "is_required": true,
+         *             "requiredness": "required",
+         *             "section": "Service Information",
+         *             "section_key": "service_information",
+         *             "submit_as": {
+         *               "type": "top_level",
+         *               "key": "information_accuracy_acknowledgement"
+         *             },
+         *             "options": [
+         *               {
+         *                 "label": "Yes",
+         *                 "value": true
+         *               },
+         *               {
+         *                 "label": "No",
+         *                 "value": false
+         *               }
+         *             ],
+         *             "help_text": "You must accept this confirmation before submitting the service.",
+         *             "value_key": "information_accuracy_acknowledgement",
+         *             "validation": {
+         *               "accepted_value": true,
+         *               "allowed_values": [
+         *                 true,
+         *                 false
+         *               ]
+         *             },
+         *             "placeholder": "Confirm the accuracy of your service information",
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "information_accuracy_acknowledgement",
+         *               "payload_path": "information_accuracy_acknowledgement",
+         *               "transport": {
+         *                 "type": "top_level",
+         *                 "key": "information_accuracy_acknowledgement"
+         *               },
+         *               "label": "I confirm that the information provided is accurate. I acknowledge that providing false or misleading information may result in removal from the platform.",
+         *               "help_text": "You must accept this confirmation before submitting the service.",
+         *               "control": "boolean",
+         *               "value_type": "boolean",
+         *               "step": "about",
+         *               "section": "service_information",
+         *               "group": "Service Information",
+         *               "display_order": 1010,
+         *               "owner": "provider",
+         *               "requiredness": "required",
+         *               "applicability": {
+         *                 "visible_when": null,
+         *                 "required_when": null,
+         *                 "prohibited_when": null
+         *               },
+         *               "options": [
+         *                 {
+         *                   "label": "Yes",
+         *                   "value": true
+         *                 },
+         *                 {
+         *                   "label": "No",
+         *                   "value": false
+         *                 }
+         *               ],
+         *               "set": null,
+         *               "constraints": {
+         *                 "accepted_value": true,
+         *                 "allowed_values": [
+         *                   true,
+         *                   false
+         *                 ],
+         *                 "minimum": null,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "yes_no_string",
+         *               "relations": [],
+         *               "pricing_relevance": "none",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "service_information",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           },
+         *           {
+         *             "field_key": "additional_pet_surcharge",
+         *             "label": "Additional Pet Surcharge",
+         *             "field_type": "number",
+         *             "field_scope": "dynamic",
+         *             "is_required": false,
+         *             "requiredness": "optional",
+         *             "section": "Pricing",
+         *             "section_key": "pricing",
+         *             "submit_as": {
+         *               "type": "answers_json",
+         *               "key": "additional_pet_surcharge"
+         *             },
+         *             "options": [],
+         *             "validation": {
+         *               "minimum": 0
+         *             },
+         *             "relations": [],
+         *             "capability_required_for": [
+         *               {
+         *                 "pricing_type": [
+         *                   "fixed_price"
+         *                 ]
+         *               }
+         *             ],
+         *             "capability_visible_for": [
+         *               {
+         *                 "pricing_type": [
+         *                   "fixed_price"
+         *                 ]
+         *               }
+         *             ],
+         *             "visible_when": {
+         *               "any": [
+         *                 {
+         *                   "all": [
+         *                     {
+         *                       "context_key": "pricing_type",
+         *                       "operator": "in",
+         *                       "values": [
+         *                         "fixed_price"
+         *                       ]
+         *                     }
+         *                   ]
+         *                 }
+         *               ]
+         *             },
+         *             "required_when": {
+         *               "any": [
+         *                 {
+         *                   "all": [
+         *                     {
+         *                       "context_key": "pricing_type",
+         *                       "operator": "in",
+         *                       "values": [
+         *                         "fixed_price"
+         *                       ]
+         *                     }
+         *                   ]
+         *                 }
+         *               ]
+         *             },
+         *             "prohibited_when": {
+         *               "not": {
+         *                 "any": [
+         *                   {
+         *                     "all": [
+         *                       {
+         *                         "context_key": "pricing_type",
+         *                         "operator": "in",
+         *                         "values": [
+         *                           "fixed_price"
+         *                         ]
+         *                       }
+         *                     ]
+         *                   }
+         *                 ]
+         *               }
+         *             },
+         *             "descriptor": {
+         *               "version": 1,
+         *               "key": "additional_pet_surcharge",
+         *               "payload_path": "answers_json.additional_pet_surcharge",
+         *               "transport": {
+         *                 "type": "answers_json",
+         *                 "key": "additional_pet_surcharge"
+         *               },
+         *               "label": "Additional Pet Surcharge",
+         *               "help_text": null,
+         *               "control": "number",
+         *               "value_type": "number",
+         *               "step": "pricing",
+         *               "section": "pricing",
+         *               "group": "Pricing",
+         *               "display_order": 1011,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": {
+         *                   "any": [
+         *                     {
+         *                       "all": [
+         *                         {
+         *                           "context_key": "pricing_type",
+         *                           "operator": "in",
+         *                           "values": [
+         *                             "fixed_price"
+         *                           ]
+         *                         }
+         *                       ]
+         *                     }
+         *                   ]
+         *                 },
+         *                 "required_when": {
+         *                   "any": [
+         *                     {
+         *                       "all": [
+         *                         {
+         *                           "context_key": "pricing_type",
+         *                           "operator": "in",
+         *                           "values": [
+         *                             "fixed_price"
+         *                           ]
+         *                         }
+         *                       ]
+         *                     }
+         *                   ]
+         *                 },
+         *                 "prohibited_when": {
+         *                   "not": {
+         *                     "any": [
+         *                       {
+         *                         "all": [
+         *                           {
+         *                             "context_key": "pricing_type",
+         *                             "operator": "in",
+         *                             "values": [
+         *                               "fixed_price"
+         *                             ]
+         *                           }
+         *                         ]
+         *                       }
+         *                     ]
+         *                   }
+         *                 }
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "minimum": 0,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "provider_monetary_authority",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "pricing",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
          *           }
-         *         ]
+         *         ],
+         *         "provider_listing_capability": {
+         *           "version": 1,
+         *           "descriptor_version": 1,
+         *           "descriptors": [
+         *             {
+         *               "version": 1,
+         *               "key": "additional_pet_surcharge",
+         *               "payload_path": "answers_json.additional_pet_surcharge",
+         *               "transport": null,
+         *               "label": "Additional Pet Surcharge",
+         *               "help_text": null,
+         *               "control": "number",
+         *               "value_type": "number",
+         *               "step": "pricing",
+         *               "section": "pricing",
+         *               "group": null,
+         *               "display_order": 1,
+         *               "owner": "provider",
+         *               "requiredness": "optional",
+         *               "applicability": {
+         *                 "visible_when": {
+         *                   "any": [
+         *                     {
+         *                       "all": [
+         *                         {
+         *                           "context_key": "pricing_type",
+         *                           "operator": "in",
+         *                           "values": [
+         *                             "fixed_price"
+         *                           ]
+         *                         }
+         *                       ]
+         *                     }
+         *                   ]
+         *                 },
+         *                 "required_when": {
+         *                   "any": [
+         *                     {
+         *                       "all": [
+         *                         {
+         *                           "context_key": "pricing_type",
+         *                           "operator": "in",
+         *                           "values": [
+         *                             "fixed_price"
+         *                           ]
+         *                         }
+         *                       ]
+         *                     }
+         *                   ]
+         *                 },
+         *                 "prohibited_when": {
+         *                   "not": {
+         *                     "any": [
+         *                       {
+         *                         "all": [
+         *                           {
+         *                             "context_key": "pricing_type",
+         *                             "operator": "in",
+         *                             "values": [
+         *                               "fixed_price"
+         *                             ]
+         *                           }
+         *                         ]
+         *                       }
+         *                     ]
+         *                   }
+         *                 }
+         *               },
+         *               "options": [],
+         *               "set": null,
+         *               "constraints": {
+         *                 "minimum": 0,
+         *                 "maximum": null,
+         *                 "integer": false,
+         *                 "step": null
+         *               },
+         *               "other_input": false,
+         *               "value_encoding": "native",
+         *               "relations": [],
+         *               "pricing_relevance": "provider_monetary_authority",
+         *               "fulfillment_relevance": "none",
+         *               "edit": {
+         *                 "writable": true,
+         *                 "hidden_value": "omit",
+         *                 "read_only_value": "reject"
+         *               },
+         *               "readback": {
+         *                 "step": "summary",
+         *                 "section": "pricing",
+         *                 "omit_when_empty": true
+         *               }
+         *             }
+         *           ],
+         *           "source": {
+         *             "category": "Pet Care",
+         *             "subcategory": "Pet Sitting",
+         *             "key": "pet care|pet sitting"
+         *           },
+         *           "canonical_owner": {
+         *             "category": "Pet Care",
+         *             "subcategory": "Pet Sitting",
+         *             "key": "pet care|pet sitting"
+         *           },
+         *           "is_alias": false,
+         *           "business_format": null,
+         *           "formats": {
+         *             "default": {
+         *               "label": "Default",
+         *               "pricing": {
+         *                 "fixed_price": [
+         *                   "per_hour",
+         *                   "per_session",
+         *                   "per_night"
+         *                 ],
+         *                 "quote_required": [
+         *                   "per_hour",
+         *                   "per_session",
+         *                   "per_night"
+         *                 ]
+         *               },
+         *               "fulfillment": [
+         *                 "provider_location",
+         *                 "customer_location"
+         *               ],
+         *               "fulfillment_by_price_unit": {
+         *                 "per_session": [
+         *                   "customer_location"
+         *                 ]
+         *               },
+         *               "profile_pricing_scope": {
+         *                 "descriptor": {
+         *                   "version": 1,
+         *                   "key": "profile_pricing_scope",
+         *                   "payload_path": "profile_pricing_scope",
+         *                   "transport": null,
+         *                   "label": "Price Applies To",
+         *                   "help_text": null,
+         *                   "control": "single_select",
+         *                   "value_type": "string",
+         *                   "step": "pricing",
+         *                   "section": "pricing",
+         *                   "group": null,
+         *                   "display_order": 50,
+         *                   "owner": "provider",
+         *                   "requiredness": "optional",
+         *                   "applicability": {
+         *                     "visible_when": {
+         *                       "any": []
+         *                     },
+         *                     "required_when": {
+         *                       "any": []
+         *                     },
+         *                     "prohibited_when": {
+         *                       "not": {
+         *                         "any": []
+         *                       }
+         *                     }
+         *                   },
+         *                   "options": [
+         *                     {
+         *                       "value": "per_request",
+         *                       "label": "Entire Request"
+         *                     },
+         *                     {
+         *                       "value": "per_profile",
+         *                       "label": "Each Selected Profile"
+         *                     }
+         *                   ],
+         *                   "set": {
+         *                     "mode": "closed",
+         *                     "item_type": "string",
+         *                     "entry": "options_only",
+         *                     "relation": "member_of",
+         *                     "pair_encoding": null
+         *                   },
+         *                   "constraints": {
+         *                     "minimum": null,
+         *                     "maximum": null,
+         *                     "integer": false,
+         *                     "step": null
+         *                   },
+         *                   "other_input": false,
+         *                   "value_encoding": "native",
+         *                   "relations": [],
+         *                   "pricing_relevance": "provider_monetary_authority",
+         *                   "fulfillment_relevance": "none",
+         *                   "edit": {
+         *                     "writable": true,
+         *                     "hidden_value": "omit",
+         *                     "read_only_value": "reject"
+         *                   },
+         *                   "readback": {
+         *                     "step": "summary",
+         *                     "section": "pricing",
+         *                     "omit_when_empty": true
+         *                   }
+         *                 },
+         *                 "field_key": "profile_pricing_scope",
+         *                 "label": "Price Applies To",
+         *                 "help_text": "Choose whether the fixed price applies to the entire request or each selected profile.",
+         *                 "options": [
+         *                   {
+         *                     "value": "per_request",
+         *                     "label": "Entire Request"
+         *                   },
+         *                   {
+         *                     "value": "per_profile",
+         *                     "label": "Each Selected Profile"
+         *                   }
+         *                 ],
+         *                 "default_state": {
+         *                   "state": "prohibited",
+         *                   "applicable": false,
+         *                   "required": false,
+         *                   "allowed_values": []
+         *                 },
+         *                 "by_pricing_type": {
+         *                   "fixed_price": {
+         *                     "per_hour": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     },
+         *                     "per_session": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     },
+         *                     "per_night": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     }
+         *                   },
+         *                   "quote_required": {
+         *                     "per_hour": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     },
+         *                     "per_session": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     },
+         *                     "per_night": {
+         *                       "state": "prohibited",
+         *                       "applicable": false,
+         *                       "required": false,
+         *                       "allowed_values": []
+         *                     }
+         *                   }
+         *                 }
+         *               },
+         *               "provider_fields": [
+         *                 {
+         *                   "field_key": "additional_pet_surcharge",
+         *                   "label": "Additional Pet Surcharge",
+         *                   "field_type": "number",
+         *                   "is_required": false,
+         *                   "validation": {
+         *                     "minimum": 0
+         *                   },
+         *                   "required_for": [
+         *                     {
+         *                       "pricing_type": [
+         *                         "fixed_price"
+         *                       ]
+         *                     }
+         *                   ],
+         *                   "descriptor": {
+         *                     "version": 1,
+         *                     "key": "additional_pet_surcharge",
+         *                     "payload_path": "answers_json.additional_pet_surcharge",
+         *                     "transport": null,
+         *                     "label": "Additional Pet Surcharge",
+         *                     "help_text": null,
+         *                     "control": "number",
+         *                     "value_type": "number",
+         *                     "step": "pricing",
+         *                     "section": "pricing",
+         *                     "group": null,
+         *                     "display_order": 1,
+         *                     "owner": "provider",
+         *                     "requiredness": "optional",
+         *                     "applicability": {
+         *                       "visible_when": {
+         *                         "any": [
+         *                           {
+         *                             "all": [
+         *                               {
+         *                                 "context_key": "pricing_type",
+         *                                 "operator": "in",
+         *                                 "values": [
+         *                                   "fixed_price"
+         *                                 ]
+         *                               }
+         *                             ]
+         *                           }
+         *                         ]
+         *                       },
+         *                       "required_when": {
+         *                         "any": [
+         *                           {
+         *                             "all": [
+         *                               {
+         *                                 "context_key": "pricing_type",
+         *                                 "operator": "in",
+         *                                 "values": [
+         *                                   "fixed_price"
+         *                                 ]
+         *                               }
+         *                             ]
+         *                           }
+         *                         ]
+         *                       },
+         *                       "prohibited_when": {
+         *                         "not": {
+         *                           "any": [
+         *                             {
+         *                               "all": [
+         *                                 {
+         *                                   "context_key": "pricing_type",
+         *                                   "operator": "in",
+         *                                   "values": [
+         *                                     "fixed_price"
+         *                                   ]
+         *                                 }
+         *                               ]
+         *                             }
+         *                           ]
+         *                         }
+         *                       }
+         *                     },
+         *                     "options": [],
+         *                     "set": null,
+         *                     "constraints": {
+         *                       "minimum": 0,
+         *                       "maximum": null,
+         *                       "integer": false,
+         *                       "step": null
+         *                     },
+         *                     "other_input": false,
+         *                     "value_encoding": "native",
+         *                     "relations": [],
+         *                     "pricing_relevance": "provider_monetary_authority",
+         *                     "fulfillment_relevance": "none",
+         *                     "edit": {
+         *                       "writable": true,
+         *                       "hidden_value": "omit",
+         *                       "read_only_value": "reject"
+         *                     },
+         *                     "readback": {
+         *                       "step": "summary",
+         *                       "section": "pricing",
+         *                       "omit_when_empty": true
+         *                     }
+         *                   }
+         *                 }
+         *               ]
+         *             }
+         *           },
+         *           "prohibited_provider_fields": [
+         *             "booking_policy",
+         *             "booking_policy.schedule_family",
+         *             "booking_policy.profile_mode"
+         *           ]
+         *         }
          *       },
-         *       "meta": []
+         *       "meta": {}
          *     }
          */
         ServiceFormTemplateResponse: {
@@ -3951,18 +7216,15 @@ export interface components {
             /** @example Service form template fetched successfully. */
             message: string;
             data: components["schemas"]["ServiceFormTemplatePayload"];
-            /** @example [] */
-            meta: unknown[];
+            meta: Record<string, never>;
         };
         ServiceFormTemplateValidationError: {
             /** @example Error */
             status?: string;
             /** @example The selected business does not belong to the authenticated provider. */
             message?: string;
-            /** @example null */
-            data?: unknown;
-            /** @example [] */
-            meta?: unknown[];
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
+            meta?: Record<string, never>;
         };
         ServiceFormTemplateNotFoundError: {
             /** @example Error */
@@ -3971,8 +7233,7 @@ export interface components {
             message?: string;
             /** @example null */
             data?: unknown;
-            /** @example [] */
-            meta?: unknown[];
+            meta?: Record<string, never>;
         };
         ServiceFormTemplateServerError: {
             /** @example Error */
@@ -3981,10 +7242,9 @@ export interface components {
             message?: string;
             /** @example null */
             data?: unknown;
-            /** @example [] */
-            meta?: unknown[];
+            meta?: Record<string, never>;
         };
-        /** @description CREATE ONLY. Resolve GET /service-provider/service-form-template first. Generic fields are top-level; dynamic non-file values use answers_json; dynamic files use matching dynamic_file_keys[n] and dynamic_files[n]. */
+        /** @description CREATE ONLY. Resolve GET /service-provider/service-form-template first. Generic fields are top-level; dynamic non-file values (including business format selectors and capability controls) use answers_json; dynamic files use matching dynamic_file_keys[n] and dynamic_files[n]. booking_policy, schedule_family, and profile_mode are prohibited. Unknown keys must not be treated as accepted. */
         ServiceWritePayload: {
             /** @example 6 */
             category_id?: number;
@@ -4042,31 +7302,32 @@ export interface components {
              */
             currency?: string | null;
             /**
-             * @description Required for fixed_price; optional for quote_required.
+             * @description Required. Must be a value returned for this subcategory on GET /service-provider/service-form-template pricing.price_units and allowed by provider_listing_capability.formats for the selected business format and pricing_type. per_weight is valid only for Laundry. Roadside never accepts per_mile. Automotive arrival hourly is quote_required only.
              * @example 1
              */
             price_unit_id?: number | null;
+            /**
+             * @description Conditionally required. Resolve applicability, requiredness, and allowed values from provider_listing_capability.formats[format].profile_pricing_scope for the selected pricing type and unit. Omission/null is invalid when that state is required; omit when prohibited.
+             * @enum {string|null}
+             */
+            profile_pricing_scope?: "per_request" | "per_profile" | null;
             /**
              * @deprecated
              * @description Frontend-only toggle. It is never stored; submit the final currency code.
              */
             charge_in_usd?: boolean | null;
             /**
-             * @description Only field_scope=dynamic non-file values from the resolved template. Textarea values such as qualifications are stored verbatim with original line breaks and spacing. In multipart requests, send this as a JSON string; the backend decodes it before validation.
+             * @description Only field_scope=dynamic non-file values from the resolved template, including business format selectors (for example learner_delivery, mobility_service_mode, rental_fulfillment_mode) and capability controls (durations, bounds, supported option sets, turnaround). Existing Events Mobility keys: mobility_service_mode, min_passenger_count, max_passenger_count. Existing Events Rentals keys: rental_fulfillment_mode, rental_duration_mode, rental_duration_minutes, max_rental_duration_minutes, setup_included, teardown_included, setup_duration_minutes, teardown_duration_minutes, item_unit_label, min_item_quantity, max_item_quantity. Textarea values are stored verbatim. In multipart requests, send this as a JSON string. Do not send booking_policy, schedule_family, or profile_mode. Hidden/stale capability keys must be omitted.
              * @example {
-             *       "student_types_served": [
-             *         "college"
-             *       ],
-             *       "subjects_taught": [
-             *         "math",
-             *         "physics"
-             *       ],
-             *       "qualifications": "B.Ed.\\n\\n- Math\\n- Physics"
+             *       "learner_delivery": "individual",
+             *       "session_duration_minutes": 60,
+             *       "supported_subjects": [
+             *         "math"
+             *       ]
              *     }
              */
-            answers_json?: {
-                [key: string]: unknown;
-            } | null;
+            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | null;
+            /** @description Required for service types where visual work samples are meaningful; optional otherwise. Use the resolved Provider template is_required flag as authority. */
             portfolio_images?: string[];
             /**
              * @description One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.
@@ -4089,8 +7350,8 @@ export interface components {
              */
             information_accuracy_acknowledgement?: boolean;
         };
-        ServiceCreateRequest: WithRequired<components["schemas"]["ServiceWritePayload"], "category_id" | "subcategory_id" | "provider_type" | "title" | "fulfillment_type_ids" | "description" | "pricing_type" | "portfolio_images" | "information_accuracy_acknowledgement">;
-        /** @description Updates service information only. category_id, subcategory_id, provider_type, business_id, pricing_type, amount, currency, price_unit_id, and charge_in_usd are prohibited. */
+        ServiceCreateRequest: WithRequired<components["schemas"]["ServiceWritePayload"], "category_id" | "subcategory_id" | "provider_type" | "title" | "fulfillment_type_ids" | "description" | "pricing_type" | "price_unit_id" | "information_accuracy_acknowledgement">;
+        /** @description Updates service information only. Category, subcategory, provider type, business, pricing fields, and booking_policy are prohibited. Submit current business format and capability answers in answers_json. */
         ServiceInformationUpdateRequest: {
             /** @example Updated online algebra tutoring */
             title: string;
@@ -4107,9 +7368,8 @@ export interface components {
             service_radius?: number | null;
             /** @enum {string|null} */
             service_radius_unit?: "mile" | "km" | null;
-            answers_json?: {
-                [key: string]: unknown;
-            } | null;
+            /** @description Current dynamic and capability answers. Omit hidden/stale format controls. booking_policy is prohibited. */
+            answers_json?: Record<string, never> | null;
             /** @description New images. Existing images remain unless their IDs are sent in delete_portfolio_ids. Total stored portfolio images cannot exceed 10. */
             portfolio_images?: string[];
             /**
@@ -4133,7 +7393,7 @@ export interface components {
             /** @description Prohibited on information update. Required only on create. */
             information_accuracy_acknowledgement?: boolean | null;
         };
-        /** @description Updates pricing only. For fixed_price, amount, currency, and price_unit_id are required. For quote_required these fields are optional; supplied values are validated and stored, while omitted values are stored as null. Context/category fields and charge_in_usd are prohibited. */
+        /** @description Updates pricing only. For fixed_price, amount, currency, and price_unit_id are required. For quote_required, amount and currency may be omitted (stored null as reference). Unit and profile_pricing_scope state must be resolved from the stored provider_listing_capability and selected business format. booking_policy is prohibited. Omission preserves a valid stored scope, but cannot satisfy a required state when no valid value is stored. */
         ServicePricingUpdateRequest: {
             /**
              * @example fixed_price
@@ -4148,7 +7408,12 @@ export interface components {
             /** @example CAD */
             currency?: string | null;
             /** @example 1 */
-            price_unit_id?: number | null;
+            price_unit_id: number | null;
+            /**
+             * @description Conditionally required by provider_listing_capability. Submit an allowed explicit value for required states; omit for prohibited states. Omit preserves a still-valid stored value, while explicit null cannot clear a required state.
+             * @enum {string|null}
+             */
+            profile_pricing_scope?: "per_request" | "per_profile" | null;
         };
         ServiceDeleteRequest: {
             /**
@@ -4215,6 +7480,11 @@ export interface components {
                 /** @example per_service */
                 code?: string;
             } | null;
+            /**
+             * @description Stored value. null means effective Entire Booking / per_request.
+             * @enum {string|null}
+             */
+            profile_pricing_scope?: "per_request" | "per_profile" | null;
         };
         ServiceDynamicAnswerLabeledValue: {
             /** @example Math */
@@ -4275,6 +7545,8 @@ export interface components {
              * @enum {string}
              */
             status_label?: "inactive" | "active" | "pending_review";
+            capability?: components["schemas"]["ProviderListingCapabilitySummary"];
+            pricing?: components["schemas"]["ServicePricingData"];
             portfolio?: {
                 /** @example 301 */
                 id?: number;
@@ -4282,7 +7554,7 @@ export interface components {
                 url?: string;
             } | null;
         };
-        /** @description Complete read-only service details: ownership context, service information, location, fulfillment, files, pricing, and dynamic answers. */
+        /** @description Complete read-only service details including provider_listing_capability and commercial publishability. Raw booking_policy is not a public Provider contract. */
         ServiceDetailsData: {
             /** @example 91 */
             service_id?: number;
@@ -4306,9 +7578,12 @@ export interface components {
             certificate?: Record<string, never> | null;
             pricing?: components["schemas"]["ServicePricingData"];
             dynamic_answers?: components["schemas"]["ServiceDynamicAnswer"][];
-            answers_json?: {
-                [key: string]: unknown;
-            };
+            /** @description Stored dynamic and capability answers. */
+            answers_json?: Record<string, never>;
+            /** @description Same payload as answers_json for business-format and capability controls. */
+            business_fields?: Record<string, never>;
+            provider_listing_capability?: components["schemas"]["ProviderListingCapability"];
+            publishability?: components["schemas"]["ProviderPublishability"];
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -4367,6 +7642,7 @@ export interface components {
                 service_id?: number;
                 category?: Record<string, never>;
                 subcategory?: Record<string, never>;
+                capability?: components["schemas"]["ProviderListingCapabilitySummary"];
                 /** @example false */
                 is_editable?: boolean;
             };
@@ -4378,9 +7654,11 @@ export interface components {
             message?: string;
             data?: {
                 service_id?: number;
-                /** @description Merged generic/category/subcategory fields except pricing. Contains field labels, controls, options, visibility, required rules, and validation. */
-                template?: Record<string, never>;
-                /** @description Saved generic information, answers_json, portfolios, and certificates keyed for form prefill. */
+                provider_listing_capability?: components["schemas"]["ProviderListingCapability"];
+                publishability?: components["schemas"]["ProviderPublishability"];
+                template?: components["schemas"]["ServiceFormTemplatePayload"];
+                candidate_template?: components["schemas"]["ServiceFormTemplatePayload"];
+                /** @description Saved generic information, answers_json/business_fields, portfolios, and certificates. Prefill answers_json including business format selectors. Do not expect booking_policy. */
                 current_values?: Record<string, never>;
             };
             meta?: Record<string, never>;
@@ -4417,6 +7695,13 @@ export interface components {
                 code?: string;
             } | null;
             /**
+             * @description Stored value. null means effective Entire Booking / per_request.
+             * @enum {string|null}
+             */
+            profile_pricing_scope?: "per_request" | "per_profile" | null;
+            provider_listing_capability?: components["schemas"]["ProviderListingCapability"];
+            publishability?: components["schemas"]["ProviderPublishability"];
+            /**
              * @description Derived edit hint when stored currency is USD for an online/remote service whose default currency is not USD.
              * @example false
              */
@@ -4444,7 +7729,7 @@ export interface components {
             /** @example Error */
             status?: string;
             message?: string;
-            data?: unknown;
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
             meta?: Record<string, never>;
         };
         ServiceFileDeleteResponse: {
@@ -5578,7 +8863,7 @@ export interface operations {
                      *         },
                      *         "device_token": null,
                      *         "profile_image": null,
-                     *         "background_verification": "Pending",
+                     *         "background_verification": "Not Verified",
                      *         "provider_status": 1,
                      *         "provider_status_label": "active",
                      *         "suspension": null
@@ -5813,7 +9098,7 @@ export interface operations {
                      *         },
                      *         "device_token": null,
                      *         "profile_image": null,
-                     *         "background_verification": "Pending",
+                     *         "background_verification": "Not Verified",
                      *         "provider_status": 1,
                      *         "provider_status_label": "active",
                      *         "suspension": null
@@ -7652,6 +10937,176 @@ export interface operations {
             };
         };
     };
+    listProviderChats: {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Search customer name or service title. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated inbox. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderChatInboxResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProviderChatUnreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unread request count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderChatUnreadCountResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProviderChat: {
+        parameters: {
+            query?: {
+                /** @description 1-based page. Page 1 is the newest messages. The oldest messages are on meta.last_page. */
+                page?: number;
+                /** @description Messages per page. */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chat thread. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderChatThreadResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found for this provider. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sendProviderChatMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    body?: string;
+                    /**
+                     * @description Required when attachments are sent. camera = one camera image. gallery = photos and videos. file = documents.
+                     * @enum {string}
+                     */
+                    source?: "camera" | "gallery" | "file";
+                    "attachments[]"?: string[];
+                };
+                "application/json": components["schemas"]["ServiceRequestChatMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Message created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderChatMessageResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found for this provider. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation closed, empty message, unsupported file type, file too large, or too many attachments. Message uses the existing error envelope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "77ccf845f74523131fe242fd0ced9675": {
         parameters: {
             query: {
@@ -7775,6 +11230,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderDateAvailabilityServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderHome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider home retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderHomeResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Authenticated user has no non-deleted provider profile. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
                 };
             };
         };
@@ -8152,6 +11654,246 @@ export interface operations {
             };
         };
     };
+    listProviderRequests: {
+        parameters: {
+            query?: {
+                /** @description 1-based page index. */
+                page?: number;
+                /** @description Items per page. Default 10, maximum 50. */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated active request cards. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRequestListResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Authenticated user has no non-deleted provider profile. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Invalid page or per_page query values. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderRequestChatContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chat header context. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRequestChatContextResponse"];
+                };
+            };
+            /** @description Invitation not found for this provider */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProviderRequestSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request summary payload. Compare examples for profile vs booking-only request_info. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRequestSummaryResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Invitation not found for this provider. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderRequestDetails: {
+        parameters: {
+            query?: {
+                /** @description When provided, filter profiles[] to this service_request_profiles.id. Omit to return all profiles. */
+                profile_id?: number;
+            };
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unified request detail payload. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRequestDetailsResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Invitation or profile_id not found for this provider. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProviderServiceCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ServiceCandidateUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Complete candidate saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDetailsResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Owned service not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Candidate invalid; no candidate changes saved */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                };
+            };
+        };
+    };
     getResolvedServiceFormTemplate: {
         parameters: {
             query: {
@@ -8161,7 +11903,7 @@ export interface operations {
                 subcategory_id: number;
                 /** @description Selects the approved currency country source. */
                 provider_type: "individual" | "business";
-                /** @description Required when provider_type=business. Must be active, non-deleted, owned by the authenticated provider, and assigned to subcategory_id. Omit for individual services. */
+                /** @description Required when provider_type=business. Omit for individual services. */
                 business_id?: number | null;
             };
             header?: never;
@@ -8170,7 +11912,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service form template fetched successfully. Generic fields are always merged with the applicable dynamic fields. */
+            /** @description Service form template fetched successfully. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8303,6 +12045,7 @@ export interface operations {
                             sub_category_name?: string;
                             /** @example /storage/service-sub-categories/icons/pet-sitting.png */
                             sub_category_logo?: string | null;
+                            capability?: components["schemas"]["ProviderListingCapabilitySummary"];
                         }[];
                         meta?: Record<string, never>;
                     };
@@ -8415,13 +12158,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProviderSuspendedErrorResponse"];
                 };
             };
-            /** @description Template, ownership, fulfillment, file, or pricing validation failed. */
+            /** @description Laravel first-message validation (data=null) or commercial publishability (data.type=commercial_publishability). */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"] | components["schemas"]["ProviderCommercialPublishabilityError"];
                 };
             };
         };
@@ -8787,13 +12530,13 @@ export interface operations {
                     "application/json": components["schemas"]["ServiceManagementErrorResponse"];
                 };
             };
-            /** @description Pending-review status cannot be changed */
+            /** @description Pending-review cannot change, or activation failed commercial publishability */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServiceManagementErrorResponse"];
+                    "application/json": components["schemas"]["ServiceManagementErrorResponse"] | components["schemas"]["ProviderCommercialPublishabilityError"];
                 };
             };
         };

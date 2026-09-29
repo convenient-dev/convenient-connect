@@ -1,0 +1,799 @@
+{
+  "category": {
+    "id": 14,
+    "name": "Personal"
+  },
+  "subcategory": {
+    "id": 90,
+    "category_id": 14,
+    "name": "Holistic"
+  },
+  "currency_context": {
+    "provider_type": "business",
+    "business_id": 12,
+    "country_id": 1,
+    "default_currency": {
+      "code": "USD",
+      "symbol": "$"
+    },
+    "is_usd_currency": true,
+    "can_charge_in_usd": false
+  },
+  "resolved_template": {
+    "id": 30,
+    "template_chain": [
+      1,
+      14,
+      30
+    ]
+  },
+  "sections": [
+    {
+      "section_key": "service_information",
+      "title": "Service Information",
+      "help_text": null,
+      "display_order": 1,
+      "field_keys": [
+        "title",
+        "description",
+        "additional_information",
+        "tagline",
+        "portfolio_images",
+        "certificates",
+        "information_accuracy_acknowledgement"
+      ]
+    },
+    {
+      "section_key": "fulfillment_location",
+      "title": "Fulfillment Location",
+      "help_text": null,
+      "display_order": 2,
+      "field_keys": [
+        "fulfillment_types",
+        "address",
+        "service_radius"
+      ]
+    },
+    {
+      "section_key": "service_capability",
+      "title": "Service Capability",
+      "help_text": "Omit hidden keys from answers_json.",
+      "display_order": 3,
+      "field_keys": [
+        "program_details",
+        "conditions_worked_with",
+        "cori_background_check",
+        "business_verification"
+      ]
+    },
+    {
+      "section_key": "pricing",
+      "title": "Pricing",
+      "help_text": null,
+      "display_order": 4,
+      "field_keys": [
+        "pricing"
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "field_key": "title",
+      "label": "Service Title",
+      "field_type": "text",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "title"
+      },
+      "help_text": "Use a short title that clearly describes the service you provide.",
+      "value_key": "title",
+      "validation": {
+        "data_type": "string",
+        "maximum_length": 150,
+        "minimum_length": 3
+      },
+      "placeholder": "Enter a clear and specific service title"
+    },
+    {
+      "field_key": "fulfillment_types",
+      "label": "Fulfillment Type",
+      "field_type": "multi_select",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Fulfillment Location",
+      "section_key": "fulfillment_location",
+      "submit_as": {
+        "type": "top_level",
+        "key": "fulfillment_type_ids"
+      },
+      "help_text": "Choose how customers can receive this service.",
+      "value_key": "fulfillment_type_ids",
+      "validation": {
+        "minimum_selections": 1,
+        "maximum_selections": 4
+      },
+      "placeholder": "Select one or more fulfillment types",
+      "options_source": {
+        "table": "fulfillment_types",
+        "code_column": "code",
+        "label_column": "name",
+        "value_column": "id"
+      },
+      "options": [
+        {
+          "label": "At my location",
+          "value": 1,
+          "code": "provider_location"
+        },
+        {
+          "label": "At customer location",
+          "value": 2,
+          "code": "customer_location"
+        },
+        {
+          "label": "Pickup & Delivery",
+          "value": 3,
+          "code": "pickup_delivery"
+        },
+        {
+          "label": "Online / Remote",
+          "value": 4,
+          "code": "online_remote"
+        }
+      ]
+    },
+    {
+      "field_key": "address",
+      "label": "Service Address",
+      "field_type": "address",
+      "field_scope": "generic",
+      "is_required": false,
+      "requiredness": "prohibited",
+      "section": "Fulfillment Location",
+      "section_key": "fulfillment_location",
+      "submit_as": {
+        "type": "display_only",
+        "source": "provider_default_address"
+      },
+      "help_text": "When fulfillment includes at your location or pickup and delivery, the backend saves your default provider address automatically. Clients do not submit address_id.",
+      "validation": {
+        "maximum": 2147483647,
+        "minimum": 1,
+        "data_type": "integer"
+      },
+      "placeholder": "Your default provider address",
+      "visible_when": {
+        "values": [
+          "provider_location",
+          "pickup_delivery"
+        ],
+        "operator": "contains_any",
+        "field_key": "fulfillment_types"
+      },
+      "required_when": {
+        "values": [
+          "provider_location",
+          "pickup_delivery"
+        ],
+        "operator": "contains_any",
+        "field_key": "fulfillment_types"
+      },
+      "prohibited_when": {
+        "not": {
+          "values": [
+            "provider_location",
+            "pickup_delivery"
+          ],
+          "operator": "contains_any",
+          "field_key": "fulfillment_types"
+        }
+      }
+    },
+    {
+      "field_key": "service_radius",
+      "label": "Service Area Radius",
+      "field_type": "number",
+      "field_scope": "generic",
+      "is_required": false,
+      "requiredness": "optional",
+      "section": "Fulfillment Location",
+      "section_key": "fulfillment_location",
+      "submit_as": {
+        "type": "top_level",
+        "key": "service_radius"
+      },
+      "help_text": "Enter how far you are willing to travel to provide this service.",
+      "value_key": "service_radius",
+      "validation": {
+        "maximum": 99999999.99,
+        "minimum": 0.01,
+        "data_type": "number"
+      },
+      "placeholder": "Enter your service area radius",
+      "unit_options": [
+        {
+          "label": "mile",
+          "value": "mile"
+        },
+        {
+          "label": "km",
+          "value": "km"
+        }
+      ],
+      "visible_when": {
+        "values": [
+          "customer_location",
+          "pickup_delivery"
+        ],
+        "operator": "contains_any",
+        "field_key": "fulfillment_types"
+      },
+      "required_when": {
+        "values": [
+          "customer_location",
+          "pickup_delivery"
+        ],
+        "operator": "contains_any",
+        "field_key": "fulfillment_types"
+      },
+      "unit_value_key": "service_radius_unit",
+      "unit_validation": {
+        "data_type": "string",
+        "allowed_values": [
+          "mile",
+          "km"
+        ],
+        "maximum_length": 4,
+        "minimum_length": 2
+      },
+      "unit_placeholder": "Select unit",
+      "prohibited_when": {
+        "not": {
+          "values": [
+            "customer_location",
+            "pickup_delivery"
+          ],
+          "operator": "contains_any",
+          "field_key": "fulfillment_types"
+        }
+      }
+    },
+    {
+      "field_key": "description",
+      "label": "Service Description",
+      "field_type": "textarea",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "description"
+      },
+      "help_text": "Provide a clear and complete description of the service.",
+      "value_key": "description",
+      "validation": {
+        "data_type": "string",
+        "maximum_length": 5000,
+        "minimum_length": 20
+      },
+      "placeholder": "Describe your service, what is included, and what customers can expect"
+    },
+    {
+      "field_key": "additional_information",
+      "label": "Additional information customer should know",
+      "field_type": "textarea",
+      "field_scope": "generic",
+      "is_required": false,
+      "requiredness": "optional",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "additional_information"
+      },
+      "help_text": "Include preparation instructions, limitations, requirements, or any other useful information.",
+      "value_key": "additional_information",
+      "validation": {
+        "data_type": "string",
+        "maximum_length": 3000,
+        "minimum_length": 0
+      },
+      "placeholder": "Add any additional details customers should know"
+    },
+    {
+      "field_key": "tagline",
+      "label": "Your Tagline",
+      "field_type": "text",
+      "field_scope": "generic",
+      "is_required": false,
+      "requiredness": "optional",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "tagline"
+      },
+      "help_text": "Write a short phrase that summarizes what makes your service valuable.",
+      "value_key": "tagline",
+      "validation": {
+        "data_type": "string",
+        "maximum_length": 150,
+        "minimum_length": 0
+      },
+      "placeholder": "Enter a short tagline for your service"
+    },
+    {
+      "field_key": "portfolio_images",
+      "label": "Images / Portfolio",
+      "field_type": "file_upload",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "portfolio_images"
+      },
+      "multiple": true,
+      "help_text": "Upload clear images that help customers understand the quality of your service.",
+      "value_key": "portfolio_images",
+      "placeholder": "Upload images that showcase your work",
+      "maximum_files": 10,
+      "minimum_files": 1,
+      "allowed_extensions": [
+        "jpg",
+        "jpeg",
+        "png",
+        "webp"
+      ],
+      "allowed_file_types": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ]
+    },
+    {
+      "field_key": "certificates",
+      "label": "Certifications / Licenses",
+      "field_type": "file_upload",
+      "field_scope": "generic",
+      "is_required": false,
+      "requiredness": "optional",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "certificate_bundle",
+        "description_key": "certificate_description",
+        "files_key": "certificate_files",
+        "multiple_files": true
+      },
+      "multiple": true,
+      "files_key": "certificate_files",
+      "help_text": "Enter one description for all certification files. Upload multiple files under that same description.",
+      "value_key": "certificate_description",
+      "placeholder": "Describe and upload your certifications or licenses",
+      "maximum_files": 10,
+      "minimum_files": 0,
+      "description_key": "certificate_description",
+      "allowed_extensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ],
+      "allowed_file_types": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png"
+      ]
+    },
+    {
+      "field_key": "pricing",
+      "label": "Service Price",
+      "field_type": "pricing",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Pricing",
+      "section_key": "pricing",
+      "submit_as": {
+        "type": "pricing_fields",
+        "keys": [
+          "pricing_type",
+          "amount",
+          "currency",
+          "price_unit_id",
+          "profile_pricing_scope"
+        ]
+      },
+      "currency": {
+        "source": "currency_context.default_currency",
+        "value_key": "currency",
+        "validation": {
+          "data_type": "string",
+          "maximum_length": 3,
+          "minimum_length": 3
+        },
+        "allow_usd_override": true
+      },
+      "help_text": "Choose a fixed price or require customers to request a quote.",
+      "value_key": "pricing",
+      "base_price": {
+        "label": "Base Price",
+        "maximum": 9999999999.99,
+        "minimum": 0.01,
+        "value_key": "amount",
+        "placeholder": "Enter base price"
+      },
+      "placeholder": "Select how customers will be charged",
+      "charge_in_usd": {
+        "label": "Charge in USD",
+        "default": false,
+        "value_key": "charge_in_usd",
+        "validation": {
+          "allowed_values": [
+            true,
+            false
+          ]
+        },
+        "control_type": "boolean",
+        "visible_when": {
+          "all": [
+            {
+              "value": "online_remote",
+              "operator": "contains",
+              "field_key": "fulfillment_types"
+            },
+            {
+              "value": true,
+              "operator": "equals",
+              "context_key": "can_charge_in_usd"
+            }
+          ]
+        }
+      },
+      "pricing_types": [
+        {
+          "label": "Fixed Price",
+          "value": "fixed_price"
+        },
+        {
+          "label": "Quote Required",
+          "value": "quote_required"
+        }
+      ],
+      "fixed_price_fields": {
+        "amount": {
+          "label": "Base Price",
+          "maximum": 9999999999.99,
+          "minimum": 0.01,
+          "required": true,
+          "value_key": "amount",
+          "validation": {
+            "maximum": 9999999999.99,
+            "minimum": 0.01,
+            "data_type": "number"
+          },
+          "placeholder": "Enter base price"
+        },
+        "currency": {
+          "source": "currency_context.default_currency",
+          "required": true,
+          "value_key": "currency",
+          "validation": {
+            "data_type": "string",
+            "maximum_length": 3,
+            "minimum_length": 3
+          },
+          "allow_usd_override": true
+        },
+        "price_unit_id": {
+          "label": "Price Unit",
+          "required": true,
+          "validation": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "data_type": "integer"
+          },
+          "placeholder": "Select price unit"
+        }
+      },
+      "price_units_source": {
+        "table": "service_price_units",
+        "code_column": "code",
+        "label_column": "name",
+        "value_column": "id"
+      },
+      "quote_required_fields": {
+        "amount": {
+          "label": "Base Price",
+          "visible": true,
+          "required": false,
+          "value_key": "amount",
+          "validation": {
+            "maximum": 9999999999.99,
+            "minimum": 0.01,
+            "data_type": "number"
+          },
+          "placeholder": "Enter an optional base price"
+        },
+        "currency": {
+          "source": "currency_context.default_currency",
+          "visible": true,
+          "required": false,
+          "value_key": "currency",
+          "validation": {
+            "data_type": "string",
+            "maximum_length": 3,
+            "minimum_length": 3
+          },
+          "allow_usd_override": true
+        },
+        "price_unit_id": {
+          "label": "Price Unit",
+          "visible": true,
+          "required": true,
+          "validation": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "data_type": "integer"
+          },
+          "placeholder": "Select price unit"
+        }
+      },
+      "price_units": [
+        {
+          "label": "Per hour",
+          "value": 2,
+          "code": "per_hour"
+        },
+        {
+          "label": "Per session",
+          "value": 3,
+          "code": "per_session"
+        }
+      ]
+    },
+    {
+      "field_key": "information_accuracy_acknowledgement",
+      "label": "I confirm that the information provided is accurate. I acknowledge that providing false or misleading information may result in removal from the platform.",
+      "field_type": "yes_no",
+      "field_scope": "generic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Information",
+      "section_key": "service_information",
+      "submit_as": {
+        "type": "top_level",
+        "key": "information_accuracy_acknowledgement"
+      },
+      "options": [
+        {
+          "label": "Yes",
+          "value": true
+        },
+        {
+          "label": "No",
+          "value": false
+        }
+      ],
+      "help_text": "You must accept this confirmation before submitting the service.",
+      "value_key": "information_accuracy_acknowledgement",
+      "validation": {
+        "accepted_value": true,
+        "allowed_values": [
+          true,
+          false
+        ]
+      },
+      "placeholder": "Confirm the accuracy of your service information"
+    },
+    {
+      "field_key": "program_details",
+      "label": "Program Details",
+      "field_type": "textarea",
+      "field_scope": "dynamic",
+      "is_required": false,
+      "requiredness": "optional",
+      "section": "Service Capability",
+      "section_key": "service_capability",
+      "submit_as": {
+        "type": "answers_json",
+        "key": "program_details"
+      },
+      "validation": {
+        "data_type": "string",
+        "maximum_length": 5000
+      }
+    },
+    {
+      "field_key": "conditions_worked_with",
+      "label": "Conditions Worked With",
+      "field_type": "multi_select",
+      "field_scope": "dynamic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Capability",
+      "section_key": "service_capability",
+      "submit_as": {
+        "type": "answers_json",
+        "key": "conditions_worked_with"
+      },
+      "validation": {
+        "minimum_selections": 1,
+        "maximum_selections": 5
+      },
+      "selection_rules": {
+        "exclusive_values": [
+          "na"
+        ]
+      },
+      "options": [
+        {
+          "label": "injuries",
+          "value": "injuries"
+        },
+        {
+          "label": "chronic_conditions",
+          "value": "chronic_conditions"
+        },
+        {
+          "label": "mental_health_cases",
+          "value": "mental_health_cases"
+        },
+        {
+          "label": "post_surgery_recovery",
+          "value": "post_surgery_recovery"
+        },
+        {
+          "label": "N/A",
+          "value": "na"
+        }
+      ]
+    },
+    {
+      "field_key": "cori_background_check",
+      "label": "CORI Background Check",
+      "field_type": "file_upload",
+      "field_scope": "dynamic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Capability",
+      "section_key": "service_capability",
+      "submit_as": {
+        "type": "dynamic_files",
+        "key_field": "dynamic_file_keys",
+        "file_field": "dynamic_files",
+        "field_key": "cori_background_check",
+        "multiple_files": true
+      },
+      "multiple": true,
+      "minimum_files": 1,
+      "maximum_files": 5,
+      "allowed_extensions": [
+        "pdf",
+        "png",
+        "jpg",
+        "jpeg"
+      ],
+      "allowed_file_types": [
+        "application/pdf",
+        "image/png",
+        "image/jpeg"
+      ]
+    },
+    {
+      "field_key": "business_verification",
+      "label": "Business Verification",
+      "field_type": "file_upload",
+      "field_scope": "dynamic",
+      "is_required": true,
+      "requiredness": "required",
+      "section": "Service Capability",
+      "section_key": "service_capability",
+      "submit_as": {
+        "type": "dynamic_files",
+        "key_field": "dynamic_file_keys",
+        "file_field": "dynamic_files",
+        "field_key": "business_verification",
+        "multiple_files": true
+      },
+      "multiple": true,
+      "minimum_files": 1,
+      "maximum_files": 5,
+      "allowed_extensions": [
+        "pdf",
+        "png",
+        "jpg",
+        "jpeg"
+      ],
+      "allowed_file_types": [
+        "application/pdf",
+        "image/png",
+        "image/jpeg"
+      ],
+      "visible_when": {
+        "context_key": "provider_type",
+        "operator": "equals",
+        "value": "business"
+      },
+      "required_when": {
+        "context_key": "provider_type",
+        "operator": "equals",
+        "value": "business"
+      }
+    }
+  ],
+  "provider_listing_capability": {
+    "version": 3,
+    "source": {
+      "category": "Personal",
+      "subcategory": "Holistic",
+      "key": "personal|holistic"
+    },
+    "canonical_owner": {
+      "category": "Personal",
+      "subcategory": "Holistic",
+      "key": "personal|holistic"
+    },
+    "is_alias": false,
+    "business_format": null,
+    "formats": {
+      "default": {
+        "label": "Default",
+        "pricing": {
+          "fixed_price": [
+            "per_hour",
+            "per_session"
+          ],
+          "quote_required": [
+            "per_hour",
+            "per_session"
+          ]
+        },
+        "fulfillment": [
+          "provider_location",
+          "customer_location",
+          "online_remote"
+        ],
+        "fulfillment_by_price_unit": [],
+        "profile_pricing_scope": {
+          "field_key": "profile_pricing_scope",
+          "label": "Price Applies To",
+          "help_text": null,
+          "options": [
+            {
+              "value": "per_request",
+              "label": "Entire Request"
+            },
+            {
+              "value": "per_profile",
+              "label": "Each Selected Profile"
+            }
+          ],
+          "default_state": {
+            "state": "prohibited",
+            "applicable": false,
+            "required": false,
+            "allowed_values": []
+          },
+          "by_pricing_type": {}
+        }
+      }
+    },
+    "prohibited_provider_fields": [
+      "booking_policy",
+      "booking_policy.schedule_family",
+      "booking_policy.profile_mode"
+    ]
+  }
+}

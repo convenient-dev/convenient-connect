@@ -135,12 +135,12 @@ Everything else depends on this phase.
 Pure TypeScript under `services/template/` (or `lib/service-template/`). No UI. Each
 piece should be small enough to check by hand against the guide's examples.
 
-- [ ] **1.1 Predicate evaluator** for `visible_when`, `required_when`, and
+- [x] **1.1 Predicate evaluator** (`services/template/predicates.ts`, 2026-09-28) for `visible_when`, `required_when`, and
   `prohibited_when`. Support `all`, `any`, `not`, and the operators in the spec:
   `equals`, `not_equals`, `in`, `not_in`, `empty`, `not_empty`, `contains`,
   `not_contains`, `contains_any`, `less_than`, `greater_than`. Fulfillment conditions
   evaluate against option `code`, never the id or label.
-- [ ] **1.2 Capability resolver** over `provider_listing_capability`.
+- [x] **1.2 Capability resolver** (`services/template/capability.ts` + `visibility.ts`, 2026-09-28) over `provider_listing_capability`.
   - Pick the active format from `business_format` when present, otherwise the entry
     matching the selected fulfillment, otherwise `formats.default`.
   - Filter template `price_units` to `formats[format].pricing[pricing_type]`.
@@ -153,18 +153,18 @@ piece should be small enough to check by hand against the guide's examples.
     `prohibited` hides and omits.
   - When `is_alias` is true, keep showing `source` names and submit the selected ids.
   - Never render or submit anything in `prohibited_provider_fields`.
-- [ ] **1.3 Currency resolver** implementing the USD override rules.
+- [x] **1.3 Currency resolver** (`services/template/currency.ts`, 2026-09-28) implementing the USD override rules.
   - Default currency USD: submit `USD`, hide Charge in USD.
   - Not USD and `online_remote` not selected: submit the local code.
   - Not USD and `online_remote` selected: offer Charge in USD. Off submits local, on
     submits `USD`. The toggle is frontend-only; only the final `currency` is sent.
-- [ ] **1.4 Client-side validator**.
+- [x] **1.4 Client-side validator** (`services/template/validation.ts`, 2026-09-28).
   - `is_required` and `required_when`.
   - String `minimum_length` / `maximum_length`, numeric min/max, selection counts.
   - Other: `custom_value_key` required when `other` is selected, rejected otherwise.
   - `selection_rules.exclusive_values` (for example `na`) enforced on the client.
   - `0` and `false` count as present.
-- [ ] **1.5 Payload builders** for create, information-only, and candidate.
+- [x] **1.5 Payload builders** (`services/template/payload.ts`, 2026-09-28) for create, information-only, and candidate.
   - Route every value by `submit_as.type`: `top_level`, `answers_json`,
     `dynamic_files`, `certificate_bundle`, `pricing_fields`, `display_only`.
   - Omit hidden keys entirely. Never send `null` for a hidden field.
@@ -178,15 +178,23 @@ piece should be small enough to check by hand against the guide's examples.
 
 ### Phase 1 verification
 
-The engine is pure TypeScript, so verify it with a throwaway script run through
-`npx tsx` (or `node` after `tsc`) against fixtures copied from the guide and from a
-real UAT template response. Keep the fixtures under `services/template/__fixtures__/`
-so they can be reused when a test runner is added.
+The engine is pure TypeScript. The check script lives at
+`services/template/__checks__/phase1.check.ts` and runs with the already-installed
+`sucrase` (no new dependency):
 
-- [ ] **Predicates.** For each operator in the spec, one true case and one false case.
+```bash
+node -r sucrase/register/ts services/template/__checks__/phase1.check.ts
+```
+
+Fixtures are under `services/template/__fixtures__/`: the Pet Sitting template is copied
+verbatim from the `api-doc.json` example; the Education Tutoring and Personal Holistic
+templates are hand-built from the guide (see the README there) and should be replaced
+with real UAT responses when available. Result on 2026-09-28: 94 checks passed, 0 failed.
+
+- [x] **Predicates.** For each operator in the spec, one true case and one false case.
   `all` / `any` / `not` nest correctly. A fulfillment predicate matches on `code`
   (`provider_location`) and does not match on the id (`1`) or label.
-- [ ] **Capability resolver.** Using a real template for a subcategory with
+- [x] **Capability resolver.** Using a real template for a subcategory with
   `business_format` set: changing format changes the allowed price units and
   fulfillment codes. Using a subcategory with `business_format: null` and a single
   `formats.default` entry: the default is used. `fulfillment_by_price_unit` overrides
@@ -194,22 +202,22 @@ so they can be reused when a test runner is added.
   the control. `profile_pricing_scope` resolves to `required`, `optional`, and
   `prohibited` for three different unit and pricing-type combinations, and falls back
   to `default_state` when the lookup is missing.
-- [ ] **Currency.** Three fixtures: default USD (always `USD`, toggle hidden), CAD with
+- [x] **Currency.** Three fixtures: default USD (always `USD`, toggle hidden), CAD with
   no `online_remote` (always `CAD`), CAD with `online_remote` (toggle off gives `CAD`,
   on gives `USD`). `charge_in_usd` never appears in the payload.
-- [ ] **Validator.** Required field empty fails; `0` and `false` pass. Title of 2 and
+- [x] **Validator.** Required field empty fails; `0` and `false` pass. Title of 2 and
   151 characters fail, 3 and 150 pass. `multi_select` with 0 selections fails when
   `minimum_selections` is 1. `other` selected without `custom_value_key` fails;
   `custom_value_key` present without `other` fails. `conditions_worked_with:
   ["na", "injuries"]` fails the exclusivity rule.
-- [ ] **Payload builders.** Reproduce guide sections 18, 19, and 20 from fixture values
+- [x] **Payload builders.** Reproduce guide sections 18, 19, and 20 from fixture values
   and diff the produced multipart entries against the guide's examples. Then confirm:
   a hidden dynamic key is absent (not `null`); `address_id`, `booking_policy`,
   `schedule_family`, and `profile_mode` never appear; the information builder omits
   identity, pricing, and the acknowledgement; the candidate builder includes
   `answers_mode=replace`, omits the acknowledgement and `charge_in_usd`, and passes
   through `clear_dynamic_file_keys[]`.
-- [ ] Every generic field is routed by `submit_as`, so no generic key ever lands in
+- [x] Every generic field is routed by `submit_as`, so no generic key ever lands in
   `answers_json`.
 
 ## Phase 2: Create flow

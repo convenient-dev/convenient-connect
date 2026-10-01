@@ -20,7 +20,7 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
-target 'ConvenientConnect' do
+target 'CoConnect' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -40,11 +40,6 @@ target 'ConvenientConnect' do
   end
 
   config = use_native_modules!(config_command)
-
-  # GoogleSignIn -> AppCheckCore (Swift) needs these deps to define module maps
-  # when built as static libraries. Re-add after `expo prebuild --clean`.
-  pod 'GoogleUtilities', :modular_headers => true
-  pod 'RecaptchaInterop', :modular_headers => true
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']

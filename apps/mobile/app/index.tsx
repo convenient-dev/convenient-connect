@@ -1,19 +1,17 @@
 import { Button } from "@/components/Button";
 import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import LottieView from "lottie-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { neutral, text } = Colors;
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const reducedMotion = useReducedMotion();
   const { screenPaddingStyle } = useResponsivePadding(32, 100);
 
   return (
@@ -24,12 +22,10 @@ export default function WelcomeScreen() {
       <StatusBar style="dark" />
       <View style={[styles.content, screenPaddingStyle]}>
         <View style={{ alignItems: "center", paddingTop: "40%" }}>
-          <LottieView
-            source={require("@/assets/splash-screen-logo.json")}
-            autoPlay={!reducedMotion}
-            loop={false}
-            resizeMode="contain"
+          <ExpoImage
+            source={require("@/assets/ConnectApp-iOS.png")}
             style={styles.logo}
+            contentFit="contain"
           />
           <Text style={styles.title}>Welcome to ConvenientConnect</Text>
           <Text style={styles.subtitle}>
@@ -64,7 +60,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 200,
     height: 200,
-    marginBottom: 8,
   },
   title: {
     fontSize: 26,
@@ -72,6 +67,7 @@ const styles = StyleSheet.create({
     color: text.primary,
     textAlign: "center",
     letterSpacing: -0.408,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,

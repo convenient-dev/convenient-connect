@@ -1,21 +1,27 @@
+import { ApiError } from "@/api/client";
+import {
+  listMyServices,
+  type ServiceListItem,
+  type ServiceListTab,
+} from "@/api/service-management";
 import { BottomSheet } from "@/components/BottomSheet";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   SERVICE_STATUS_CONFIG,
   ServiceStatus,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
-import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -25,44 +31,33 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-interface Service {
-  id: number;
-  title: string;
-  status: ServiceStatus;
-  serviceMode: "freelance" | "business";
-  images: { url: string }[];
-  subcategory: { name: string; category: { name: string } } | null;
-  business: { business: { name: string } } | null;
-  updatedAt: string;
-}
+const TABS: { key: ServiceListTab & string; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "independent", label: "Freelance" },
+  { key: "affiliated", label: "Business" },
+];
 
-function getRelativeTime(isoString: string): string {
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-const TABS = ["All", "Freelance", "Business"] as const;
-type Tab = (typeof TABS)[number];
+const STATUS_BY_LABEL: Record<
+  NonNullable<ServiceListItem["status_label"]>,
+  ServiceStatus
+> = {
+  active: "active",
+  inactive: "inactive",
+  pending_review: "pendingReview",
+};
 
 function ServiceCard({
   service,
   onMore,
 }: {
-  service: Service;
+  service: ServiceListItem;
   onMore: () => void;
 }) {
-  const meta = SERVICE_STATUS_CONFIG[service.status];
-  const statusColor = meta.color;
-  const statusDescription =
-    service.status === "pendingReview"
-      ? getRelativeTime(service.updatedAt)
-      : meta.description;
-  const photo = service.images[0]?.url;
+  const status = service.status_label
+    ? STATUS_BY_LABEL[service.status_label]
+    : "inactive";
+  const meta = SERVICE_STATUS_CONFIG[status];
+  const photo = service.portfolio?.url;
 
   return (
     <View style={styles.card}>
@@ -76,20 +71,20 @@ function ServiceCard({
           {service.title}
         </Text>
         <View style={styles.statusRow}>
-          <MaterialIcons name={meta.icon} size={12} color={statusColor} />
+          <MaterialIcons name={meta.icon} size={12} color={meta.color} />
           <Text style={styles.statusText}>
-            <Text style={{ color: statusColor }}>{meta.label} </Text>
-            <Text style={styles.statusDescription}>· {statusDescription}</Text>
+            <Text style={{ color: meta.color }}>{meta.label} </Text>
+            <Text style={styles.statusDescription}>· {meta.description}</Text>
           </Text>
         </View>
-        {service.serviceMode === "business" && service.business && (
+        {service.provider_type === "business" && service.business_name && (
           <View style={styles.businessRow}>
             <ExpoImage
               source={require("@/assets/global-icons/business.svg")}
               style={{ width: 12, height: 12 }}
             />
             <Text style={styles.businessName} numberOfLines={1}>
-              {service.business.business.name}
+              {service.business_name}
             </Text>
           </View>
         )}
@@ -104,28 +99,60 @@ function ServiceCard({
 export default function ServicesScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<Tab>("All");
-  const [services, setServices] = useState<Service[]>([]);
+  const [activeTab, setActiveTab] = useState<ServiceListTab & string>("all");
+  const [services, setServices] = useState<ServiceListItem[]>([]);
+  const [lastPage, setLastPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedService, setSelectedService] =
+    useState<ServiceListItem | null>(null);
+  // Ignore responses from a superseded request (tab switched, screen refocused).
+  const requestId = useRef(0);
+
+  const loadServices = useCallback(
+    async (tab: ServiceListTab, pageToLoad: number) => {
+      const id = ++requestId.current;
+      const isFirstPage = pageToLoad === 1;
+      if (isFirstPage) setLoading(true);
+      else setLoadingMore(true);
+      try {
+        const result = await listMyServices({ tab, page: pageToLoad });
+        if (id !== requestId.current) return;
+        setServices((prev) =>
+          isFirstPage ? result.data : [...prev, ...result.data],
+        );
+        setPage(result.meta?.current_page ?? pageToLoad);
+        setLastPage(result.meta?.last_page ?? pageToLoad);
+      } catch (err) {
+        if (id !== requestId.current) return;
+        if (isFirstPage) setServices([]);
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong while loading your services.",
+        );
+      } finally {
+        if (id === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      // TODO: legacy API removed — implement getUserServices via Laravel API
-      console.log("TODO: implement getUserServices via Laravel API", {
-        userId,
-      });
-      setServices([]);
-      setLoading(false);
-    }, [userId]),
+      loadServices(activeTab, 1);
+    }, [activeTab, loadServices]),
   );
 
-  const visibleServices =
-    activeTab === "All"
-      ? services
-      : services.filter((s) => s.serviceMode === activeTab.toLowerCase());
+  function handleEndReached() {
+    if (loading || loadingMore || page >= lastPage) return;
+    loadServices(activeTab, page + 1);
+  }
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -143,11 +170,7 @@ export default function ServicesScreen() {
         }
       />
       {/* Filter tabs */}
-      <TabBar
-        tabs={TABS.map((tab) => ({ key: tab, label: tab }))}
-        activeKey={activeTab}
-        onChange={setActiveTab}
-      />
+      <TabBar tabs={TABS} activeKey={activeTab} onChange={setActiveTab} />
       {/* Service list */}
       {loading ? (
         <ActivityIndicator
@@ -156,23 +179,29 @@ export default function ServicesScreen() {
           style={styles.loader}
         />
       ) : (
-        <ScrollView
+        <FlatList
+          data={services}
+          keyExtractor={(service) => String(service.service_id)}
+          renderItem={({ item }) => (
+            <ServiceCard
+              service={item}
+              onMore={() => setSelectedService(item)}
+            />
+          )}
           style={styles.list}
           contentContainerStyle={[styles.listContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
-        >
-          {visibleServices.length === 0 ? (
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
             <Text style={styles.emptyText}>No services found</Text>
-          ) : (
-            visibleServices.map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                onMore={() => setSelectedService(service)}
-              />
-            ))
-          )}
-        </ScrollView>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color={primary[400]} />
+            ) : null
+          }
+        />
       )}
       <BottomSheet
         visible={selectedService !== null}
@@ -183,7 +212,7 @@ export default function ServicesScreen() {
             label: "Service Details",
             icon: require("@/assets/global-icons/view-detail.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/service-detail/${id}`);
             },
@@ -192,7 +221,7 @@ export default function ServicesScreen() {
             label: "Edit Service",
             icon: require("@/assets/global-icons/edit.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/edit-service/${id}`);
             },
@@ -201,12 +230,25 @@ export default function ServicesScreen() {
             label: "Delete Service",
             icon: require("@/assets/global-icons/cancel.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/edit-service/${id}/delete`);
             },
           },
         ]}
+      />
+      <ConfirmModal
+        visible={error !== null}
+        type="error"
+        title="Couldn't load services"
+        message={error ?? ""}
+        confirmLabel="Retry"
+        cancelLabel="Dismiss"
+        onCancel={() => setError(null)}
+        onConfirm={() => {
+          setError(null);
+          loadServices(activeTab, 1);
+        }}
       />
     </SafeAreaView>
   );

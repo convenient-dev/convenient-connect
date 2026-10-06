@@ -222,18 +222,18 @@ with real UAT responses when available. Result on 2026-09-28: 94 checks passed, 
 
 ## Phase 2: Create flow
 
-- [ ] **2.1 Step 1, `app/(services)/create-service.tsx`.**
+- [x] **2.1 Step 1, `app/(services)/create-service.tsx`.** (2026-09-29)
   - Replace the affiliation stub with `listBusinesses()` from `api/business.ts`,
     filtered to active businesses.
   - Gate the individual option on `backgroundVerification === "Verified"` from
     `AuthContext`. Show why it is disabled otherwise.
   - Pass `providerType` (`individual` | `business`) and `businessId` forward.
-- [ ] **2.2 Category and subcategory pickers**
+- [x] **2.2 Category and subcategory pickers** (2026-09-29)
   (`create-service-category.tsx`, `create-service-subcategory.tsx`).
   - Switch to `listServiceCategories` and `listServiceSubcategories` with `business_id`
     for business providers so only assigned subcategories appear.
   - Pass `categoryId`, `subcategoryId`, `providerType`, and `businessId` forward.
-- [ ] **2.3 Rewrite `create-service-form.tsx` as a template renderer.**
+- [x] **2.3 Rewrite `create-service-form.tsx` as a template renderer.** (2026-09-29)
   - Fetch the template with the full context.
   - Render `sections[]` in `display_order`; inside each, render `field_keys` using the
     matching `fields[]` entries.
@@ -251,8 +251,21 @@ with real UAT responses when available. Result on 2026-09-28: 94 checks passed, 
   - On success, route to the detail screen and explain that the service is
     `pending_review`.
   - Retire the add-on, in-person/remote, and legacy custom-field code.
-- [ ] **2.4** When the template request fails because no default address exists, open
-  `AddressModal` and retry after save.
+- [x] **2.4** When the template request fails because no default address exists, open
+  `AddressModal` and retry after save. (2026-09-29)
+
+### Phase 2 implementation notes (2026-09-29)
+
+- New shared pieces: `components/StepProgressHeader.tsx`, `constants/create-service.ts`,
+  `hooks/use-template-form.ts` (form state, pruning of disallowed selections, section
+  validation, publishability error mapping) and `components/template-form/`
+  (`TemplateField` dispatcher, `TemplateSection`, per-type controls, `PricingControl`,
+  `OptionSheet`, file pickers, shared styles).
+- The form pages one template section per step, so the wizard is 3 picker steps +
+  N section steps + review. Section validation runs on Next; full validation on Submit.
+- Static checks passed: `tsc` and `eslint` clean on all new and changed files.
+- `components/CustomFieldInput.tsx` and `constants/session.ts` are still used by the
+  Phase 4 screens and stay until then.
 
 ### Phase 2 verification
 
@@ -491,6 +504,21 @@ Independent of Phases 2 to 4 and could be a separate branch.
   | Delete with an Other reason | `other_reason` validation |
   | Home with no default address | Empty promotions is a success state |
   | Chat thread with more than one page | Reverse pagination, request opening message on last page |
+
+## Backend discrepancies found during integration
+
+Report these to the backend team. The mobile app cannot work around them.
+
+| Found | Endpoint | Observation | Impact |
+|---|---|---|---|
+| 2026-09-29 | `POST /service-provider/address` | The create-or-reuse match includes soft-deleted rows. Re-adding a deleted address returns the old id with HTTP 200 and the row stays deleted; nothing is inserted and the new payload (address components) is discarded. | A provider cannot re-add an address they deleted. |
+| 2026-09-29 | `GET /service-form-template`, `POST /services` | Returns "Please add a default address with a valid country" for a provider whose default address exists (`is_default: 1`, `country_id: 233`). The stored rows have `user_id: null` (only `provider_profile_id` set) and every `address_components` value null. The address endpoints find the row; the services endpoints do not. Likely a lookup keyed on `user_id` or on `address_components` rather than `country_id`. | Individual service creation is blocked for providers whose addresses were saved without components. |
+| 2026-09-29 | `GET /service-provider/address` | `latitude` / `longitude` come back as strings and `is_default` as `1` / `0`; the spec declares floats and a boolean. | Tolerated by the app today; contract mismatch. |
+| 2026-09-28 | `GET /services/{id}/edit`, `/information`, `/category` | `search_setting`, `sections`, `service_type`, `current_values`, `category`, `subcategory` are typed as plain `object` in the spec while the guide documents their keys. | Client types were hand-written from the guide; regenerate once the spec is tightened. |
+
+Client-side change made in response (2026-09-29): the geocoders now return country, state and
+city components and the address create/update calls send them, so new addresses are stored
+with `address_components` filled.
 
 ## Suggested order
 

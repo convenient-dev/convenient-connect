@@ -1,7 +1,10 @@
-import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
+import { listBusinesses, type ProviderBusinessListItem } from "@/api/business";
+import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
+import { StepProgressHeader } from "@/components/StepProgressHeader";
+import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import { CREATE_SERVICE_DISPLAY_TOTAL_STEPS } from "@/constants/create-service";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,35 +17,39 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background } = Colors;
+const { primary, neutral, background, status } = Colors;
 
-const TOTAL_STEPS = 5;
 const CURRENT_STEP = 1;
-const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
+const DISPLAY_TOTAL_STEPS = CREATE_SERVICE_DISPLAY_TOTAL_STEPS;
+
+const INDIVIDUAL_ID = "individual";
 
 interface Option {
   id: string;
   label: string;
 }
 
-const INDIVIDUAL_OPTIONS: Option[] = [
-  { id: "freelance", label: "Freelance work" },
-];
-
 function RadioOption({
   option,
   selected,
+  disabled = false,
   onSelect,
 }: {
   option: Option;
   selected: boolean;
+  disabled?: boolean;
   onSelect: (id: string) => void;
 }) {
   return (
     <TouchableOpacity
-      style={[styles.radioOption, selected && styles.radioOptionSelected]}
+      style={[
+        styles.radioOption,
+        selected && styles.radioOptionSelected,
+        disabled && styles.radioOptionDisabled,
+      ]}
       onPress={() => onSelect(option.id)}
       activeOpacity={0.7}
+      disabled={disabled}
     >
       <View style={[styles.radioCircle, selected && styles.radioCircleFilled]}>
         {selected && <View style={styles.radioInner} />}
@@ -55,69 +62,82 @@ function RadioOption({
 export default function CreateServiceScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
+  const { user } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
-  const [businessOptions, setBusinessOptions] = useState<Option[]>([]);
+  const [businesses, setBusinesses] = useState<ProviderBusinessListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // The backend rejects individual creation unless the provider is verified.
+  const isVerified = user?.backgroundVerification === "Verified";
 
   useEffect(() => {
-    // TODO: legacy API removed — implement getUserAffiliations via Laravel API
-    console.log("TODO: implement getUserAffiliations via Laravel API", {
-      userId,
-    });
-    setBusinessOptions([]);
-    setLoading(false);
-  }, [userId]);
+    listBusinesses()
+      .then((list) => setBusinesses(list.filter((b) => b.status !== false)))
+      .catch(() => setLoadError("Couldn't load your businesses."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const canProceed = selected !== null;
 
+  function handleNext() {
+    if (!selected) return;
+    if (selected === INDIVIDUAL_ID) {
+      router.push({
+        pathname: "/create-service-category",
+        params: { providerType: "individual" },
+      });
+      return;
+    }
+    const business = businesses.find((b) => String(b.business_id) === selected);
+    router.push({
+      pathname: "/create-service-category",
+      params: {
+        providerType: "business",
+        businessId: selected,
+        businessName: business?.business_name ?? "",
+      },
+    });
+  }
+
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      {/* Step indicator + progress bar */}
-      <View style={styles.stepHeader}>
-        <View style={styles.stepRow}>
-          <Text style={styles.stepLabel}>
-            Step {CURRENT_STEP} of {TOTAL_STEPS}
-          </Text>
-          <Text style={styles.stepPercent}>{Math.round(PROGRESS * 100)}%</Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { flex: PROGRESS }]} />
-          <View style={{ flex: 1 - PROGRESS }} />
-        </View>
-      </View>
+      <StepProgressHeader step={CURRENT_STEP} totalSteps={DISPLAY_TOTAL_STEPS} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title */}
         <Text style={styles.title}>How You Want to Offer This Service</Text>
         <Text style={styles.subtitle}>
           Select a business you&apos;re affiliated with, or choose to work
           independently.
         </Text>
 
-        {/* Individual provider section */}
+        {/* Individual provider */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>As an individual provider</Text>
           <Text style={styles.sectionDescription}>
             Create and manage this service on your own
           </Text>
           <View style={styles.optionsGroup}>
-            {INDIVIDUAL_OPTIONS.map((opt) => (
-              <RadioOption
-                key={opt.id}
-                option={opt}
-                selected={selected === opt.id}
-                onSelect={setSelected}
-              />
-            ))}
+            <RadioOption
+              option={{ id: INDIVIDUAL_ID, label: "Freelance work" }}
+              selected={selected === INDIVIDUAL_ID}
+              disabled={!isVerified}
+              onSelect={setSelected}
+            />
+            {!isVerified ? (
+              <Text style={styles.hintText}>
+                Complete your background check to offer services as an
+                individual.
+              </Text>
+            ) : null}
           </View>
         </View>
 
-        {/* Business member section */}
+        {/* Business member */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>As a member of a business</Text>
           <Text style={styles.sectionDescription}>
@@ -127,14 +147,19 @@ export default function CreateServiceScreen() {
           <View style={styles.optionsGroup}>
             {loading ? (
               <ActivityIndicator size="small" color={primary[400]} />
-            ) : businessOptions.length === 0 ? (
-              <Text style={styles.emptyText}>No affiliated businesses</Text>
+            ) : loadError ? (
+              <Text style={styles.errorText}>{loadError}</Text>
+            ) : businesses.length === 0 ? (
+              <Text style={styles.emptyText}>No active businesses</Text>
             ) : (
-              businessOptions.map((opt) => (
+              businesses.map((business) => (
                 <RadioOption
-                  key={opt.id}
-                  option={opt}
-                  selected={selected === opt.id}
+                  key={business.business_id}
+                  option={{
+                    id: String(business.business_id),
+                    label: business.business_name ?? "Business",
+                  }}
+                  selected={selected === String(business.business_id)}
                   onSelect={setSelected}
                 />
               ))
@@ -143,7 +168,6 @@ export default function CreateServiceScreen() {
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
@@ -158,19 +182,7 @@ export default function CreateServiceScreen() {
           size="md"
           style={{ flex: 1 }}
           disabled={!canProceed}
-          onPress={() => {
-            if (!canProceed || !selected) return;
-            const isFreelance = selected === "freelance";
-            const businessOption = businessOptions.find((o) => o.id === selected);
-            router.push({
-              pathname: "/create-service-category",
-              params: {
-                serviceMode: isFreelance ? "freelance" : "business",
-                businessAffiliationId: isFreelance ? undefined : selected,
-                businessName: isFreelance ? undefined : businessOption?.label,
-              },
-            });
-          }}
+          onPress={handleNext}
         />
       </View>
     </SafeAreaView>
@@ -182,40 +194,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-  // Step header
-  stepHeader: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  stepRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stepLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: neutral[500],
-  },
-  stepPercent: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: primary[400],
-  },
-  progressTrack: {
-    flexDirection: "row",
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: neutral[100],
-    overflow: "hidden",
-  },
-  progressFill: {
-    backgroundColor: primary[400],
-    borderRadius: 2,
-  },
-  // Scroll
   scroll: {
     flex: 1,
   },
@@ -224,7 +202,6 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingBottom: 16,
   },
-  // Title
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -240,7 +217,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 32,
   },
-  // Section
   section: {
     marginBottom: 28,
     gap: 6,
@@ -264,7 +240,15 @@ const styles = StyleSheet.create({
     color: neutral[400],
     fontStyle: "italic",
   },
-  // Radio option
+  hintText: {
+    fontSize: 12,
+    color: neutral[400],
+    lineHeight: 18,
+  },
+  errorText: {
+    fontSize: 13,
+    color: status.error,
+  },
   radioOption: {
     flexDirection: "row",
     alignItems: "center",
@@ -278,6 +262,9 @@ const styles = StyleSheet.create({
   },
   radioOptionSelected: {
     borderColor: primary[400],
+  },
+  radioOptionDisabled: {
+    opacity: 0.5,
   },
   radioCircle: {
     width: 20,
@@ -302,7 +289,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: neutral[700],
   },
-  // Footer
   footer: {
     flexDirection: "row",
     gap: 12,

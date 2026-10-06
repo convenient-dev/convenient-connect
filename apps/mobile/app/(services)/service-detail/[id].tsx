@@ -1,12 +1,21 @@
+import { ApiError } from "@/api/client";
+import {
+  getServiceDetails,
+  type ServiceCertificate,
+  type ServiceDetails,
+  type ServiceDynamicAnswer,
+  type ServicePricingData,
+  type ServiceStoredFile,
+} from "@/api/service-management";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -21,40 +30,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background, overlay } = Colors;
 
-interface ServiceDetail {
-  id: number;
-  title: string;
-  status: "active" | "inactive" | "pendingReview";
-  serviceMode: "freelance" | "business";
-  serviceType: "inPerson" | "remote";
-  areaRadius: string | null;
-  aboutYou: string;
-  description: string;
-  slogan: string | null;
-  baseRate: string;
-  baseRateUnit: "booking" | "hour";
-  images: { id: number; url: string; altText: string | null }[];
-  certifications: { id: number; url: string; fileName: string | null }[];
-  addons: {
-    id: number;
-    price: string;
-    rateUnit: "booking" | "hour";
-    template: {
-      name: string;
-      description: string | null;
-    };
-  }[];
-  customValues: {
-    id: number;
-    valueText: string | null;
-    valueNumber: string | null;
-    valueBoolean: boolean | null;
-    valueJson: unknown | null;
-    field: { fieldLabel: string; fieldType: string };
-  }[];
-  subcategory: { name: string; category: { name: string } } | null;
-  address: { address: string } | null;
-  business: { business: { name: string } } | null;
+// api-doc.json types these nested objects as plain `object`; the keys below
+// follow the documented response example, so treat every field as optional.
+interface NamedRef {
+  id?: number;
+  name?: string | null;
+}
+
+interface ServiceInfo {
+  title?: string;
+  description?: string | null;
+  additional_information?: string | null;
+  tagline?: string | null;
+  address?: { address?: string | null } | null;
+  service_radius?: number | string | null;
+  service_radius_unit?: "mile" | "km" | null;
 }
 
 const SECTION_ICONS: Record<string, number> = {
@@ -91,23 +81,47 @@ function PricingRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatRate(rate: string, unit: "booking" | "hour") {
-  return `$${parseFloat(rate).toFixed(2)} ${unit === "booking" ? "per booking" : "per hour"}`;
+function formatPricing(pricing: ServicePricingData | undefined): string {
+  if (!pricing) return "—";
+  const unit = pricing.price_unit?.label;
+  if (pricing.pricing_type === "quote_required" || pricing.amount == null) {
+    return unit ? `Quote required · ${unit}` : "Quote required";
+  }
+  const amount = parseFloat(pricing.amount);
+  const money = pricing.currency
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: pricing.currency,
+      }).format(amount)
+    : amount.toFixed(2);
+  return unit ? `${money} ${unit.toLowerCase()}` : money;
 }
 
-function formatCustomValue(
-  cv: ServiceDetail["customValues"][number],
-): string | null {
-  if (cv.field.fieldType === "boolean") {
-    return cv.valueBoolean != null ? (cv.valueBoolean ? "Yes" : "No") : null;
+function formatRadius(info: ServiceInfo): string | null {
+  if (info.service_radius == null || info.service_radius === "") return null;
+  const value = parseFloat(String(info.service_radius));
+  if (Number.isNaN(value)) return null;
+  const unit = info.service_radius_unit === "km" ? "km" : "miles";
+  return `${value} ${unit}`;
+}
+
+function formatDynamicAnswer(answer: ServiceDynamicAnswer): string | null {
+  if (answer.display_value) return answer.display_value;
+  if (answer.labeled_values?.length) {
+    return answer.labeled_values.map((item) => item.label).join(", ");
   }
-  if (cv.field.fieldType === "number") {
-    return cv.valueNumber != null ? String(parseFloat(cv.valueNumber)) : null;
-  }
-  if (cv.field.fieldType === "multiSelect" && cv.valueJson) {
-    return Array.isArray(cv.valueJson) ? cv.valueJson.join(", ") : null;
-  }
-  return cv.valueText ?? null;
+  const raw = answer.value;
+  if (raw == null || raw === "") return null;
+  if (Array.isArray(raw)) return raw.length ? raw.join(", ") : null;
+  if (typeof raw === "boolean") return raw ? "Yes" : "No";
+  if (typeof raw === "object") return null;
+  return String(raw);
+}
+
+function fileNameFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const last = url.split("?")[0].split("/").pop();
+  return last ? decodeURIComponent(last) : null;
 }
 
 function ImageViewerModal({
@@ -141,17 +155,47 @@ function ImageViewerModal({
 export default function ServiceDetailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { userId } = useCurrentUser();
-  const [service, setService] = useState<ServiceDetail | null>(null);
+  const router = useRouter();
+  const [service, setService] = useState<ServiceDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
+  const loadService = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      setService(await getServiceDetails(Number(id)));
+    } catch (error) {
+      setService(null);
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Something went wrong while loading this service.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
-    // TODO: legacy API removed — implement getService via Laravel API
-    console.log("TODO: implement getService via Laravel API", { userId, id });
-    setService(null);
-    setLoading(false);
-  }, [id, userId]);
+    loadService();
+  }, [loadService]);
+
+  // Load errors send the user back to the previous screen once acknowledged.
+  const errorModal = (
+    <ConfirmModal
+      visible={errorMessage !== null}
+      type="error"
+      title="Couldn't load service"
+      message={errorMessage ?? ""}
+      confirmLabel="OK"
+      onConfirm={() => {
+        setErrorMessage(null);
+        router.back();
+      }}
+    />
+  );
 
   if (loading) {
     return (
@@ -169,9 +213,22 @@ export default function ServiceDetailScreen() {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
         <Text style={styles.errorText}>Service not found.</Text>
+        {errorModal}
       </SafeAreaView>
     );
   }
+
+  const category = service.category as NamedRef | undefined;
+  const subcategory = service.subcategory as NamedRef | undefined;
+  const business = service.business as NamedRef | null | undefined;
+  const info = (service.service_info ?? {}) as ServiceInfo;
+  const portfolio = (service.portfolio_images ?? []) as ServiceStoredFile[];
+  const certificate = service.certificate as ServiceCertificate | null | undefined;
+  const certificateFiles = certificate?.files ?? [];
+  const fulfillmentTypes = service.fulfillment_types ?? [];
+  const dynamicAnswers = service.dynamic_answers ?? [];
+  const isBusiness = service.provider_type === "business";
+  const radius = formatRadius(info);
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -182,7 +239,7 @@ export default function ServiceDetailScreen() {
         />
       )}
       {/* Header */}
-      <ScreenHeader title="Service Details" subtitle={service.title} />
+      <ScreenHeader title="Service Details" subtitle={info.title} />
 
       <ScrollView
         style={styles.scroll}
@@ -194,29 +251,21 @@ export default function ServiceDetailScreen() {
           <SectionHeader label="WORK TYPE" />
           <InlineRow
             label="Work Type"
-            value={
-              service.serviceMode === "business" ? "Business" : "Freelance"
-            }
+            value={isBusiness ? "Business" : "Freelance"}
           />
-          {service.serviceMode === "business" && service.business && (
-            <InlineRow
-              label="Business"
-              value={service.business.business.name}
-            />
+          {isBusiness && business?.name && (
+            <InlineRow label="Business" value={business.name} />
           )}
         </View>
 
         {/* SERVICE CATEGORY */}
         <View style={styles.section}>
           <SectionHeader label="SERVICE CATEGORY" />
-          {service.subcategory && (
-            <>
-              <InlineRow
-                label="Category"
-                value={service.subcategory.category.name}
-              />
-              <InlineRow label="Subcategory" value={service.subcategory.name} />
-            </>
+          {category?.name && (
+            <InlineRow label="Category" value={category.name} />
+          )}
+          {subcategory?.name && (
+            <InlineRow label="Subcategory" value={subcategory.name} />
           )}
         </View>
 
@@ -224,64 +273,66 @@ export default function ServiceDetailScreen() {
         <View style={styles.section}>
           <SectionHeader label="SERVICE INFORMATION" />
 
-          <Text style={styles.serviceTitle}>{service.title}</Text>
+          {info.title ? (
+            <Text style={styles.serviceTitle}>{info.title}</Text>
+          ) : null}
 
-          <View style={styles.subBlock}>
-            <Text style={styles.subBlockLabel}>Service Type</Text>
-            <Text style={styles.bodyText}>
-              {service.serviceType === "inPerson" ? "In-person" : "Remote"}
-            </Text>
-          </View>
+          {fulfillmentTypes.length > 0 && (
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Service Type</Text>
+              <Text style={styles.bodyText}>
+                {fulfillmentTypes.map((type) => type.label).join(", ")}
+              </Text>
+            </View>
+          )}
 
-          {service.serviceType === "inPerson" && service.address && (
+          {info.address?.address ? (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Service Address</Text>
-              <Text style={styles.bodyText}>{service.address.address}</Text>
+              <Text style={styles.bodyText}>{info.address.address}</Text>
             </View>
-          )}
-          {service.areaRadius && (
+          ) : null}
+          {radius && (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Service Area Radius</Text>
-              <Text
-                style={styles.bodyText}
-              >{`${parseFloat(service.areaRadius)} miles`}</Text>
+              <Text style={styles.bodyText}>{radius}</Text>
             </View>
           )}
 
-          {/* Custom field values */}
-          {service.customValues.map((cv) => {
-            const value = formatCustomValue(cv);
+          {/* Dynamic (template) answers */}
+          {dynamicAnswers.map((answer) => {
+            const value = formatDynamicAnswer(answer);
             if (!value) return null;
             return (
-              <View style={styles.subBlock} key={cv.id}>
-                <Text style={styles.subBlockLabel}>{cv.field.fieldLabel}</Text>
+              <View style={styles.subBlock} key={answer.field_key}>
+                <Text style={styles.subBlockLabel}>{answer.label}</Text>
                 <Text style={styles.bodyText}>{value}</Text>
               </View>
             );
           })}
 
-          {service.aboutYou ? (
-            <View style={styles.subBlock}>
-              <Text style={styles.subBlockLabel}>About</Text>
-              <Text style={styles.bodyText}>{service.aboutYou}</Text>
-            </View>
-          ) : null}
-
-          {service.description ? (
+          {info.description ? (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Description</Text>
-              <Text style={styles.bodyText}>{service.description}</Text>
+              <Text style={styles.bodyText}>{info.description}</Text>
             </View>
           ) : null}
 
-          {service.slogan ? (
+          {info.additional_information ? (
             <View style={styles.subBlock}>
-              <Text style={styles.subBlockLabel}>Slogan</Text>
-              <Text style={styles.bodyText}>{service.slogan}</Text>
+              <Text style={styles.subBlockLabel}>Additional Information</Text>
+              <Text style={styles.bodyText}>{info.additional_information}</Text>
             </View>
           ) : null}
 
-          {service.images.length > 0 && (
+          {info.tagline ? (
+            <View style={styles.subBlock}>
+              <Text style={styles.subBlockLabel}>Tagline</Text>
+              <Text style={styles.bodyText}>{info.tagline}</Text>
+            </View>
+          ) : null}
+
+          {portfolio.length > 0 && (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>Images / Portfolio</Text>
               <ScrollView
@@ -289,47 +340,52 @@ export default function ServiceDetailScreen() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.imageScrollRow}
               >
-                {service.images.map((img) => (
-                  <TouchableOpacity
-                    key={img.id}
-                    onPress={() => setSelectedImageUri(img.url)}
-                    activeOpacity={0.85}
-                  >
-                    <ExpoImage
-                      source={{ uri: img.url }}
-                      style={styles.thumbnail}
-                      contentFit="cover"
-                    />
-                  </TouchableOpacity>
-                ))}
+                {portfolio.map((img, index) =>
+                  img.url ? (
+                    <TouchableOpacity
+                      key={img.id ?? index}
+                      onPress={() => setSelectedImageUri(img.url!)}
+                      activeOpacity={0.85}
+                    >
+                      <ExpoImage
+                        source={{ uri: img.url }}
+                        style={styles.thumbnail}
+                        contentFit="cover"
+                      />
+                    </TouchableOpacity>
+                  ) : null,
+                )}
               </ScrollView>
             </View>
           )}
 
-          {service.certifications.length > 0 && (
+          {(certificate?.description || certificateFiles.length > 0) && (
             <View style={styles.subBlock}>
               <Text style={styles.subBlockLabel}>
                 Certifications / Licenses
               </Text>
-              {service.certifications.map((cert) => (
-                <TouchableOpacity
-                  key={cert.id}
-                  style={styles.certRow}
-                  onPress={() => WebBrowser.openBrowserAsync(cert.url)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="insert-drive-file"
-                    size={15}
-                    color={neutral[300]}
-                  />
-                  <Text style={[styles.certText, styles.certTextTappable]}>
-                    {cert.fileName
-                      ? decodeURIComponent(cert.fileName)
-                      : "Certificate"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {certificate?.description ? (
+                <Text style={styles.bodyText}>{certificate.description}</Text>
+              ) : null}
+              {certificateFiles.map((file, index) =>
+                file.url ? (
+                  <TouchableOpacity
+                    key={file.id ?? index}
+                    style={styles.certRow}
+                    onPress={() => WebBrowser.openBrowserAsync(file.url!)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="insert-drive-file"
+                      size={15}
+                      color={neutral[300]}
+                    />
+                    <Text style={[styles.certText, styles.certTextTappable]}>
+                      {fileNameFromUrl(file.url) ?? "Certificate"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null,
+              )}
             </View>
           )}
         </View>
@@ -337,27 +393,13 @@ export default function ServiceDetailScreen() {
         {/* PRICING */}
         <View style={styles.section}>
           <SectionHeader label="PRICING" />
-
           <PricingRow
             label="Base Rate"
-            value={formatRate(service.baseRate, service.baseRateUnit)}
+            value={formatPricing(service.pricing)}
           />
-
-          {service.addons.length > 0 && (
-            <>
-              <View style={styles.pricingDivider} />
-              <Text style={styles.subBlockLabel}>Add-ons</Text>
-              {service.addons.map((addon) => (
-                <PricingRow
-                  key={addon.id}
-                  label={addon.template.name}
-                  value={formatRate(addon.price, addon.rateUnit)}
-                />
-              ))}
-            </>
-          )}
         </View>
       </ScrollView>
+      {errorModal}
     </SafeAreaView>
   );
 }
@@ -375,23 +417,6 @@ const styles = StyleSheet.create({
     marginTop: 40,
     color: neutral[400],
     fontSize: 14,
-  },
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: neutral[800],
-  },
-  headerSpacer: {
-    width: 26,
   },
   // Scroll
   scroll: {
@@ -435,18 +460,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   // Fields
-  fieldBlock: {
-    gap: 2,
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: neutral[400],
-  },
-  fieldValue: {
-    fontSize: 13,
-    color: neutral[700],
-  },
   inlineRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -536,10 +549,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     color: neutral[800],
-  },
-  pricingDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: neutral[200],
-    marginVertical: 4,
   },
 });

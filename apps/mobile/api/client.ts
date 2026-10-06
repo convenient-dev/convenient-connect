@@ -20,6 +20,9 @@ export type PaginationMeta = components["schemas"]["PaginationMeta"];
 export type PublishabilityIssue =
   components["schemas"]["ProviderPublishabilityIssue"];
 
+/** One structured validation issue (`data.issues[]`) on a 422 response. */
+export type ValidationIssue = components["schemas"]["PublicValidationIssue"];
+
 /**
  * `data` of a 422 when create, information/pricing update, or activation fails
  * commercial publishability. `errors` is keyed by field key.
@@ -47,6 +50,16 @@ export function isCommercialPublishabilityError(
   if (!(error instanceof ApiError)) return false;
   const data = error.data as Partial<CommercialPublishabilityErrorData> | null;
   return data?.type === "commercial_publishability" && !!data.errors;
+}
+
+/**
+ * Structured issues from a 422, when the backend sent `data.issues`. Returns
+ * an empty list for plain validation errors that only carry `message`.
+ */
+export function getValidationIssues(error: unknown): ValidationIssue[] {
+  if (!(error instanceof ApiError)) return [];
+  const data = error.data as { issues?: unknown } | null;
+  return Array.isArray(data?.issues) ? (data.issues as ValidationIssue[]) : [];
 }
 
 /**
@@ -145,11 +158,11 @@ async function laravelRequest<T, M>(
   }
 
   if (!res.ok) {
-    console.error("[laravelFetch] Error response:", {
-      url,
-      status: res.status,
-      json,
-    });
+    // Stringify so nested arrays (e.g. data.issues) show in the Metro log.
+    console.error(
+      `[laravelFetch] ${method} ${url} -> ${res.status}`,
+      JSON.stringify(json),
+    );
 
     // Extract error message from various possible formats. A 403 for a
     // suspended provider carries its message here and is surfaced unchanged.

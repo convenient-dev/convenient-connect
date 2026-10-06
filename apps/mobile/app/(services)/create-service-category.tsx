@@ -1,79 +1,81 @@
+import { listServiceCategories } from "@/api/service-management";
 import { Button } from "@/components/Button";
 import { IconGrid, type IconGridItem } from "@/components/IconGrid";
-import { getServiceCategories } from "@/api/services";
+import { StepProgressHeader } from "@/components/StepProgressHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import {
+  CREATE_SERVICE_DISPLAY_TOTAL_STEPS,
+  type CreateServiceContextParams,
+} from "@/constants/create-service";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, background } = Colors;
+const { primary, neutral, background, status } = Colors;
 
-const TOTAL_STEPS = 5;
-const CURRENT_STEP = 1;
-const PROGRESS = CURRENT_STEP / TOTAL_STEPS;
-
-type Category = IconGridItem;
+const CURRENT_STEP = 2;
+const DISPLAY_TOTAL_STEPS = CREATE_SERVICE_DISPLAY_TOTAL_STEPS;
 
 export default function CreateServiceCategoryScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { serviceMode, businessAffiliationId, businessName } =
-    useLocalSearchParams<{
-      serviceMode: string;
-      businessAffiliationId: string;
-      businessName: string;
-    }>();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { providerType, businessId, businessName } =
+    useLocalSearchParams<CreateServiceContextParams>();
+  const [categories, setCategories] = useState<IconGridItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
+  const businessIdNumber =
+    providerType === "business" && businessId ? Number(businessId) : undefined;
+
   useEffect(() => {
-    getServiceCategories()
-      .then((data) => {
+    listServiceCategories(businessIdNumber)
+      .then((data) =>
         setCategories(
-          data.map((cat) => ({
-            id: cat.category_id,
-            name: cat.category_name,
-            iconUrl: cat.category_logo,
-          }))
-        );
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+          data
+            .filter((c) => c.category_id !== undefined)
+            .map((c) => ({
+              id: c.category_id!,
+              name: c.category_name ?? "",
+              iconUrl: c.category_logo ?? null,
+            })),
+        ),
+      )
+      .catch(() => setError("Couldn't load categories."))
+      .finally(() => setLoading(false));
+  }, [businessIdNumber]);
 
   const canProceed = selected !== null;
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      {/* Step indicator + progress bar */}
-      <View style={styles.stepHeader}>
-        <View style={styles.stepRow}>
-          <Text style={styles.stepLabel}>
-            Step {CURRENT_STEP} of {TOTAL_STEPS}
-          </Text>
-          <Text style={styles.stepPercent}>{Math.round(PROGRESS * 100)}%</Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { flex: PROGRESS }]} />
-          <View style={{ flex: 1 - PROGRESS }} />
-        </View>
-      </View>
+      <StepProgressHeader step={CURRENT_STEP} totalSteps={DISPLAY_TOTAL_STEPS} />
 
-      {/* Title */}
       <View style={styles.titleBlock}>
         <Text style={styles.title}>Service Categories</Text>
         <Text style={styles.subtitle}>
-          Select a category that applies to your service
+          {providerType === "business" && businessName
+            ? `Categories assigned to ${businessName}`
+            : "Select a category that applies to your service"}
         </Text>
       </View>
 
-      {/* Grid */}
       {loading ? (
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      ) : error ? (
+        <View style={styles.loader}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : categories.length === 0 ? (
+        <View style={styles.loader}>
+          <Text style={styles.emptyText}>
+            No categories are available for this selection.
+          </Text>
         </View>
       ) : (
         <IconGrid
@@ -83,7 +85,6 @@ export default function CreateServiceCategoryScreen() {
         />
       )}
 
-      {/* Footer */}
       <View style={[styles.footer, contentWidthStyle]}>
         <Button
           title="Back"
@@ -99,20 +100,15 @@ export default function CreateServiceCategoryScreen() {
           style={{ flex: 1 }}
           disabled={!canProceed}
           onPress={() => {
-            if (!canProceed) return;
+            if (selected === null) return;
             const category = categories.find((c) => c.id === selected)!;
-            const categorySlug = category.name
-              .toLowerCase()
-              .replace(/\.$/, "")
-              .replace(/\s+/g, "-");
             router.push({
               pathname: "/create-service-subcategory",
               params: {
                 categoryId: String(category.id),
-                categorySlug,
                 categoryName: category.name,
-                serviceMode,
-                businessAffiliationId,
+                providerType,
+                businessId,
                 businessName,
               },
             });
@@ -128,40 +124,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-  // Step header
-  stepHeader: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  stepRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stepLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: neutral[500],
-  },
-  stepPercent: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: primary[400],
-  },
-  progressTrack: {
-    flexDirection: "row",
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: neutral[100],
-    overflow: "hidden",
-  },
-  progressFill: {
-    backgroundColor: primary[400],
-    borderRadius: 2,
-  },
-  // Title
   titleBlock: {
     paddingHorizontal: 24,
     paddingTop: 24,
@@ -180,13 +142,22 @@ const styles = StyleSheet.create({
     color: neutral[400],
     lineHeight: 20,
   },
-  // Loader
   loader: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 24,
   },
-  // Footer
+  errorText: {
+    fontSize: 14,
+    color: status.error,
+    textAlign: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: neutral[400],
+    textAlign: "center",
+  },
   footer: {
     flexDirection: "row",
     gap: 12,

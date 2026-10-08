@@ -143,6 +143,16 @@ function validateYesNo(field: TemplateField, value: unknown): string | null {
   return null;
 }
 
+/**
+ * Backend upload limit (Laravel `max:5120` on image uploads). Not exposed by the
+ * template, so it is mirrored here to fail before the request is sent.
+ */
+export const MAX_IMAGE_KILOBYTES = 5120;
+
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function validateFiles(field: TemplateField, files: MultipartFile[]): string | null {
   const min = field.minimum_files ?? 0;
   const max = field.maximum_files ?? Infinity;
@@ -161,6 +171,13 @@ function validateFiles(field: TemplateField, files: MultipartFile[]): string | n
     if (!extOk && !typeOk) {
       return `${field.label} does not accept ${ext ? `.${ext}` : "this"} files.`;
     }
+  }
+  const oversizeIndex = files.findIndex(
+    (file) => file.type.startsWith("image/") && (file.size ?? 0) > MAX_IMAGE_KILOBYTES * 1024,
+  );
+  if (oversizeIndex !== -1) {
+    const file = files[oversizeIndex];
+    return `File ${oversizeIndex + 1} (${file.name}) is ${formatMegabytes(file.size ?? 0)}. Images must be ${MAX_IMAGE_KILOBYTES / 1024} MB or smaller.`;
   }
   return null;
 }
@@ -370,6 +387,9 @@ export function validateField(
     const files = bundle.files ?? [];
     if (files.length > 0 && isBlank(bundle.description)) {
       errors.push([field.field_key, `${field.label} needs a description for the uploaded files.`]);
+    } else if (files.length === 0 && !isBlank(bundle.description)) {
+      // Mirrors the backend rule: a description without any certificate file is a 422.
+      errors.push([field.field_key, `${field.label} needs at least one file for the description.`]);
     }
     const fileError = validateFiles(field, files);
     if (fileError && (files.length > 0 || required)) {

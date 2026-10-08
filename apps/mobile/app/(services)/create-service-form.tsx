@@ -1,9 +1,5 @@
 import { createAddress, getDefaultAddress, type Address } from "@/api/address";
-import {
-  ApiError,
-  getValidationIssues,
-  isCommercialPublishabilityError,
-} from "@/api/client";
+import { ApiError, isCommercialPublishabilityError } from "@/api/client";
 import type { MultipartFile } from "@/api/multipart";
 import {
   createService,
@@ -20,7 +16,11 @@ import {
 } from "@/constants/create-service";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { useTemplateForm } from "@/hooks/use-template-form";
+import {
+  fieldValueKeys,
+  useTemplateForm,
+  type ServerErrorResult,
+} from "@/hooks/use-template-form";
 import {
   PRICING_VALUE_KEYS,
   asTemplate,
@@ -238,15 +238,23 @@ export default function CreateServiceFormScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
+  /**
+   * Sends the user to the step holding the first highlighted field, with a
+   * short prompt. Issues that have no owning field are listed in the prompt,
+   * since the general error box only renders on the review page.
+   */
+  function showFieldErrors(title: string, result: ServerErrorResult) {
+    if (result.sectionIndex !== -1) setPageIndex(result.sectionIndex);
+    const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
+    const prompt = "Please review the highlighted fields before submitting.";
+    setDialog({ title, message: unmapped ? `${prompt}\n\n${unmapped}` : prompt });
+  }
+
   async function handleSubmit() {
     if (!template || submitting) return;
-    if (!form.validateAll()) {
-      const index = form.firstSectionWithErrors();
-      setPageIndex(index === -1 ? 0 : index);
-      setDialog({
-        title: "Some details need attention",
-        message: "Please review the highlighted fields before submitting.",
-      });
+    const invalidSection = form.validateAll();
+    if (invalidSection !== -1) {
+      showFieldErrors("Some details need attention", { sectionIndex: invalidSection, general: [] });
       return;
     }
     setSubmitting(true);
@@ -257,27 +265,19 @@ export default function CreateServiceFormScreen() {
       setSubmitted(true);
     } catch (e) {
       if (isCommercialPublishabilityError(e)) {
-        form.applyServerErrors(e);
-        const index = form.firstSectionWithErrors();
-        if (index !== -1) setPageIndex(index);
-        setDialog({ title: "Listing not publishable yet", message: e.message });
-      } else {
-        // Plain 422s may still carry structured issues; show them and mark fields.
-        const hadIssues = form.applyServerIssues(e);
-        if (hadIssues) {
-          const index = form.firstSectionWithErrors();
-          if (index !== -1) setPageIndex(index);
-        }
-        const details = getValidationIssues(e)
-          .slice(0, 5)
-          .map((issue) => `• ${issue.message}`)
-          .join("\n");
-        const message = e instanceof ApiError ? e.message : "Something went wrong. Please try again.";
-        setDialog({
-          title: "Couldn't submit service",
-          message: details && details !== `• ${message}` ? `${message}\n\n${details}` : message,
-        });
+        showFieldErrors("Listing not publishable yet", form.applyServerErrors(e));
+        return;
       }
+      // Plain 422s carry structured issues; mark the fields and open their step.
+      const result = form.applyServerIssues(e);
+      if (result) {
+        showFieldErrors("Some details need attention", result);
+        return;
+      }
+      setDialog({
+        title: "Couldn't submit service",
+        message: e instanceof ApiError ? e.message : "Something went wrong. Please try again.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -360,6 +360,12 @@ export default function CreateServiceFormScreen() {
   }
 
   const section = sections[pageIndex];
+  // Next stays disabled while the current step shows an error.
+  const pageHasErrors =
+    !isReview &&
+    pageFields(pageIndex).some((field) =>
+      fieldValueKeys(field).some((key) => key in form.errors),
+    );
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -477,6 +483,7 @@ export default function CreateServiceFormScreen() {
           size="md"
           style={{ flex: 1 }}
           loading={submitting}
+          disabled={pageHasErrors}
           onPress={handleNext}
         />
       </View>

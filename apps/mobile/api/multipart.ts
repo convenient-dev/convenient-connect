@@ -17,6 +17,8 @@ export interface MultipartFile {
   uri: string;
   name: string;
   type: string;
+  /** Size in bytes when the picker reported it; used for client-side limits only. */
+  size?: number;
 }
 
 export type MultipartScalar = string | number | boolean;

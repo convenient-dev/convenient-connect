@@ -23,6 +23,7 @@ import {
   profilePricingScopeState,
   resolveActiveFormatKey,
   resolveCurrency,
+  mapIssuesToFields,
   validateForm,
   visibleFields,
   type FormValues,
@@ -301,6 +302,36 @@ check(!("booking_policy" in badPayload.answers) && !("address_id" in badPayload.
 // Hidden dynamic key for the other format is omitted.
 const groupHidden = buildPayload(tutoring, { ...baseValues(), learner_delivery: undefined, session_duration_minutes: 60 }, "create");
 check(!("session_duration_minutes" in groupHidden.answers), "dynamic key hidden by visible_when is omitted, not null");
+
+// ===========================================================================
+section("certificate bundle: description without files");
+check(/at least one file/.test(validateForm(pet, { ...baseValues(), certificates: { description: "Certified" } }).certificates ?? ""), "description with no files is rejected client-side");
+check(!("certificates" in validateForm(pet, { ...baseValues(), certificates: { description: "Certified", files: [cori] } })), "description with a file passes");
+
+// ===========================================================================
+section("image size limit");
+const bigImage: MultipartFile = { ...file("big.jpg", "image/jpeg"), size: 5120 * 1024 + 1 };
+const okImage: MultipartFile = { ...file("ok.jpg", "image/jpeg"), size: 5120 * 1024 };
+const bigPdf: MultipartFile = { ...file("big.pdf", "application/pdf"), size: 20 * 1024 * 1024 };
+check(/File 2 \(big\.jpg\).*5 MB/.test(validateForm(pet, { ...baseValues(), portfolio_images: [okImage, bigImage] }).portfolio_images ?? ""), "image over 5120 KB is rejected and identified by position and name");
+check(!("portfolio_images" in validateForm(pet, { ...baseValues(), portfolio_images: [okImage] })), "image at exactly 5120 KB passes");
+check(!("portfolio_images" in validateForm(pet, { ...baseValues(), portfolio_images: [file("unknown.jpg", "image/jpeg")] })), "image with no reported size is not rejected");
+check(!("cori_background_check" in validateForm(tutoring, { ...baseValues(), cori_background_check: [bigPdf] })), "non-image files are not size-limited");
+
+// ===========================================================================
+section("422 issue → field mapping");
+const issue = (path: string, message: string) => ({ path, field: path, code: "x", message, details: {} });
+const mapped = mapIssuesToFields(pet, {}, [
+  issue("certificate_files", "At least one certificate file is required."),
+  issue("portfolio_images.1", "Too large."),
+  issue("$", "Cross-field problem."),
+  issue("answers_json.unknown_key", "Unknown."),
+] as any);
+check(mapped.fieldErrors.certificates === "At least one certificate file is required.", "certificate_files lands on the certificate bundle field");
+check(mapped.fieldErrors.portfolio_images === "File 2: Too large.", "portfolio_images.1 lands on portfolio_images with a 1-based file prefix");
+check(mapped.general.length === 2 && mapped.general[0] === "Cross-field problem." && mapped.general[1] === "unknown_key: Unknown.", "$ and unknown paths go to general");
+const dynMapped = mapIssuesToFields(tutoring, { ...baseValues(), cori_background_check: [cori] }, [issue("dynamic_files.0", "Bad file.")] as any);
+check(dynMapped.fieldErrors.cori_background_check === "File 1: Bad file.", "dynamic_files.N resolves to the paired field_key");
 
 // ===========================================================================
 console.log(`\n${passes} passed, ${failures} failed`);

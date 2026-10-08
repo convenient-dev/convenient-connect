@@ -4,6 +4,7 @@ import {
   type ApiError,
   type CommercialPublishabilityErrorData,
 } from "@/api/client";
+import { mapIssuesToFields } from "@/services/template";
 import {
   PRICING_VALUE_KEYS,
   allowedFulfillmentOptions,
@@ -12,6 +13,7 @@ import {
   getFormat,
   isFieldRequired,
   selectedPricingType,
+  validateField,
   validateForm,
   visibleFields,
   type FormErrors,
@@ -24,6 +26,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PRICING_KEYS: string[] = Object.values(PRICING_VALUE_KEYS);
 
+/** Where a server error landed: the first step to show, and unmapped messages. */
+export interface ServerErrorResult {
+  /** Index of the first section with a highlighted field, or -1 if none matched. */
+  sectionIndex: number;
+  general: string[];
+}
+
 /** Every values key a field owns: its own key plus unit / Other / pricing keys. */
 export function fieldValueKeys(field: TemplateField): string[] {
   const keys = [field.field_key];
@@ -33,6 +42,10 @@ export function fieldValueKeys(field: TemplateField): string[] {
   }
   if (field.field_type === "pricing") keys.push(...PRICING_KEYS);
   return keys;
+}
+
+function isFileField(field: TemplateField): boolean {
+  return field.field_type === "file_upload" || field.submit_as?.type === "certificate_bundle";
 }
 
 function seedDefaults(template: FormTemplate): FormValues {
@@ -74,13 +87,21 @@ export function useTemplateForm(template: FormTemplate | null) {
           )
           .map((f) => f.field_key);
         const stale = [key, ...related].filter((k) => k in prev);
-        if (!stale.length) return prev;
+        // File fields are validated as soon as they change, so a rejected
+        // upload (type, count, size) is flagged without waiting for Next.
+        const live: FormErrors = {};
+        if (template && edited && isFileField(edited)) {
+          for (const [k, message] of validateField(edited, template, { ...values, [key]: value })) {
+            if (!(k in live)) live[k] = message;
+          }
+        }
+        if (!stale.length && !Object.keys(live).length) return prev;
         const next = { ...prev };
         for (const k of stale) delete next[k];
-        return next;
+        return { ...next, ...live };
       });
     },
-    [template],
+    [template, values],
   );
 
   // Drop selections the active format no longer permits.
@@ -170,20 +191,43 @@ export function useTemplateForm(template: FormTemplate | null) {
     [template, values],
   );
 
-  const validateAll = useCallback((): boolean => {
-    if (!template) return false;
+  /**
+   * Index of the first section that owns any of the given keys, or -1. Pure,
+   * so callers can navigate in the same tick they set the errors.
+   */
+  const sectionIndexForKeys = useCallback(
+    (keys: Iterable<string>): number => {
+      const errored = new Set(keys);
+      if (!errored.size) return -1;
+      return sections.findIndex((section) =>
+        fieldsForSection(section).some((field) =>
+          fieldValueKeys(field).some((key) => errored.has(key)),
+        ),
+      );
+    },
+    [sections, fieldsForSection],
+  );
+
+  /**
+   * Validates every field. Returns -1 when valid, otherwise the index of the
+   * first section with an error (0 when the errored keys sit outside sections).
+   */
+  const validateAll = useCallback((): number => {
+    if (!template) return 0;
     const all = validateForm(template, values);
     setErrors(all);
-    return Object.keys(all).length === 0;
-  }, [template, values]);
+    const keys = Object.keys(all);
+    if (!keys.length) return -1;
+    return Math.max(0, sectionIndexForKeys(keys));
+  }, [template, values, sectionIndexForKeys]);
 
   /**
    * Maps a publishability 422 onto field keys. Keys that match a field key or
    * a submit key land on that field; anything else goes to `generalErrors`.
    */
   const applyServerErrors = useCallback(
-    (error: ApiError & { data: CommercialPublishabilityErrorData }) => {
-      if (!template) return;
+    (error: ApiError & { data: CommercialPublishabilityErrorData }): ServerErrorResult => {
+      if (!template) return { sectionIndex: -1, general: [] };
       const messages = getPublishabilityFieldMessages(error);
       const fieldErrors: FormErrors = {};
       const general: string[] = [];
@@ -199,51 +243,30 @@ export function useTemplateForm(template: FormTemplate | null) {
       }
       setErrors((prev) => ({ ...prev, ...fieldErrors }));
       setGeneralErrors(general);
+      return { sectionIndex: sectionIndexForKeys(Object.keys(fieldErrors)), general };
     },
-    [template],
+    [template, sectionIndexForKeys],
   );
 
   /**
    * Maps structured `data.issues` from any 422 onto fields. `path` is a wire
-   * path such as `title`, `fulfillment_type_ids` or `answers_json.qualifications`;
-   * `$` and unknown paths go to `generalErrors`. Returns true when any issue
-   * was found.
+   * path such as `title`, `certificate_files`, `portfolio_images.1` or
+   * `answers_json.qualifications`; `$` and unknown paths go to `generalErrors`.
+   * Returns null when the error carried no structured issues.
    */
   const applyServerIssues = useCallback(
-    (error: unknown): boolean => {
+    (error: unknown): ServerErrorResult | null => {
       const issues = getValidationIssues(error);
-      if (!template || issues.length === 0) return false;
-      const fieldErrors: FormErrors = {};
-      const general: string[] = [];
-      for (const issue of issues) {
-        const path = (issue.path ?? issue.field ?? "").replace(/^answers_json\./, "");
-        const leaf = path.split(".")[0];
-        const byKey = template.fields.find((f) => f.field_key === leaf);
-        const bySubmit = template.fields.find((f) => f.submit_as?.key === leaf);
-        if (byKey && !(byKey.field_key in fieldErrors)) fieldErrors[byKey.field_key] = issue.message;
-        else if (bySubmit && !(bySubmit.field_key in fieldErrors)) fieldErrors[bySubmit.field_key] = issue.message;
-        else if (PRICING_KEYS.includes(leaf) && !(leaf in fieldErrors)) fieldErrors[leaf] = issue.message;
-        else if (!byKey && !bySubmit) general.push(path && path !== "$" ? `${path}: ${issue.message}` : issue.message);
-      }
+      if (!template || issues.length === 0) return null;
+      const { fieldErrors, general } = mapIssuesToFields(template, values, issues);
       setErrors((prev) => ({ ...prev, ...fieldErrors }));
       setGeneralErrors(general);
-      return true;
+      return { sectionIndex: sectionIndexForKeys(Object.keys(fieldErrors)), general };
     },
-    [template],
+    [template, values, sectionIndexForKeys],
   );
 
   const clearGeneralErrors = useCallback(() => setGeneralErrors([]), []);
-
-  /** Index of the first section that owns an errored key, or -1. */
-  const firstSectionWithErrors = useCallback((): number => {
-    const errored = new Set(Object.keys(errors));
-    if (!errored.size) return -1;
-    return sections.findIndex((section) =>
-      fieldsForSection(section).some((field) =>
-        fieldValueKeys(field).some((key) => errored.has(key)),
-      ),
-    );
-  }, [errors, sections, fieldsForSection]);
 
   return {
     values,
@@ -260,7 +283,7 @@ export function useTemplateForm(template: FormTemplate | null) {
     applyServerErrors,
     applyServerIssues,
     clearGeneralErrors,
-    firstSectionWithErrors,
+    sectionIndexForKeys,
   };
 }
 

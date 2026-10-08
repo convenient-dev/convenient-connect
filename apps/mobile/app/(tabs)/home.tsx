@@ -4,6 +4,7 @@ import {
   type Address,
   type ResolvedLocation,
 } from "@/api/address";
+import { getProviderHome, type ProviderHomeServiceCard } from "@/api/home";
 import bookingsData from "@/assets/data/bookings.json";
 import { useAuth } from "@/auth/AuthContext";
 import { AddressModal } from "@/components/AddressModal";
@@ -12,7 +13,7 @@ import {
   type BookingRequest,
 } from "@/components/BookingRequestCard";
 import { CardGrid } from "@/components/CardGrid";
-import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
+import { MyServiceCard } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
 import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -128,13 +129,13 @@ export default function HomeScreen() {
       }
     : null;
 
-  const [services, setServices] = useState<MyServiceCardData[]>([]);
+  const [services, setServices] = useState<ProviderHomeServiceCard[]>([]);
+  // Full count from the API; the strip itself is capped at the newest 8.
+  const [servicesTotal, setServicesTotal] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-  const [acceptedRequests] = useState<Set<string>>(
-    new Set(),
-  );
+  const [acceptedRequests] = useState<Set<string>>(new Set());
 
   const newRequests = BOOKINGS.filter(
     (b) => b.status === "pending" && !acceptedRequests.has(b.id),
@@ -179,14 +180,18 @@ export default function HomeScreen() {
     }
   }, [openMenu, router]);
 
-  useEffect(() => {
-    if (!authUser?.user.user_id) return;
-    // TODO: legacy API removed — implement getUserServices via Laravel API
-    console.log("TODO: implement getUserServices via Laravel API", {
-      userId: authUser.user.user_id,
-    });
-    setServices([]);
-  }, [authUser?.user.user_id]);
+  // Re-fetch on focus so the strip reflects services created or deleted
+  // elsewhere. A failed load keeps whatever was shown last.
+  const refreshMyServices = useCallback(() => {
+    getProviderHome()
+      .then((home) => {
+        setServices(home.my_services.items);
+        setServicesTotal(home.my_services.total);
+      })
+      .catch(() => {});
+  }, []);
+
+  useFocusEffect(refreshMyServices);
 
   const handleBannerScroll = (event: any) => {
     const index = Math.round(
@@ -290,16 +295,36 @@ export default function HomeScreen() {
           {services.length > 0 ? (
             <FlatList
               data={services}
-              keyExtractor={(item) => String(item.id)}
+              keyExtractor={(item) => String(item.service_id)}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.myServicesList}
               renderItem={({ item }) => (
                 <MyServiceCard
                   service={item}
-                  onPress={() => router.push(`/service-detail/${item.id}`)}
+                  onPress={() =>
+                    router.push(`/service-detail/${item.service_id}`)
+                  }
                 />
               )}
+              ListFooterComponent={
+                servicesTotal > services.length ? (
+                  <View style={styles.viewMoreCard}>
+                    <TouchableOpacity
+                      style={styles.viewMorePill}
+                      activeOpacity={0.8}
+                      onPress={() => router.push("/services")}
+                    >
+                      <Text style={styles.viewMoreText}>View more</Text>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={16}
+                        color={neutral[500]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ) : null
+              }
             />
           ) : (
             // Empty State: Create service card
@@ -517,6 +542,26 @@ const styles = StyleSheet.create({
   myServicesList: {
     gap: 16,
     paddingVertical: 4,
+  },
+  // Matches the photo height on service cards so the pill sits level with them.
+  viewMoreCard: {
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewMorePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: neutral[50],
+  },
+  viewMoreText: {
+    fontSize: 12,
+    color: neutral[500],
+    letterSpacing: -0.408,
   },
   createServiceCard: {
     backgroundColor: background.subtle,

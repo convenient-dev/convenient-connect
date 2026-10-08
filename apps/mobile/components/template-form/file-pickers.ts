@@ -45,6 +45,7 @@ export async function pickImages(limit: number): Promise<MultipartFile[]> {
       uri: asset.uri,
       name,
       type: asset.mimeType ?? mimeFromName(name, "image/jpeg"),
+      size: asset.fileSize,
     };
   });
 }
@@ -64,6 +65,7 @@ export async function pickDocuments(
     uri: asset.uri,
     name: asset.name,
     type: asset.mimeType ?? mimeFromName(asset.name, "application/octet-stream"),
+    size: asset.size,
   }));
 }
 

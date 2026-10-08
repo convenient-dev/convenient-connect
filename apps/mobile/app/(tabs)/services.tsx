@@ -12,6 +12,7 @@ import {
   ServiceStatus,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
+import { withCount } from "@/constants/labels";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -31,7 +32,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-const TABS: { key: ServiceListTab & string; label: string }[] = [
+type TabKey = ServiceListTab & string;
+
+const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "independent", label: "Freelance" },
   { key: "affiliated", label: "Business" },
@@ -99,8 +102,13 @@ function ServiceCard({
 export default function ServicesScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<ServiceListTab & string>("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [services, setServices] = useState<ServiceListItem[]>([]);
+  // Per-tab totals for the tab labels. The list endpoint only reports
+  // meta.total for the tab it was asked for, so each tab is counted separately.
+  const [tabTotals, setTabTotals] = useState<Partial<Record<TabKey, number>>>(
+    {},
+  );
   const [lastPage, setLastPage] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -111,42 +119,68 @@ export default function ServicesScreen() {
   // Ignore responses from a superseded request (tab switched, screen refocused).
   const requestId = useRef(0);
 
-  const loadServices = useCallback(
-    async (tab: ServiceListTab, pageToLoad: number) => {
-      const id = ++requestId.current;
-      const isFirstPage = pageToLoad === 1;
-      if (isFirstPage) setLoading(true);
-      else setLoadingMore(true);
-      try {
-        const result = await listMyServices({ tab, page: pageToLoad });
-        if (id !== requestId.current) return;
-        setServices((prev) =>
-          isFirstPage ? result.data : [...prev, ...result.data],
-        );
-        setPage(result.meta?.current_page ?? pageToLoad);
-        setLastPage(result.meta?.last_page ?? pageToLoad);
-      } catch (err) {
-        if (id !== requestId.current) return;
-        if (isFirstPage) setServices([]);
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Something went wrong while loading your services.",
-        );
-      } finally {
-        if (id === requestId.current) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
+  const loadServices = useCallback(async (tab: TabKey, pageToLoad: number) => {
+    const id = ++requestId.current;
+    const isFirstPage = pageToLoad === 1;
+    if (isFirstPage) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const result = await listMyServices({ tab, page: pageToLoad });
+      if (id !== requestId.current) return;
+      setServices((prev) =>
+        isFirstPage ? result.data : [...prev, ...result.data],
+      );
+      setPage(result.meta?.current_page ?? pageToLoad);
+      setLastPage(result.meta?.last_page ?? pageToLoad);
+      if (result.meta?.total !== undefined) {
+        const total = result.meta.total;
+        setTabTotals((prev) => ({ ...prev, [tab]: total }));
       }
-    },
-    [],
-  );
+    } catch (err) {
+      if (id !== requestId.current) return;
+      if (isFirstPage) setServices([]);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Something went wrong while loading your services.",
+      );
+    } finally {
+      if (id === requestId.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadServices(activeTab, 1);
     }, [activeTab, loadServices]),
+  );
+
+  // Counts are decorative, so a failed fetch just leaves the labels bare.
+  const loadTabTotals = useCallback(async () => {
+    const results = await Promise.allSettled(
+      TABS.map(({ key }) => listMyServices({ tab: key, perPage: 1 })),
+    );
+    setTabTotals((prev) => {
+      const next = { ...prev };
+      results.forEach((result, i) => {
+        if (
+          result.status === "fulfilled" &&
+          result.value.meta?.total !== undefined
+        ) {
+          next[TABS[i].key] = result.value.meta.total;
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTabTotals();
+    }, [loadTabTotals]),
   );
 
   function handleEndReached() {
@@ -170,7 +204,14 @@ export default function ServicesScreen() {
         }
       />
       {/* Filter tabs */}
-      <TabBar tabs={TABS} activeKey={activeTab} onChange={setActiveTab} />
+      <TabBar
+        tabs={TABS.map((tab) => ({
+          ...tab,
+          label: withCount(tab.label, tabTotals[tab.key]),
+        }))}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+      />
       {/* Service list */}
       {loading ? (
         <ActivityIndicator

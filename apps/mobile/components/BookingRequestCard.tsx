@@ -8,18 +8,27 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 const { primary, secondary, neutral, text, background, border, status } =
   Colors;
 
+/**
+ * Display-ready card data. `date`, `start` and `end` are already formatted
+ * for display (e.g. "July 25, 2026", "9:00 AM"); use `formatBookingDate` /
+ * `formatBookingTime` to convert raw values first.
+ */
 export interface BookingRequest {
   id: string;
   bookingId: string;
   serviceId: string;
   service: string;
+  /** Falls back to a seeded placeholder photo when missing. */
+  serviceImageUrl?: string | null;
   date: string;
   start: string;
-  end: string;
+  end?: string | null;
   client: {
     name: string;
     location: string;
     type: "repeat" | "new";
+    /** Falls back to an initials avatar when missing. */
+    avatarUrl?: string | null;
   };
 }
 
@@ -58,12 +67,21 @@ function serviceAvatarUri(seed: string): string {
 }
 
 // "09:00" -> "9:00 AM"
-function formatTime(hhmm: string): string {
+export function formatBookingTime(hhmm: string): string {
   const [hStr, mStr] = hhmm.split(":");
   const h = Number(hStr);
   const period = h >= 12 ? "PM" : "AM";
   const display = h % 12 === 0 ? 12 : h % 12;
   return `${display}:${mStr} ${period}`;
+}
+
+// "2026-07-25" -> "July 25, 2026"
+export function formatBookingDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 interface BookingRequestCardProps {
@@ -95,7 +113,9 @@ export function BookingRequestCard({
       <View style={styles.requestServiceRow}>
         <ExpoImage
           source={{
-            uri: serviceAvatarUri(request.serviceId || request.service),
+            uri:
+              request.serviceImageUrl ??
+              serviceAvatarUri(request.serviceId || request.service),
           }}
           style={[styles.serviceAvatar]}
           contentFit="cover"
@@ -104,21 +124,13 @@ export function BookingRequestCard({
           <Text style={styles.requestServiceTitle}>{request.service}</Text>
           <View style={styles.requestMetaRow}>
             <Feather name="calendar" size={13} color={neutral[400]} />
-            <Text style={styles.requestMetaText}>
-              {new Date(`${request.date}T00:00:00`).toLocaleDateString(
-                "en-US",
-                {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                },
-              )}
-            </Text>
+            <Text style={styles.requestMetaText}>{request.date}</Text>
           </View>
           <View style={styles.requestMetaRow}>
             <Feather name="clock" size={13} color={neutral[400]} />
             <Text style={styles.requestMetaText}>
-              Start: {formatTime(request.start)} End: {formatTime(request.end)}
+              Start: {request.start}
+              {request.end ? ` End: ${request.end}` : ""}
             </Text>
           </View>
         </View>
@@ -128,7 +140,7 @@ export function BookingRequestCard({
 
       <View style={styles.requestClientRow}>
         <ExpoImage
-          source={{ uri: clientAvatarUri(client.name) }}
+          source={{ uri: client.avatarUrl ?? clientAvatarUri(client.name) }}
           style={[
             styles.clientAvatar,
             { backgroundColor: avatarBg(client.name) },

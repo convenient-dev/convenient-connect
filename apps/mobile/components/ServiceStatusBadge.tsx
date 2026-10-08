@@ -36,6 +36,20 @@ export const SERVICE_STATUS_CONFIG: Record<ServiceStatus, StatusVariant> = {
   },
 };
 
+/** Maps the API's `status_label` to a badge status; unknown labels read as inactive. */
+export function statusFromLabel(
+  label: string | null | undefined,
+): ServiceStatus {
+  switch (label) {
+    case "active":
+      return "active";
+    case "pending_review":
+      return "pendingReview";
+    default:
+      return "inactive";
+  }
+}
+
 interface Props {
   status: ServiceStatus;
   size?: ServiceStatusBadgeSize;

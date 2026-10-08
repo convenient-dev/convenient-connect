@@ -9,7 +9,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   SERVICE_STATUS_CONFIG,
-  ServiceStatus,
+  statusFromLabel,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
 import { withCount } from "@/constants/labels";
@@ -40,15 +40,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "affiliated", label: "Business" },
 ];
 
-const STATUS_BY_LABEL: Record<
-  NonNullable<ServiceListItem["status_label"]>,
-  ServiceStatus
-> = {
-  active: "active",
-  inactive: "inactive",
-  pending_review: "pendingReview",
-};
-
 function ServiceCard({
   service,
   onMore,
@@ -56,10 +47,7 @@ function ServiceCard({
   service: ServiceListItem;
   onMore: () => void;
 }) {
-  const status = service.status_label
-    ? STATUS_BY_LABEL[service.status_label]
-    : "inactive";
-  const meta = SERVICE_STATUS_CONFIG[status];
+  const meta = SERVICE_STATUS_CONFIG[statusFromLabel(service.status_label)];
   const photo = service.portfolio?.url;
 
   return (

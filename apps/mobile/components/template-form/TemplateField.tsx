@@ -22,16 +22,22 @@ interface Props {
   setValue: (key: string, value: unknown) => void;
   defaultAddress?: Address | null;
   onAddAddress?: () => void;
+  onChangeAddress?: () => void;
 }
 
 /** Renders one template field by its `field_type` / `submit_as` type. */
 export function TemplateField(props: Props) {
-  const { field, template, defaultAddress, onAddAddress, ...control } = props;
-  const base = { field, ...control };
+  const { field, template, defaultAddress, onAddAddress, onChangeAddress, ...control } = props;
+  const base = { field, template, ...control };
 
   if (field.submit_as?.type === "display_only" || field.field_type === "address") {
     return (
-      <AddressControl {...base} defaultAddress={defaultAddress} onAddAddress={onAddAddress ?? (() => {})} />
+      <AddressControl
+        {...base}
+        defaultAddress={defaultAddress}
+        onAddAddress={onAddAddress ?? (() => {})}
+        onChangeAddress={onChangeAddress}
+      />
     );
   }
   if (field.submit_as?.type === "certificate_bundle") {
@@ -53,7 +59,7 @@ export function TemplateField(props: Props) {
     case "file_upload":
       return <FileUploadControl {...base} />;
     case "pricing":
-      return <PricingControl {...base} template={template} />;
+      return <PricingControl {...base} />;
     default:
       return null;
   }

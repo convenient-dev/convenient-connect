@@ -293,6 +293,62 @@ function validatePricing(
  * Validates one visible field. Returns `[key, message]` pairs so unit and
  * Other errors land on their own keys. Empty array means valid.
  */
+const ANSWERS_PREFIX = "answers_json.";
+
+function toDate(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Cross-field `relations`. The other field is resolved from `other_path` by
+ * submit key, then field key. Skipped when the other field is hidden or, for
+ * `both_present`, when either value is blank. Errors land on the declaring field.
+ */
+function validateRelations(
+  field: TemplateField,
+  template: FormTemplate,
+  values: FormValues,
+  ctx: EvaluationContext,
+): string | null {
+  const value = values[field.field_key];
+  for (const relation of field.relations ?? []) {
+    const key = relation.other_path.startsWith(ANSWERS_PREFIX)
+      ? relation.other_path.slice(ANSWERS_PREFIX.length)
+      : relation.other_path;
+    const other =
+      template.fields.find((f) => f.submit_as?.key === key) ??
+      template.fields.find((f) => f.field_key === key);
+    if (other && !isFieldVisible(other, template, values, ctx)) continue;
+    const otherValue = values[other?.field_key ?? key];
+    if (isBlank(value) || isBlank(otherValue)) continue;
+    const otherLabel = other?.label ?? key;
+
+    switch (relation.operator) {
+      case "less_than_or_equal": {
+        const a = toNumber(value);
+        const b = toNumber(otherValue);
+        if (a !== null && b !== null && a > b) {
+          return `${field.label} must be less than or equal to ${otherLabel}.`;
+        }
+        break;
+      }
+      case "on_or_after": {
+        const a = toDate(value);
+        const b = toDate(otherValue);
+        if (a !== null && b !== null && a < b) {
+          return `${field.label} must be on or after ${otherLabel}.`;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return null;
+}
+
 export function validateField(
   field: TemplateField,
   template: FormTemplate,
@@ -356,6 +412,9 @@ export function validateField(
       break;
   }
   if (message) errors.push([field.field_key, message]);
+
+  const relationError = validateRelations(field, template, values, ctx);
+  if (relationError) errors.push([field.field_key, relationError]);
 
   const otherError = validateOther(field, value, values);
   if (otherError) errors.push(otherError);

@@ -10,7 +10,6 @@ import {
   selectedFulfillmentCodes,
   selectedPriceUnitCode,
   selectedPricingType,
-  type FormTemplate,
 } from "@/services/template";
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -22,9 +21,7 @@ import { formStyles as s } from "./styles";
 
 const { neutral, primary } = Colors;
 
-interface Props extends ControlProps {
-  template: FormTemplate;
-}
+type Props = ControlProps;
 
 /**
  * The composite pricing block: pricing type, amount with currency, price unit,

@@ -93,6 +93,17 @@ export interface SelectionRules {
   exclusive_values?: Scalar[];
 }
 
+/**
+ * Cross-field constraint declared on the field it applies to, e.g.
+ * `min_guest_count` <= `answers_json.max_guest_count`. `other_path` is a wire
+ * path; `answers_json.` is stripped to find the other field.
+ */
+export interface FieldRelation {
+  operator: "less_than_or_equal" | "on_or_after";
+  other_path: string;
+  when?: "both_present";
+}
+
 export interface PricingSubField {
   label?: string;
   required?: boolean;
@@ -136,6 +147,7 @@ export type TemplateField = Omit<
   options?: FieldOption[];
   validation?: FieldValidation | [] | null;
   selection_rules?: SelectionRules | null;
+  relations?: FieldRelation[] | null;
   visible_when?: Predicate | null;
   required_when?: Predicate | null;
   prohibited_when?: Predicate | null;

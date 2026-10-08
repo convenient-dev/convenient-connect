@@ -54,6 +54,21 @@ export const formStyles = StyleSheet.create({
     fontSize: 12,
     color: status.error,
     marginTop: 2,
+    flexShrink: 1,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  charCount: {
+    fontSize: 12,
+    color: neutral[400],
+    marginTop: 2,
+  },
+  charCountOver: {
+    color: status.error,
   },
   // Segmented (single choice among few options)
   segmentedControl: {
@@ -85,6 +100,20 @@ export const formStyles = StyleSheet.create({
   segmentTextActive: {
     color: primary[500],
     fontWeight: "600",
+  },
+  // Stacked full-width option buttons (single choice among few options)
+  optionList: {
+    gap: 10,
+  },
+  optionButton: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: border.default,
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   // Checkbox rows (multi choice)
   checkRow: {

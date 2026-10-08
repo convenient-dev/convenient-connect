@@ -16,6 +16,30 @@ import {
 
 export const FULFILLMENT_SUBMIT_KEY = "fulfillment_type_ids";
 
+export const PROVIDER_ADDRESS_SOURCE = "provider_default_address";
+export const CUSTOMER_LOCATION_CODE = "customer_location";
+
+/**
+ * Fulfillment codes for which the provider's default address is shown. The
+ * template's own `visible_when` only names `provider_location` and
+ * `pickup_delivery` (where the backend snapshots the address), but the backend
+ * also centres the `customer_location` service radius on that address, so the
+ * provider should see it there too.
+ */
+export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
+  "provider_location",
+  "pickup_delivery",
+  CUSTOMER_LOCATION_CODE,
+];
+
+/** The display-only field that mirrors the provider's default address. */
+export function isProviderAddressField(field: TemplateField): boolean {
+  return (
+    field.submit_as?.type === "display_only" &&
+    field.submit_as.source === PROVIDER_ADDRESS_SOURCE
+  );
+}
+
 export function findField(
   template: FormTemplate,
   fieldKey: string,
@@ -138,6 +162,16 @@ export function isFieldVisible(
   const submitKey = field.submit_as?.key;
   if (submitKey && isProhibitedProviderField(capability, submitKey)) return false;
   if (isProhibitedProviderField(capability, field.field_key)) return false;
+
+  // Display-only, never submitted: safe to show for more fulfillment codes
+  // than the template's predicates name. The template rules still apply
+  // when none of these codes is selected.
+  if (isProviderAddressField(field)) {
+    const codes = selectedFulfillmentCodes(template, values);
+    if (codes.some((code) => ADDRESS_DISPLAY_FULFILLMENT_CODES.includes(code))) {
+      return true;
+    }
+  }
 
   if (field.prohibited_when && evaluatePredicate(field.prohibited_when, ctx)) {
     return false;

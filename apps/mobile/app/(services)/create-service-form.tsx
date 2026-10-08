@@ -393,6 +393,7 @@ export default function CreateServiceFormScreen() {
                 setValue={form.setValue}
                 defaultAddress={defaultAddress}
                 onAddAddress={() => setAddressModalOpen(true)}
+                onChangeAddress={goToAddAddress}
                 hideTitle
               />
             </>

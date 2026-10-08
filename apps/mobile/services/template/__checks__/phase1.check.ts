@@ -136,6 +136,35 @@ noFulfillment.provider_listing_capability!.formats.default.fulfillment = [];
 check(!visibleFields(noFulfillment, {}).some((f) => f.field_key === "fulfillment_types"), "fulfillment control hidden when the format allows no codes");
 check(visibleFields(personal, {}).some((f) => f.field_key === "fulfillment_types"), "fulfillment control visible when codes are allowed");
 
+// provider address display: template names provider_location / pickup_delivery
+// (ids 1 / 3); the engine also shows it for customer_location (id 2), which the
+// backend uses as the service radius centre.
+const showsAddress = (ids: number[]) =>
+  visibleFields(tutoring, { fulfillment_types: ids }).some((f) => f.field_key === "address");
+check(showsAddress([1]), "address shown for provider_location");
+check(showsAddress([2]), "address shown for customer_location (radius centre)");
+check(showsAddress([3]), "address shown for pickup_delivery");
+check(!showsAddress([4]), "address hidden for online_remote only");
+check(!showsAddress([]), "address hidden with no fulfillment selected");
+check(!("address" in buildPayload(tutoring, { fulfillment_types: [2] }, "create").entries), "address never submitted even when shown for customer_location");
+
+// cross-field relations (catering min/max guest count shape)
+const relTemplate = asTemplate(JSON.parse(JSON.stringify(tutoringFixture)));
+relTemplate.fields.push(
+  { field_key: "min_guest_count", label: "Min Guest Count", field_type: "number", field_scope: "dynamic", is_required: false, requiredness: "optional", submit_as: { type: "answers_json", key: "min_guest_count" }, validation: { minimum: 1, integer: true }, relations: [{ operator: "less_than_or_equal", other_path: "answers_json.max_guest_count", when: "both_present" }] } as any,
+  { field_key: "max_guest_count", label: "Max Guest Count", field_type: "number", field_scope: "dynamic", is_required: false, requiredness: "optional", submit_as: { type: "answers_json", key: "max_guest_count" }, validation: { minimum: 1, integer: true } } as any,
+  { field_key: "end_date", label: "End Date", field_type: "text", field_scope: "dynamic", is_required: false, requiredness: "optional", submit_as: { type: "answers_json", key: "end_date" }, relations: [{ operator: "on_or_after", other_path: "answers_json.start_date", when: "both_present" }], visible_when: { field_key: "fulfillment_types", operator: "contains_any", values: ["provider_location"] } } as any,
+  { field_key: "start_date", label: "Start Date", field_type: "text", field_scope: "dynamic", is_required: false, requiredness: "optional", submit_as: { type: "answers_json", key: "start_date" }, visible_when: { field_key: "fulfillment_types", operator: "contains_any", values: ["provider_location"] } } as any,
+);
+const relErrors = (extra: FormValues) => validateForm(relTemplate, { fulfillment_types: [1], ...extra });
+check(relErrors({ min_guest_count: "6", max_guest_count: "1" }).min_guest_count === "Min Guest Count must be less than or equal to Max Guest Count.", "min > max fails on the declaring field");
+check(!("max_guest_count" in relErrors({ min_guest_count: "6", max_guest_count: "1" })), "relation error is not duplicated on the other field");
+check(!("min_guest_count" in relErrors({ min_guest_count: "3", max_guest_count: "3" })), "min == max passes less_than_or_equal");
+check(!("min_guest_count" in relErrors({ min_guest_count: "6" })), "both_present: skipped when the other value is blank");
+check(relErrors({ end_date: "2026-01-01", start_date: "2026-02-01" }).end_date === "End Date must be on or after Start Date.", "on_or_after fails when earlier");
+check(!("end_date" in relErrors({ end_date: "2026-02-01", start_date: "2026-02-01" })), "on_or_after passes when equal");
+check(!("end_date" in validateForm(relTemplate, { fulfillment_types: [2], end_date: "2026-01-01", start_date: "2026-02-01" })), "relation skipped when the fields are hidden");
+
 // ===========================================================================
 section("1.3 Currency");
 const usdCtx = personal.currency_context!;

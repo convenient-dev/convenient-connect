@@ -22,6 +22,7 @@ interface Props {
   setValue: (key: string, value: unknown) => void;
   defaultAddress?: Address | null;
   onAddAddress?: () => void;
+  onChangeAddress?: () => void;
   /** Hide the section title (when the screen already shows it as the page title). */
   hideTitle?: boolean;
 }
@@ -37,6 +38,7 @@ export function TemplateSection({
   setValue,
   defaultAddress,
   onAddAddress,
+  onChangeAddress,
   hideTitle = false,
 }: Props) {
   if (fields.length === 0) return null;
@@ -59,6 +61,7 @@ export function TemplateSection({
           setValue={setValue}
           defaultAddress={defaultAddress}
           onAddAddress={onAddAddress}
+          onChangeAddress={onChangeAddress}
         />
       ))}
     </View>

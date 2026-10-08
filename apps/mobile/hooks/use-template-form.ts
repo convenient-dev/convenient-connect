@@ -60,15 +60,28 @@ export function useTemplateForm(template: FormTemplate | null) {
     if (template) setValues(seedDefaults(template));
   }, [template]);
 
-  const setValue = useCallback((key: string, value: unknown) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => {
-      if (!(key in prev)) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  }, []);
+  const setValue = useCallback(
+    (key: string, value: unknown) => {
+      setValues((prev) => ({ ...prev, [key]: value }));
+      setErrors((prev) => {
+        // Also clear fields whose relations point at the edited field, so a
+        // min/max error disappears when either side is corrected.
+        const edited = template?.fields.find((f) => f.field_key === key);
+        const targets = new Set([key, edited?.submit_as?.key].filter(Boolean));
+        const related = (template?.fields ?? [])
+          .filter((f) =>
+            (f.relations ?? []).some((r) => targets.has(r.other_path.replace(/^answers_json\./, ""))),
+          )
+          .map((f) => f.field_key);
+        const stale = [key, ...related].filter((k) => k in prev);
+        if (!stale.length) return prev;
+        const next = { ...prev };
+        for (const k of stale) delete next[k];
+        return next;
+      });
+    },
+    [template],
+  );
 
   // Drop selections the active format no longer permits.
   useEffect(() => {

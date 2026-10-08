@@ -6,8 +6,13 @@ import type { MultipartFile } from "@/api/multipart";
 import type { Address } from "@/api/address";
 import { Colors } from "@/constants/theme";
 import {
+  CUSTOMER_LOCATION_CODE,
+  FULFILLMENT_SUBMIT_KEY,
+  allowedFulfillmentOptions,
+  selectedFulfillmentCodes,
   type CertificateBundleValue,
   type FieldOption,
+  type FormTemplate,
   type FormValues,
   type TemplateField,
 } from "@/services/template";
@@ -16,6 +21,7 @@ import { Image as ExpoImage } from "expo-image";
 import React, { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { FieldShell } from "./FieldShell";
+import { HelpTooltip } from "./HelpTooltip";
 import { OptionSheet } from "./OptionSheet";
 import { acceptsOnlyImages, pickFilesForField } from "./file-pickers";
 import { formStyles as s } from "./styles";
@@ -24,6 +30,7 @@ const { neutral, primary } = Colors;
 
 export interface ControlProps {
   field: TemplateField;
+  template: FormTemplate;
   values: FormValues;
   errors: Record<string, string>;
   required: boolean;
@@ -49,14 +56,29 @@ function otherOption(field: TemplateField): FieldOption | undefined {
 export function TextControl({ field, values, errors, required, setValue }: ControlProps) {
   const multiline = field.field_type === "textarea";
   const error = errors[field.field_key];
+  const text = stringValue(values[field.field_key]);
+  const validation = field.validation && !Array.isArray(field.validation) ? field.validation : {};
+  const maxLength = validation.maximum_length;
+  const [focused, setFocused] = useState(false);
+  // The counter appears once the user starts typing (focused or has text).
+  const showCount = maxLength !== undefined && (focused || text.length > 0);
   return (
-    <FieldShell label={field.label} required={required} helpText={field.help_text} error={error}>
+    <FieldShell
+      label={field.label}
+      required={required}
+      helpText={field.help_text}
+      error={error}
+      maxLength={showCount ? maxLength : undefined}
+      valueLength={showCount ? text.length : undefined}
+    >
       <TextInput
         style={[multiline ? s.textarea : s.input, error ? s.inputError : null]}
         placeholder={field.placeholder ?? undefined}
         placeholderTextColor={neutral[300]}
-        value={stringValue(values[field.field_key])}
-        onChangeText={(text) => setValue(field.field_key, text)}
+        value={text}
+        onChangeText={(value) => setValue(field.field_key, value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         multiline={multiline}
         textAlignVertical={multiline ? "top" : "center"}
       />
@@ -116,7 +138,7 @@ export function NumberControl({ field, values, errors, required, setValue }: Con
 
 // ---------------------------------------------------------------------------
 
-/** Single choice. Few options render as segments, many as a picker sheet. */
+/** Single choice. Few options render as stacked buttons, many as a picker sheet. */
 export function SingleSelectControl({ field, values, errors, required, setValue }: ControlProps) {
   const [open, setOpen] = useState(false);
   const options = field.options ?? [];
@@ -127,13 +149,13 @@ export function SingleSelectControl({ field, values, errors, required, setValue 
   return (
     <FieldShell label={field.label} required={required} helpText={field.help_text} error={error}>
       {options.length <= 4 ? (
-        <View style={s.segmentedControl}>
+        <View style={s.optionList}>
           {options.map((option) => {
             const active = optionSelected(option, value);
             return (
               <TouchableOpacity
                 key={String(option.value)}
-                style={[s.segmentButton, active && s.segmentButtonActive]}
+                style={[s.optionButton, active && s.segmentButtonActive]}
                 onPress={() => setValue(field.field_key, option.value)}
                 activeOpacity={0.7}
               >
@@ -169,9 +191,16 @@ export function SingleSelectControl({ field, values, errors, required, setValue 
 
 // ---------------------------------------------------------------------------
 
-/** Multiple choice as checkbox rows, with an Other input when the template allows it. */
-export function MultiSelectControl({ field, values, errors, required, setValue }: ControlProps) {
-  const options = field.options ?? [];
+/**
+ * Multiple choice as checkbox rows, with an Other input when the template
+ * allows it. The fulfillment field only offers the codes the active format
+ * allows; anything else would be pruned by the form hook right after tapping.
+ */
+export function MultiSelectControl({ field, template, values, errors, required, setValue }: ControlProps) {
+  const options =
+    field.submit_as?.key === FULFILLMENT_SUBMIT_KEY
+      ? allowedFulfillmentOptions(template, values)
+      : field.options ?? [];
   const current = Array.isArray(values[field.field_key])
     ? (values[field.field_key] as unknown[])
     : [];
@@ -249,8 +278,10 @@ export function YesNoControl({ field, values, errors, required, setValue }: Cont
             {field.label}
             {required ? <Text style={s.required}> *</Text> : null}
           </Text>
+          {field.help_text ? (
+            <HelpTooltip text={field.help_text} label={`About ${field.label}`} />
+          ) : null}
         </TouchableOpacity>
-        {field.help_text ? <Text style={s.helpText}>{field.help_text}</Text> : null}
         {error ? <Text style={s.inlineError}>{error}</Text> : null}
       </View>
     );
@@ -397,11 +428,31 @@ export function CertificateBundleControl({ field, values, errors, required, setV
 
 interface AddressControlProps extends ControlProps {
   defaultAddress: Address | null | undefined;
+  /** Tapped when there is no default address yet. */
   onAddAddress: () => void;
+  /** Tapped to change an existing default address; falls back to `onAddAddress`. */
+  onChangeAddress?: () => void;
 }
 
-/** Display-only: the backend snapshots the provider's default address. */
-export function AddressControl({ field, required, defaultAddress, onAddAddress }: AddressControlProps) {
+const RADIUS_CENTRE_HINT = "Your service area radius is measured from this address.";
+
+/**
+ * Display-only: the backend snapshots the provider's default address for
+ * provider-location fulfillment and centres the customer-location radius on it.
+ */
+export function AddressControl({
+  field,
+  template,
+  values,
+  required,
+  defaultAddress,
+  onAddAddress,
+  onChangeAddress,
+}: AddressControlProps) {
+  const isRadiusCentre = selectedFulfillmentCodes(template, values).includes(
+    CUSTOMER_LOCATION_CODE,
+  );
+  const onPress = defaultAddress ? onChangeAddress ?? onAddAddress : onAddAddress;
   return (
     <FieldShell label={field.label} required={required} helpText={field.help_text}>
       <View style={s.addressBox}>
@@ -411,10 +462,11 @@ export function AddressControl({ field, required, defaultAddress, onAddAddress }
         ) : (
           <Text style={s.addressMissing}>No default address yet</Text>
         )}
-        <TouchableOpacity onPress={onAddAddress} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
           <Text style={s.linkText}>{defaultAddress ? "Change" : "Add"}</Text>
         </TouchableOpacity>
       </View>
+      {isRadiusCentre ? <Text style={s.helpText}>{RADIUS_CENTRE_HINT}</Text> : null}
     </FieldShell>
   );
 }

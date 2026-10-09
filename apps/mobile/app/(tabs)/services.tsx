@@ -7,6 +7,7 @@ import {
 import { BottomSheet } from "@/components/BottomSheet";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ServiceAvatar } from "@/components/ServiceAvatar";
 import {
   ServiceStatusBadge,
   statusFromLabel,
@@ -22,7 +23,6 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -47,15 +47,9 @@ function ServiceCard({
   service: ServiceListItem;
   onMore: () => void;
 }) {
-  const photo = service.portfolio?.url;
-
   return (
     <View style={styles.card}>
-      <Image
-        source={photo ? { uri: photo } : undefined}
-        style={styles.cardAvatar}
-        resizeMode="cover"
-      />
+      <ServiceAvatar uri={service.portfolio?.url} size={80} />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {service.title}
@@ -318,12 +312,6 @@ const styles = StyleSheet.create({
     padding: 13,
     gap: 15,
     backgroundColor: background.card,
-  },
-  cardAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: neutral[100],
   },
   cardInfo: {
     flex: 1,

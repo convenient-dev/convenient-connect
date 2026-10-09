@@ -1,3 +1,4 @@
+import { ServiceAvatar } from "@/components/ServiceAvatar";
 import { SwipeButton } from "@/components/SwipeButton";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
@@ -18,7 +19,7 @@ export interface BookingRequest {
   bookingId: string;
   serviceId: string;
   service: string;
-  /** Falls back to a seeded placeholder photo when missing. */
+  /** Shows the shared service placeholder when missing. */
   serviceImageUrl?: string | null;
   date: string;
   start: string;
@@ -59,11 +60,6 @@ function avatarBg(seed: string): string {
 // DiceBear "initials" avatar derived from the client's name.
 function clientAvatarUri(name: string): string {
   return `https://api.dicebear.com/9.x/initials/png?seed=${encodeURIComponent(name)}`;
-}
-
-// Picsum photo, seeded by the service so each card stays stable across renders.
-function serviceAvatarUri(seed: string): string {
-  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/200`;
 }
 
 // "09:00" -> "9:00 AM"
@@ -111,15 +107,7 @@ export function BookingRequestCard({
       <View style={styles.divider} />
 
       <View style={styles.requestServiceRow}>
-        <ExpoImage
-          source={{
-            uri:
-              request.serviceImageUrl ??
-              serviceAvatarUri(request.serviceId || request.service),
-          }}
-          style={[styles.serviceAvatar]}
-          contentFit="cover"
-        />
+        <ServiceAvatar uri={request.serviceImageUrl} size={56} />
         <View style={styles.requestServiceInfo}>
           <Text style={styles.requestServiceTitle}>{request.service}</Text>
           <View style={styles.requestMetaRow}>
@@ -211,13 +199,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-  },
-  serviceAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
   },
   requestServiceInfo: {
     flex: 1,

@@ -1,11 +1,11 @@
 import type { ProviderHomeServiceCard } from "@/api/home";
+import { ServiceAvatar } from "@/components/ServiceAvatar";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image as ExpoImage } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const { primary, neutral, text } = Colors;
+const { neutral, text } = Colors;
 
 interface MyServiceCardProps {
   service: ProviderHomeServiceCard;
@@ -34,17 +34,7 @@ export function MyServiceCard({ service, onPress }: MyServiceCardProps) {
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <View style={styles.imageWrap}>
-        {photo ? (
-          <ExpoImage
-            source={{ uri: photo }}
-            style={styles.image}
-            contentFit="cover"
-          />
-        ) : (
-          <MaterialIcons name="image" size={36} color={primary[300]} />
-        )}
-      </View>
+      <ServiceAvatar uri={photo} size={IMAGE_SIZE} style={styles.imageWrap} />
       <Text style={styles.title} numberOfLines={2}>
         {service.title ?? "Untitled service"}
       </Text>
@@ -75,18 +65,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   imageWrap: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: IMAGE_SIZE / 2,
-    backgroundColor: primary[100],
-    alignItems: "center",
-    justifyContent: "center",
     alignSelf: "center",
-    overflow: "hidden",
-  },
-  image: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
   },
   title: {
     fontSize: 14,

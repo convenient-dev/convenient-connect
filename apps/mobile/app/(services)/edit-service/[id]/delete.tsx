@@ -9,7 +9,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -26,37 +26,35 @@ export default function DeleteServiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [pausing, setPausing] = useState(false);
+  // Inactivating is only offered for active services: the status endpoint is
+  // a blind toggle, and pending-review services can't be changed manually.
+  const [isActive, setIsActive] = useState(false);
   const [modal, setModal] = useState<{
-    type: "error" | "warning" | "success";
+    type: "error" | "success";
     title: string;
     message: string;
     onConfirm?: () => void;
   } | null>(null);
 
-  // POST /services/{id}/status toggles whatever the current status is, so
-  // read it first to avoid re-activating or hitting the pending-review 422.
+  const loadStatus = useCallback(async () => {
+    if (!id) return;
+    try {
+      const overview = await getServiceEditOverview(Number(id));
+      setIsActive(overview.status_label === "active");
+    } catch {
+      // Without a known status the inactivate option simply stays hidden.
+      setIsActive(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
   async function handlePause() {
     if (!id) return;
     setPausing(true);
     try {
-      const overview = await getServiceEditOverview(Number(id));
-      if (overview.status_label === "inactive") {
-        setModal({
-          type: "warning",
-          title: "Already inactive",
-          message: "This service is already hidden from clients.",
-        });
-        return;
-      }
-      if (overview.status_label === "pending_review") {
-        setModal({
-          type: "warning",
-          title: "Service under review",
-          message:
-            "A service that is pending review can't be inactivated until the review is complete.",
-        });
-        return;
-      }
       await toggleServiceStatus(Number(id));
       setModal({
         type: "success",
@@ -100,11 +98,16 @@ export default function DeleteServiceScreen() {
           ))}
         </View>
 
-        <Text style={styles.altHeading}>Not ready to delete?</Text>
-        <Text style={styles.altBody}>
-          You can <Text style={styles.altBold}>inactivate this service</Text>{" "}
-          instead and resume it anytime.
-        </Text>
+        {isActive && (
+          <>
+            <Text style={styles.altHeading}>Not ready to delete?</Text>
+            <Text style={styles.altBody}>
+              You can{" "}
+              <Text style={styles.altBold}>inactivate this service</Text>{" "}
+              instead and resume it anytime.
+            </Text>
+          </>
+        )}
       </View>
 
       <View style={[styles.footer, contentWidthStyle]}>
@@ -120,18 +123,20 @@ export default function DeleteServiceScreen() {
           }
         />
 
-        <Button
-          title="Inactivate service"
-          variant="dark"
-          size="lg"
-          loading={pausing}
-          onPress={handlePause}
-        />
+        {isActive && (
+          <Button
+            title="Inactivate service"
+            variant="dark"
+            size="lg"
+            loading={pausing}
+            onPress={handlePause}
+          />
+        )}
       </View>
 
       <ConfirmModal
         visible={modal !== null}
-        type={modal?.type ?? "warning"}
+        type={modal?.type ?? "error"}
         title={modal?.title ?? ""}
         message={modal?.message ?? ""}
         confirmLabel="OK"

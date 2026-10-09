@@ -696,6 +696,7 @@ export default function ServiceDetailScreen() {
               <ServiceStatusBadge
                 status={statusFromLabel(service.status_label)}
                 size="sm"
+                showDescription
               />
             </View>
           )}

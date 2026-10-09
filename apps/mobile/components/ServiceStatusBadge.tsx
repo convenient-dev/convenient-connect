@@ -3,7 +3,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-const { secondary, status } = Colors;
+const { secondary, status, neutral } = Colors;
 
 export type ServiceStatus = "active" | "inactive" | "pendingReview";
 export type ServiceStatusBadgeSize = "sm" | "md";
@@ -29,7 +29,7 @@ export const SERVICE_STATUS_CONFIG: Record<ServiceStatus, StatusVariant> = {
     color: status.inactive,
   },
   pendingReview: {
-    label: "Pending Review",
+    label: "Pending",
     description: "Under review",
     icon: "schedule",
     color: secondary[500],
@@ -53,23 +53,26 @@ export function statusFromLabel(
 interface Props {
   status: ServiceStatus;
   size?: ServiceStatusBadgeSize;
+  /** Appends the status description, e.g. "Active · Accepting bookings". */
+  showDescription?: boolean;
 }
 
-export function ServiceStatusBadge({ status, size = "md" }: Props) {
+export function ServiceStatusBadge({
+  status,
+  size = "md",
+  showDescription = false,
+}: Props) {
   const cfg = SERVICE_STATUS_CONFIG[status];
   const isSm = size === "sm";
 
   return (
     <View style={styles.badge}>
       <MaterialIcons name={cfg.icon} size={isSm ? 11 : 12} color={cfg.color} />
-      <Text
-        style={[
-          styles.label,
-          isSm ? styles.labelSm : styles.labelMd,
-          { color: cfg.color },
-        ]}
-      >
-        {cfg.label}
+      <Text style={[styles.label, isSm ? styles.labelSm : styles.labelMd]}>
+        <Text style={{ color: cfg.color }}>{cfg.label}</Text>
+        {showDescription && (
+          <Text style={styles.description}> · {cfg.description}</Text>
+        )}
       </Text>
     </View>
   );
@@ -89,5 +92,9 @@ const styles = StyleSheet.create({
   },
   labelSm: {
     fontSize: 11,
+  },
+  description: {
+    color: neutral[400],
+    fontWeight: "500",
   },
 });

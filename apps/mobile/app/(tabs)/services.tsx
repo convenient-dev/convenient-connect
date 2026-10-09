@@ -8,7 +8,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
-  SERVICE_STATUS_CONFIG,
+  ServiceStatusBadge,
   statusFromLabel,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
@@ -47,7 +47,6 @@ function ServiceCard({
   service: ServiceListItem;
   onMore: () => void;
 }) {
-  const meta = SERVICE_STATUS_CONFIG[statusFromLabel(service.status_label)];
   const photo = service.portfolio?.url;
 
   return (
@@ -61,13 +60,10 @@ function ServiceCard({
         <Text style={styles.cardTitle} numberOfLines={2}>
           {service.title}
         </Text>
-        <View style={styles.statusRow}>
-          <MaterialIcons name={meta.icon} size={12} color={meta.color} />
-          <Text style={styles.statusText}>
-            <Text style={{ color: meta.color }}>{meta.label} </Text>
-            <Text style={styles.statusDescription}>· {meta.description}</Text>
-          </Text>
-        </View>
+        <ServiceStatusBadge
+          status={statusFromLabel(service.status_label)}
+          showDescription
+        />
         {service.provider_type === "business" && service.business_name && (
           <View style={styles.businessRow}>
             <ExpoImage
@@ -338,20 +334,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: neutral[700],
     letterSpacing: -0.408,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-    letterSpacing: -0.408,
-  },
-  statusDescription: {
-    color: neutral[400],
-    fontWeight: "500",
   },
   businessRow: {
     flexDirection: "row",

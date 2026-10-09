@@ -1,11 +1,18 @@
+import { ApiError } from "@/api/client";
+import {
+  deleteService,
+  listDeleteReasons,
+  type ServiceDeleteReason,
+} from "@/api/service-management";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -16,46 +23,75 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { neutral, secondary, brand, background, border } = Colors;
+const { neutral, secondary, brand, background, border, primary } = Colors;
 
-
-const REASONS = [
-  "I'm no longer offering this service.",
-  "I created this by mistake.",
-  "Low demand / not getting bookings.",
-  "Other",
-] as const;
-
-type Reason = (typeof REASONS)[number];
+// Bounds for other_reason from ServiceDeleteRequest in api-doc.json.
+const OTHER_REASON_MIN = 3;
+const OTHER_REASON_MAX = 500;
 
 export default function DeleteServiceReasonScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [selected, setSelected] = useState<Reason | null>(null);
+  const [reasons, setReasons] = useState<ServiceDeleteReason[]>([]);
+  const [loadingReasons, setLoadingReasons] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [otherText, setOtherText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadReasons = useCallback(async () => {
+    setLoadingReasons(true);
+    try {
+      setReasons(await listDeleteReasons());
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Couldn't load deletion reasons. Please try again.",
+      );
+    } finally {
+      setLoadingReasons(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReasons();
+  }, [loadReasons]);
+
+  const otherSelected = reasons.some(
+    (reason) =>
+      reason.is_other && reason.id !== undefined && selectedIds.has(reason.id),
+  );
+  const trimmedOther = otherText.trim();
   const canDelete =
-    selected !== null && (selected !== "Other" || otherText.trim().length > 0);
+    selectedIds.size > 0 &&
+    (!otherSelected || trimmedOther.length >= OTHER_REASON_MIN);
+
+  function toggleReason(reasonId: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(reasonId)) next.delete(reasonId);
+      else next.add(reasonId);
+      return next;
+    });
+  }
 
   async function handleDelete() {
-    if (!selected) return;
+    if (!id || !canDelete) return;
     setDeleting(true);
-    setError(null);
     try {
-      const reason = selected === "Other" ? otherText.trim() : selected;
-      // TODO: legacy API removed — implement delete service via Laravel API
-      console.log("TODO: implement delete service via Laravel API", {
-        userId,
-        id,
-        reason,
+      await deleteService(Number(id), {
+        reason_ids: [...selectedIds],
+        other_reason: otherSelected ? trimmedOther : undefined,
       });
       router.replace("/(tabs)/services");
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to delete. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Failed to delete. Please try again.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -72,44 +108,52 @@ export default function DeleteServiceReasonScreen() {
         <View style={[styles.body, contentWidthStyle]}>
           <Text style={styles.sectionHeading}>Tell us more</Text>
 
-          <View style={styles.options}>
-            {REASONS.map((reason) => (
-              <TouchableOpacity
-                key={reason}
-                style={[
-                  styles.optionRow,
-                  selected === reason && styles.optionRowSelected,
-                ]}
-                onPress={() => setSelected(reason)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    selected === reason && styles.optionTextSelected,
-                  ]}
-                >
-                  {reason}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {loadingReasons ? (
+            <ActivityIndicator color={primary[400]} />
+          ) : (
+            <View style={styles.options}>
+              {reasons.map((reason) => {
+                if (reason.id === undefined) return null;
+                const reasonId = reason.id;
+                const isSelected = selectedIds.has(reasonId);
+                return (
+                  <TouchableOpacity
+                    key={reasonId}
+                    style={[
+                      styles.optionRow,
+                      isSelected && styles.optionRowSelected,
+                    ]}
+                    onPress={() => toggleReason(reasonId)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        isSelected && styles.optionTextSelected,
+                      ]}
+                    >
+                      {reason.reason}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
-          {selected === "Other" && (
+          {otherSelected && (
             <TextInput
               style={styles.otherInput}
               placeholder="Tell us what's going on..."
               placeholderTextColor={neutral[300]}
               value={otherText}
               onChangeText={setOtherText}
+              maxLength={OTHER_REASON_MAX}
               multiline
               textAlignVertical="top"
               autoFocus
             />
           )}
         </View>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={[styles.footer, contentWidthStyle]}>
           <Button
@@ -129,6 +173,15 @@ export default function DeleteServiceReasonScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={error !== null}
+        type="error"
+        title="Something went wrong"
+        message={error ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setError(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -197,14 +250,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: neutral[800],
     minHeight: 100,
-  },
-
-  errorText: {
-    fontSize: 13,
-    color: secondary[500],
-    textAlign: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 6,
   },
 
   footer: {

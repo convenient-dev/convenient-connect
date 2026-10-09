@@ -1,21 +1,28 @@
-import { BottomSheet } from "@/components/BottomSheet";
-import { ScreenHeader } from "@/components/ScreenHeader";
+import { ApiError } from "@/api/client";
 import {
-  SERVICE_STATUS_CONFIG,
-  ServiceStatus,
+  listMyServices,
+  type ServiceListItem,
+  type ServiceListTab,
+} from "@/api/service-management";
+import { BottomSheet } from "@/components/BottomSheet";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { ServiceAvatar } from "@/components/ServiceAvatar";
+import {
+  ServiceStatusBadge,
+  statusFromLabel,
 } from "@/components/ServiceStatusBadge";
 import { TabBar } from "@/components/TabBar";
-import { useCurrentUser } from "@/constants/session";
+import { withCount } from "@/constants/labels";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -25,71 +32,40 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-interface Service {
-  id: number;
-  title: string;
-  status: ServiceStatus;
-  serviceMode: "freelance" | "business";
-  images: { url: string }[];
-  subcategory: { name: string; category: { name: string } } | null;
-  business: { business: { name: string } } | null;
-  updatedAt: string;
-}
+type TabKey = ServiceListTab & string;
 
-function getRelativeTime(isoString: string): string {
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-const TABS = ["All", "Freelance", "Business"] as const;
-type Tab = (typeof TABS)[number];
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "independent", label: "Freelance" },
+  { key: "affiliated", label: "Business" },
+];
 
 function ServiceCard({
   service,
   onMore,
 }: {
-  service: Service;
+  service: ServiceListItem;
   onMore: () => void;
 }) {
-  const meta = SERVICE_STATUS_CONFIG[service.status];
-  const statusColor = meta.color;
-  const statusDescription =
-    service.status === "pendingReview"
-      ? getRelativeTime(service.updatedAt)
-      : meta.description;
-  const photo = service.images[0]?.url;
-
   return (
     <View style={styles.card}>
-      <Image
-        source={photo ? { uri: photo } : undefined}
-        style={styles.cardAvatar}
-        resizeMode="cover"
-      />
+      <ServiceAvatar uri={service.portfolio?.url} size={80} />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {service.title}
         </Text>
-        <View style={styles.statusRow}>
-          <MaterialIcons name={meta.icon} size={12} color={statusColor} />
-          <Text style={styles.statusText}>
-            <Text style={{ color: statusColor }}>{meta.label} </Text>
-            <Text style={styles.statusDescription}>· {statusDescription}</Text>
-          </Text>
-        </View>
-        {service.serviceMode === "business" && service.business && (
+        <ServiceStatusBadge
+          status={statusFromLabel(service.status_label)}
+          showDescription
+        />
+        {service.provider_type === "business" && service.business_name && (
           <View style={styles.businessRow}>
             <ExpoImage
               source={require("@/assets/global-icons/business.svg")}
               style={{ width: 12, height: 12 }}
             />
             <Text style={styles.businessName} numberOfLines={1}>
-              {service.business.business.name}
+              {service.business_name}
             </Text>
           </View>
         )}
@@ -104,28 +80,91 @@ function ServiceCard({
 export default function ServicesScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<Tab>("All");
-  const [services, setServices] = useState<Service[]>([]);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [services, setServices] = useState<ServiceListItem[]>([]);
+  // Per-tab totals for the tab labels. The list endpoint only reports
+  // meta.total for the tab it was asked for, so each tab is counted separately.
+  const [tabTotals, setTabTotals] = useState<Partial<Record<TabKey, number>>>(
+    {},
+  );
+  const [lastPage, setLastPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedService, setSelectedService] =
+    useState<ServiceListItem | null>(null);
+  // Ignore responses from a superseded request (tab switched, screen refocused).
+  const requestId = useRef(0);
+
+  const loadServices = useCallback(async (tab: TabKey, pageToLoad: number) => {
+    const id = ++requestId.current;
+    const isFirstPage = pageToLoad === 1;
+    if (isFirstPage) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const result = await listMyServices({ tab, page: pageToLoad });
+      if (id !== requestId.current) return;
+      setServices((prev) =>
+        isFirstPage ? result.data : [...prev, ...result.data],
+      );
+      setPage(result.meta?.current_page ?? pageToLoad);
+      setLastPage(result.meta?.last_page ?? pageToLoad);
+      if (result.meta?.total !== undefined) {
+        const total = result.meta.total;
+        setTabTotals((prev) => ({ ...prev, [tab]: total }));
+      }
+    } catch (err) {
+      if (id !== requestId.current) return;
+      if (isFirstPage) setServices([]);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Something went wrong while loading your services.",
+      );
+    } finally {
+      if (id === requestId.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      // TODO: legacy API removed — implement getUserServices via Laravel API
-      console.log("TODO: implement getUserServices via Laravel API", {
-        userId,
-      });
-      setServices([]);
-      setLoading(false);
-    }, [userId]),
+      loadServices(activeTab, 1);
+    }, [activeTab, loadServices]),
   );
 
-  const visibleServices =
-    activeTab === "All"
-      ? services
-      : services.filter((s) => s.serviceMode === activeTab.toLowerCase());
+  // Counts are decorative, so a failed fetch just leaves the labels bare.
+  const loadTabTotals = useCallback(async () => {
+    const results = await Promise.allSettled(
+      TABS.map(({ key }) => listMyServices({ tab: key, perPage: 1 })),
+    );
+    setTabTotals((prev) => {
+      const next = { ...prev };
+      results.forEach((result, i) => {
+        if (
+          result.status === "fulfilled" &&
+          result.value.meta?.total !== undefined
+        ) {
+          next[TABS[i].key] = result.value.meta.total;
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTabTotals();
+    }, [loadTabTotals]),
+  );
+
+  function handleEndReached() {
+    if (loading || loadingMore || page >= lastPage) return;
+    loadServices(activeTab, page + 1);
+  }
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -144,7 +183,10 @@ export default function ServicesScreen() {
       />
       {/* Filter tabs */}
       <TabBar
-        tabs={TABS.map((tab) => ({ key: tab, label: tab }))}
+        tabs={TABS.map((tab) => ({
+          ...tab,
+          label: withCount(tab.label, tabTotals[tab.key]),
+        }))}
         activeKey={activeTab}
         onChange={setActiveTab}
       />
@@ -156,23 +198,29 @@ export default function ServicesScreen() {
           style={styles.loader}
         />
       ) : (
-        <ScrollView
+        <FlatList
+          data={services}
+          keyExtractor={(service) => String(service.service_id)}
+          renderItem={({ item }) => (
+            <ServiceCard
+              service={item}
+              onMore={() => setSelectedService(item)}
+            />
+          )}
           style={styles.list}
           contentContainerStyle={[styles.listContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
-        >
-          {visibleServices.length === 0 ? (
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
             <Text style={styles.emptyText}>No services found</Text>
-          ) : (
-            visibleServices.map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                onMore={() => setSelectedService(service)}
-              />
-            ))
-          )}
-        </ScrollView>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color={primary[400]} />
+            ) : null
+          }
+        />
       )}
       <BottomSheet
         visible={selectedService !== null}
@@ -183,7 +231,7 @@ export default function ServicesScreen() {
             label: "Service Details",
             icon: require("@/assets/global-icons/view-detail.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/service-detail/${id}`);
             },
@@ -192,7 +240,7 @@ export default function ServicesScreen() {
             label: "Edit Service",
             icon: require("@/assets/global-icons/edit.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/edit-service/${id}`);
             },
@@ -201,12 +249,25 @@ export default function ServicesScreen() {
             label: "Delete Service",
             icon: require("@/assets/global-icons/cancel.svg"),
             onPress: () => {
-              const id = selectedService?.id;
+              const id = selectedService?.service_id;
               setSelectedService(null);
               if (id) router.push(`/edit-service/${id}/delete`);
             },
           },
         ]}
+      />
+      <ConfirmModal
+        visible={error !== null}
+        type="error"
+        title="Couldn't load services"
+        message={error ?? ""}
+        confirmLabel="Retry"
+        cancelLabel="Dismiss"
+        onCancel={() => setError(null)}
+        onConfirm={() => {
+          setError(null);
+          loadServices(activeTab, 1);
+        }}
       />
     </SafeAreaView>
   );
@@ -252,12 +313,6 @@ const styles = StyleSheet.create({
     gap: 15,
     backgroundColor: background.card,
   },
-  cardAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: neutral[100],
-  },
   cardInfo: {
     flex: 1,
     gap: 5,
@@ -267,20 +322,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: neutral[700],
     letterSpacing: -0.408,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-    letterSpacing: -0.408,
-  },
-  statusDescription: {
-    color: neutral[400],
-    fontWeight: "500",
   },
   businessRow: {
     flexDirection: "row",

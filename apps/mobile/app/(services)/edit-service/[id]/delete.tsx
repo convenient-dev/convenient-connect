@@ -1,15 +1,19 @@
+import { ApiError } from "@/api/client";
+import {
+  getServiceEditOverview,
+  toggleServiceStatus,
+} from "@/api/service-management";
 import { Button } from "@/components/Button";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
-
 
 const BULLETS = [
   "This action cannot be undone",
@@ -21,19 +25,54 @@ export default function DeleteServiceScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { userId } = useCurrentUser();
   const [pausing, setPausing] = useState(false);
+  // Inactivating is only offered for active services: the status endpoint is
+  // a blind toggle, and pending-review services can't be changed manually.
+  const [isActive, setIsActive] = useState(false);
+  const [modal, setModal] = useState<{
+    type: "error" | "success";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  } | null>(null);
+
+  const loadStatus = useCallback(async () => {
+    if (!id) return;
+    try {
+      const overview = await getServiceEditOverview(Number(id));
+      setIsActive(overview.status_label === "active");
+    } catch {
+      // Without a known status the inactivate option simply stays hidden.
+      setIsActive(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   async function handlePause() {
+    if (!id) return;
     setPausing(true);
     try {
-      // TODO: legacy API removed — implement inactivate service via Laravel API
-      console.log("TODO: implement inactivate service via Laravel API", {
-        userId,
-        id,
+      await toggleServiceStatus(Number(id));
+      setModal({
+        type: "success",
+        title: "Service inactivated",
+        message:
+          "Your service is hidden from clients. You can reactivate it anytime from Edit Service.",
+        onConfirm: () => router.replace("/(tabs)/services"),
       });
-      router.back();
-    } catch {
+    } catch (err) {
+      setModal({
+        type: "error",
+        title: "Couldn't inactivate service",
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong. Please try again.",
+      });
+    } finally {
       setPausing(false);
     }
   }
@@ -59,11 +98,16 @@ export default function DeleteServiceScreen() {
           ))}
         </View>
 
-        <Text style={styles.altHeading}>Not ready to delete?</Text>
-        <Text style={styles.altBody}>
-          You can <Text style={styles.altBold}>inactivate this service</Text>{" "}
-          instead and resume it anytime.
-        </Text>
+        {isActive && (
+          <>
+            <Text style={styles.altHeading}>Not ready to delete?</Text>
+            <Text style={styles.altBody}>
+              You can{" "}
+              <Text style={styles.altBold}>inactivate this service</Text>{" "}
+              instead and resume it anytime.
+            </Text>
+          </>
+        )}
       </View>
 
       <View style={[styles.footer, contentWidthStyle]}>
@@ -79,14 +123,29 @@ export default function DeleteServiceScreen() {
           }
         />
 
-        <Button
-          title="Inactivate service"
-          variant="dark"
-          size="lg"
-          loading={pausing}
-          onPress={handlePause}
-        />
+        {isActive && (
+          <Button
+            title="Inactivate service"
+            variant="dark"
+            size="lg"
+            loading={pausing}
+            onPress={handlePause}
+          />
+        )}
       </View>
+
+      <ConfirmModal
+        visible={modal !== null}
+        type={modal?.type ?? "error"}
+        title={modal?.title ?? ""}
+        message={modal?.message ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => {
+          const onConfirm = modal?.onConfirm;
+          setModal(null);
+          onConfirm?.();
+        }}
+      />
     </SafeAreaView>
   );
 }

@@ -3,6 +3,9 @@ import type { components } from "./generated/api-types";
 
 type ProviderBusinessModel = components["schemas"]["ProviderBusinessModel"];
 
+export type ProviderBusinessAssignedSubCategoryItem =
+  components["schemas"]["ProviderBusinessAssignedSubCategoryItem"];
+
 export type ProviderBusinessListItem =
   components["schemas"]["ProviderBusinessListItem"];
 
@@ -156,9 +159,11 @@ export async function toggleBusinessStatus(
 /**
  * Get services(including sub-categories and categories) assigned to a specific business.
  */
-export async function getBusinessServices(businessId: number): Promise<any[]> {
-  const data = await laravelFetch<{ services?: any[] }>(
+export async function getBusinessServices(
+  businessId: number,
+): Promise<ProviderBusinessAssignedSubCategoryItem[]> {
+  const data = await laravelFetch<ProviderBusinessAssignedSubCategoryItem[]>(
     `${BUSINESS_PREFIX}/${businessId}/services`,
   );
-  return data.services ?? [];
+  return data ?? [];
 }

@@ -4,7 +4,12 @@ import {
   type Address,
   type ResolvedLocation,
 } from "@/api/address";
-import bookingsData from "@/assets/data/bookings.json";
+import {
+  getProviderHome,
+  type ProviderHomeNewRequestItem,
+  type ProviderHomePromotionItem,
+  type ProviderHomeServiceCard,
+} from "@/api/home";
 import { useAuth } from "@/auth/AuthContext";
 import { AddressModal } from "@/components/AddressModal";
 import {
@@ -12,13 +17,14 @@ import {
   type BookingRequest,
 } from "@/components/BookingRequestCard";
 import { CardGrid } from "@/components/CardGrid";
-import { MyServiceCard, MyServiceCardData } from "@/components/MyServiceCard";
+import { MyServiceCard } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
+import { withCount } from "@/constants/labels";
 import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Image as ExpoImage, ImageSource } from "expo-image";
+import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -38,44 +44,21 @@ const BANNER_GAP = 12;
 const BANNER_ASPECT_RATIO = 1038 / 360;
 const BANNER_ROTATE_INTERVAL_MS = 4000;
 
-const bannerAssets: Record<string, ImageSource> = {
-  "1": require("@/assets/banners/home-banner-1.png"),
-  "2": require("@/assets/banners/home-banner-2.png"),
-  "3": require("@/assets/banners/home-banner-3.png"),
-  "4": require("@/assets/banners/home-banner-4.png"),
-};
-
-type BookingStatus = "active" | "completed" | "pending" | "cancelled";
-
-type Booking = {
-  id: string;
-  date: string;
-  start: string;
-  end: string;
-  title: string;
-  clientName: string;
-  status: BookingStatus;
-  bookingId?: string;
-  category?: string;
-  location?: string;
-  clientType?: "repeat" | "new";
-};
-
-const BOOKINGS: Booking[] = bookingsData.bookings as Booking[];
-
-function toBookingRequest(b: Booking): BookingRequest {
+function toBookingRequest(item: ProviderHomeNewRequestItem): BookingRequest {
   return {
-    id: b.id,
-    bookingId: b.bookingId ?? b.id,
-    serviceId: b.category ?? "",
-    service: b.title,
-    date: b.date,
-    start: b.start,
-    end: b.end,
+    id: String(item.invitation_id),
+    bookingId: item.request_number ?? String(item.invitation_id),
+    serviceId: String(item.service.service_id),
+    service: item.service.title ?? "",
+    serviceImageUrl: item.service.portfolio?.url,
+    date: item.schedule?.date ?? "",
+    start: item.schedule?.start_time ?? "",
+    end: item.schedule?.end_time,
     client: {
-      name: b.clientName,
-      location: b.location ?? "",
-      type: b.clientType ?? "new",
+      name: item.customer.name ?? "",
+      location: item.customer.address ?? "",
+      type: item.customer.client_type,
+      avatarUrl: item.customer.profile_image_url,
     },
   };
 }
@@ -96,10 +79,16 @@ export default function HomeScreen() {
     (contentWidth - (bannersPerPage - 1) * BANNER_GAP) / bannersPerPage;
   const bannerHeight = isWideScreen ? bannerWidth / BANNER_ASPECT_RATIO : 120;
   const bannerPageWidth = (bannerWidth + BANNER_GAP) * bannersPerPage;
-  const bannerPageCount = Math.ceil(
-    Object.keys(bannerAssets).length / bannersPerPage,
-  );
+  // Location-scoped promotion banners from the home payload; items without a
+  // banner file have nothing to render and are dropped.
+  const [promotions, setPromotions] = useState<ProviderHomePromotionItem[]>([]);
+  const bannerPageCount = Math.ceil(promotions.length / bannersPerPage);
   const [activeBanner, setActiveBanner] = useState(0);
+
+  // Keep the active page in range if a refetch shrinks the promotion list.
+  useEffect(() => {
+    if (activeBanner >= bannerPageCount) setActiveBanner(0);
+  }, [activeBanner, bannerPageCount]);
   const [bannerAutoRotate, setBannerAutoRotate] = useState(true);
   const bannerRef = useRef<FlatList>(null);
 
@@ -128,21 +117,21 @@ export default function HomeScreen() {
       }
     : null;
 
-  const [services, setServices] = useState<MyServiceCardData[]>([]);
+  const [services, setServices] = useState<ProviderHomeServiceCard[]>([]);
+  // Full count from the API; the strip itself is capped at the newest 8.
+  const [servicesTotal, setServicesTotal] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-  const [acceptedRequests] = useState<Set<string>>(
-    new Set(),
+  const [newRequests, setNewRequests] = useState<ProviderHomeNewRequestItem[]>(
+    [],
   );
+  // Full pending count from the API; the preview itself is capped at 8.
+  const [newRequestsTotal, setNewRequestsTotal] = useState(0);
 
-  const newRequests = BOOKINGS.filter(
-    (b) => b.status === "pending" && !acceptedRequests.has(b.id),
-  );
-
-  function acceptRequest(id: string) {
-    // setAcceptedRequests((prev) => new Set(prev).add(id));
-    // TODO: Call API to accept the request, then update state based on response.
+  function acceptRequest(invitationId: number) {
+    // TODO: The API contract has no accept endpoint yet. Wire it here once
+    // available, then refresh the home payload.
   }
 
   // Gate the onboarding prompt so it only appears once per landing, not on
@@ -179,14 +168,23 @@ export default function HomeScreen() {
     }
   }, [openMenu, router]);
 
-  useEffect(() => {
-    if (!authUser?.user.user_id) return;
-    // TODO: legacy API removed — implement getUserServices via Laravel API
-    console.log("TODO: implement getUserServices via Laravel API", {
-      userId: authUser.user.user_id,
-    });
-    setServices([]);
-  }, [authUser?.user.user_id]);
+  // Re-fetch on focus so the services strip and new requests reflect changes
+  // made elsewhere. A failed load keeps whatever was shown last.
+  const refreshHome = useCallback(() => {
+    getProviderHome()
+      .then((home) => {
+        setServices(home.my_services.items);
+        setServicesTotal(home.my_services.total);
+        setPromotions(
+          home.provider_promotions.items.filter((item) => item.banner_url),
+        );
+        setNewRequests(home.new_requests.items);
+        setNewRequestsTotal(home.new_requests.total);
+      })
+      .catch(() => {});
+  }, []);
+
+  useFocusEffect(refreshHome);
 
   const handleBannerScroll = (event: any) => {
     const index = Math.round(
@@ -273,7 +271,9 @@ export default function HomeScreen() {
         <View style={styles.contentCard}>
           {/* My Services header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Services</Text>
+            <Text style={styles.sectionTitle}>
+              {withCount("My Services", servicesTotal)}
+            </Text>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => router.push("/services")}
@@ -290,16 +290,36 @@ export default function HomeScreen() {
           {services.length > 0 ? (
             <FlatList
               data={services}
-              keyExtractor={(item) => String(item.id)}
+              keyExtractor={(item) => String(item.service_id)}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.myServicesList}
               renderItem={({ item }) => (
                 <MyServiceCard
                   service={item}
-                  onPress={() => router.push(`/service-detail/${item.id}`)}
+                  onPress={() =>
+                    router.push(`/service-detail/${item.service_id}`)
+                  }
                 />
               )}
+              ListFooterComponent={
+                servicesTotal > services.length ? (
+                  <View style={styles.viewMoreCard}>
+                    <TouchableOpacity
+                      style={styles.viewMorePill}
+                      activeOpacity={0.8}
+                      onPress={() => router.push("/services")}
+                    >
+                      <Text style={styles.viewMoreText}>View more</Text>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={16}
+                        color={neutral[500]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ) : null
+              }
             />
           ) : (
             // Empty State: Create service card
@@ -319,56 +339,63 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           )}
-          {/* Banners carousel */}
-          <View style={styles.bannersSection}>
-            <FlatList
-              ref={bannerRef}
-              data={Object.entries(bannerAssets)}
-              keyExtractor={([id]) => id}
-              horizontal
-              pagingEnabled
-              snapToInterval={bannerPageWidth}
-              decelerationRate="fast"
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleBannerScroll}
-              onScrollBeginDrag={() => setBannerAutoRotate(false)}
-              onScrollEndDrag={() => setBannerAutoRotate(true)}
-              scrollEventThrottle={16}
-              renderItem={({ item: [, source] }) => (
-                <ExpoImage
-                  source={source}
-                  style={[
-                    styles.bannerImage,
-                    { width: bannerWidth, height: bannerHeight },
-                  ]}
-                  contentFit="cover"
-                />
-              )}
-            />
-            {/* Swipe dots — one per page */}
-            <View style={styles.swipeDots}>
-              {Array.from({ length: bannerPageCount }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    i === activeBanner ? styles.dotActive : styles.dotInactive,
-                  ]}
-                />
-              ))}
+          {/* Promotion banners carousel */}
+          {promotions.length > 0 && (
+            <View style={styles.bannersSection}>
+              <FlatList
+                ref={bannerRef}
+                data={promotions}
+                keyExtractor={(item) => String(item.promotion_id)}
+                horizontal
+                pagingEnabled
+                snapToInterval={bannerPageWidth}
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleBannerScroll}
+                onScrollBeginDrag={() => setBannerAutoRotate(false)}
+                onScrollEndDrag={() => setBannerAutoRotate(true)}
+                scrollEventThrottle={16}
+                renderItem={({ item }) => (
+                  <ExpoImage
+                    source={{ uri: item.banner_url ?? undefined }}
+                    accessibilityLabel={item.title}
+                    style={[
+                      styles.bannerImage,
+                      { width: bannerWidth, height: bannerHeight },
+                    ]}
+                    contentFit="cover"
+                  />
+                )}
+              />
+              {/* Swipe dots — one per page */}
+              <View style={styles.swipeDots}>
+                {Array.from({ length: bannerPageCount }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      i === activeBanner
+                        ? styles.dotActive
+                        : styles.dotInactive,
+                    ]}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
+          )}
           {/* New Requests header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>New Requests</Text>
+            <Text style={styles.sectionTitle}>
+              {withCount("New Requests", newRequestsTotal)}
+            </Text>
           </View>
           {newRequests.length > 0 ? (
             <CardGrid gap={16}>
-              {newRequests.map((b) => (
+              {newRequests.map((item) => (
                 <BookingRequestCard
-                  key={b.id}
-                  request={toBookingRequest(b)}
-                  onAccept={() => acceptRequest(b.id)}
+                  key={item.invitation_id}
+                  request={toBookingRequest(item)}
+                  onAccept={() => acceptRequest(item.invitation_id)}
                 />
               ))}
             </CardGrid>
@@ -517,6 +544,26 @@ const styles = StyleSheet.create({
   myServicesList: {
     gap: 16,
     paddingVertical: 4,
+  },
+  // Matches the photo height on service cards so the pill sits level with them.
+  viewMoreCard: {
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewMorePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: neutral[50],
+  },
+  viewMoreText: {
+    fontSize: 12,
+    color: neutral[500],
+    letterSpacing: -0.408,
   },
   createServiceCard: {
     backgroundColor: background.subtle,

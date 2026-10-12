@@ -26,6 +26,15 @@ import {
 /** Field key -> first error message. Pricing errors use the pricing value keys. */
 export type FormErrors = Record<string, string>;
 
+export interface ValidationOptions {
+  /**
+   * Edit flows: files already stored per `field_key`. They count toward a file
+   * field's required / `minimum_files` / `maximum_files` rules, since the
+   * form value only holds new uploads.
+   */
+  existingFileCounts?: Record<string, number>;
+}
+
 function validationOf(field: TemplateField): FieldValidation {
   const v = field.validation;
   if (!v || Array.isArray(v)) return {};
@@ -153,15 +162,20 @@ function formatMegabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function validateFiles(field: TemplateField, files: MultipartFile[]): string | null {
+function validateFiles(
+  field: TemplateField,
+  files: MultipartFile[],
+  existing = 0,
+): string | null {
   const min = field.minimum_files ?? 0;
   const max = field.maximum_files ?? Infinity;
-  if (files.length < min) {
+  const total = files.length + existing;
+  if (total < min) {
     return min === 1
       ? `${field.label} requires at least one file.`
       : `${field.label} requires at least ${min} files.`;
   }
-  if (files.length > max) return `${field.label} allows at most ${max} files.`;
+  if (total > max) return `${field.label} allows at most ${max} files.`;
   const extensions = (field.allowed_extensions ?? []).map((e) => e.toLowerCase());
   const types = field.allowed_file_types ?? [];
   for (const file of files) {
@@ -371,6 +385,7 @@ export function validateField(
   template: FormTemplate,
   values: FormValues,
   ctx: EvaluationContext = buildEvaluationContext(template, values),
+  options: ValidationOptions = {},
 ): [string, string][] {
   if (field.submit_as?.type === "display_only") return [];
 
@@ -381,24 +396,32 @@ export function validateField(
   const required = isFieldRequired(field, template, values, ctx);
   const value = values[field.field_key];
   const errors: [string, string][] = [];
+  const existing = options.existingFileCounts?.[field.field_key] ?? 0;
 
   if (field.submit_as?.type === "certificate_bundle") {
     const bundle = (value ?? {}) as CertificateBundleValue;
     const files = bundle.files ?? [];
-    if (files.length > 0 && isBlank(bundle.description)) {
+    const total = files.length + existing;
+    if (total > 0 && isBlank(bundle.description)) {
       errors.push([field.field_key, `${field.label} needs a description for the uploaded files.`]);
-    } else if (files.length === 0 && !isBlank(bundle.description)) {
+    } else if (total === 0 && !isBlank(bundle.description)) {
       // Mirrors the backend rule: a description without any certificate file is a 422.
       errors.push([field.field_key, `${field.label} needs at least one file for the description.`]);
     }
-    const fileError = validateFiles(field, files);
-    if (fileError && (files.length > 0 || required)) {
+    const fileError = validateFiles(field, files, existing);
+    if (fileError && (total > 0 || required)) {
       errors.push([field.field_key, fileError]);
     }
     return errors;
   }
 
   if (isBlank(value)) {
+    // A file field with stored files is not empty; only its count rules apply.
+    if (field.field_type === "file_upload" && existing > 0) {
+      const fileError = validateFiles(field, [], existing);
+      if (fileError) errors.push([field.field_key, fileError]);
+      return errors;
+    }
     if (required) errors.push([field.field_key, `${field.label} is required.`]);
     const unitError = validateUnit(field, values, false);
     if (unitError) errors.push(unitError);
@@ -425,7 +448,7 @@ export function validateField(
       break;
     case "file_upload":
       message = Array.isArray(value)
-        ? validateFiles(field, value as MultipartFile[])
+        ? validateFiles(field, value as MultipartFile[], existing)
         : `${field.label} must be a list of files.`;
       break;
     default:
@@ -452,12 +475,13 @@ export function validateField(
 export function validateForm(
   template: FormTemplate,
   values: FormValues,
+  options: ValidationOptions = {},
 ): FormErrors {
   const ctx = buildEvaluationContext(template, values);
   const errors: FormErrors = {};
   for (const field of template.fields) {
     if (!isFieldVisible(field, template, values, ctx)) continue;
-    for (const [key, message] of validateField(field, template, values, ctx)) {
+    for (const [key, message] of validateField(field, template, values, ctx, options)) {
       if (!(key in errors)) errors[key] = message;
     }
   }

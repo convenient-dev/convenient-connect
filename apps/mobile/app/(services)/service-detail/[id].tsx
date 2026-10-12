@@ -318,6 +318,8 @@ function contentFor(
       return textContent(labels.join(", "));
     }
     case "address": {
+      // The backend snapshots the provider's default address onto the service
+      // for both individual and business providers.
       const context = service.location_context as
         LocationContext | null | undefined;
       return textContent(context?.address ?? info.address?.address);

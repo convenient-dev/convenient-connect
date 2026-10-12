@@ -11,16 +11,18 @@ import {
   SingleSelectControl,
   TextControl,
   YesNoControl,
+  type ExistingFilesProps,
 } from "./controls";
 
-interface Props {
+interface Props extends ExistingFilesProps {
   field: Field;
   template: FormTemplate;
   values: FormValues;
   errors: Record<string, string>;
   required: boolean;
   setValue: (key: string, value: unknown) => void;
-  defaultAddress?: Address | null;
+  defaultAddress?: Pick<Address, "address"> | null;
+  /** Omit both address callbacks to show the address read-only (edit flows). */
   onAddAddress?: () => void;
   onChangeAddress?: () => void;
 }
@@ -35,7 +37,7 @@ export function TemplateField(props: Props) {
       <AddressControl
         {...base}
         defaultAddress={defaultAddress}
-        onAddAddress={onAddAddress ?? (() => {})}
+        onAddAddress={onAddAddress}
         onChangeAddress={onChangeAddress}
       />
     );

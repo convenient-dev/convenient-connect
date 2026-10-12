@@ -1,216 +1,180 @@
+import { ApiError, isCommercialPublishabilityError } from "@/api/client";
+import {
+  getServiceInformation,
+  getServicePricing,
+  updateServicePricing,
+  type ServicePricingRecord,
+} from "@/api/service-management";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { PublishabilityIssues } from "@/components/template-form/PublishabilityIssues";
+import { TemplateField } from "@/components/template-form/TemplateField";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
+import {
+  useTemplateForm,
+  type ServerErrorResult,
+} from "@/hooks/use-template-form";
+import {
+  asTemplate,
+  buildPricingBody,
+  valuesFromCurrent,
+  valuesFromPricing,
+  type FormTemplate,
+  type FormValues,
+} from "@/services/template";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, secondary, neutral, background, border, status, overlay } = Colors;
+const { primary, neutral, background, status } = Colors;
 
-
-const RATE_UNITS = ["booking", "hour"] as const;
-type RateUnit = (typeof RATE_UNITS)[number];
-
-function formatRateUnit(unit: RateUnit): string {
-  return unit === "booking" ? "per booking" : "per hour";
-}
-
-interface AddonTemplate {
-  id: number;
-  name: string;
-  description: string | null;
-  defaultPrice: string | null;
-  defaultRateUnit: RateUnit;
-}
-
-interface ServicePricing {
-  id: number;
-  baseRate: string;
-  baseRateUnit: RateUnit;
-  addons: {
-    id: number;
-    price: string;
-    rateUnit: RateUnit;
-    template: { id: number; name: string };
-  }[];
-  subcategory: { id: number } | null;
+interface LoadedPricing {
+  /** The full template; its `pricing` field carries the types and price units. */
+  template: FormTemplate;
+  values: FormValues;
+  record: ServicePricingRecord;
 }
 
 export default function EditServicePricingScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { userId } = useCurrentUser();
+  const serviceId = Number(id);
 
+  const [loaded, setLoaded] = useState<LoadedPricing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
-  const [baseRate, setBaseRate] = useState("");
-  const [baseRateUnit, setBaseRateUnit] = useState<RateUnit>("booking");
-  const [addonTemplates, setAddonTemplates] = useState<AddonTemplate[]>([]);
-  const [addonRates, setAddonRates] = useState<Record<number, string>>({});
-  const [addonUnits, setAddonUnits] = useState<Record<number, RateUnit>>({});
-
-  // Rate unit picker
-  const [rateUnitModalVisible, setRateUnitModalVisible] = useState(false);
-  const [activeRateField, setActiveRateField] = useState<"base" | number>("base");
-  const slideRateUnitAnim = useRef(new Animated.Value(300)).current;
-  const backdropRateUnitAnim = useRef(new Animated.Value(0)).current;
+  const load = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      // The pricing record has the saved values; the information endpoint's
+      // candidate_template has the pricing field (types, price units) and the
+      // other saved values that decide the active format and currency.
+      const [record, info] = await Promise.all([
+        getServicePricing(serviceId),
+        getServiceInformation(serviceId),
+      ]);
+      if (!info.candidate_template) {
+        throw new ApiError("The pricing form could not be loaded.", 422);
+      }
+      const template = asTemplate(info.candidate_template);
+      setLoaded({
+        template,
+        values: {
+          ...valuesFromCurrent(template, info.current_values),
+          ...valuesFromPricing(record),
+        },
+        record,
+      });
+    } catch (error) {
+      setLoaded(null);
+      setLoadError(
+        error instanceof ApiError ? error.message : "Couldn't load the service pricing.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [id, serviceId]);
 
   useEffect(() => {
-    // TODO: legacy API removed — implement getService via Laravel API
-    console.log("TODO: implement getService via Laravel API", { userId, id });
-    Promise.resolve(null as ServicePricing | null)
-      .then(async (service) => {
-        if (!service) return;
-        setBaseRate(parseFloat(service.baseRate).toFixed(2));
-        setBaseRateUnit(service.baseRateUnit);
+    load();
+  }, [load]);
 
-        if (service.subcategory) {
-          // TODO: legacy API removed — implement getSubcategory via Laravel API
-          console.log(
-            "TODO: implement getSubcategory via Laravel API",
-            service.subcategory.id,
-          );
-          const subcatData = null as {
-            addonTemplates?: AddonTemplate[];
-          } | null;
+  const form = useTemplateForm(loaded?.template ?? null, {
+    initialValues: loaded?.values,
+  });
 
-          const templates: AddonTemplate[] = subcatData?.addonTemplates ?? [];
-          setAddonTemplates(templates);
+  const pricingField = loaded?.template.fields.find((f) => f.field_type === "pricing");
 
-          const rates: Record<number, string> = {};
-          const units: Record<number, RateUnit> = {};
-
-          templates.forEach((t) => {
-            const existing = service.addons.find((a) => a.template.id === t.id);
-            rates[t.id] = existing
-              ? parseFloat(existing.price).toFixed(2)
-              : t.defaultPrice
-                ? parseFloat(t.defaultPrice).toFixed(2)
-                : "";
-            units[t.id] = existing ? existing.rateUnit : t.defaultRateUnit;
-          });
-
-          setAddonRates(rates);
-          setAddonUnits(units);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [id, userId]);
-
-  function openRateUnitPicker(field: "base" | number) {
-    setActiveRateField(field);
-    setRateUnitModalVisible(true);
-    Animated.parallel([
-      Animated.spring(slideRateUnitAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        bounciness: 0,
-      }),
-      Animated.timing(backdropRateUnitAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }
-
-  function closeRateUnitPicker(callback?: () => void) {
-    Animated.parallel([
-      Animated.timing(slideRateUnitAnim, {
-        toValue: 300,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropRateUnitAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setRateUnitModalVisible(false);
-      callback?.();
-    });
-  }
-
-  function getActiveRateUnit(): RateUnit {
-    if (activeRateField === "base") return baseRateUnit;
-    return addonUnits[activeRateField] ?? "booking";
-  }
-
-  function setActiveRateUnit(unit: RateUnit) {
-    if (activeRateField === "base") {
-      setBaseRateUnit(unit);
-    } else {
-      setAddonUnits((prev) => ({ ...prev, [activeRateField]: unit }));
-    }
+  function showFieldErrors(title: string, result: ServerErrorResult) {
+    const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
+    const prompt = "Please review the highlighted fields before saving.";
+    setDialog({ title, message: unmapped ? `${prompt}\n\n${unmapped}` : prompt });
   }
 
   async function handleSave() {
+    if (!loaded || !pricingField || saving) return;
+    if (!form.validateFields([pricingField])) {
+      showFieldErrors("Some details need attention", { sectionIndex: -1, general: [] });
+      return;
+    }
+    const body = buildPricingBody(loaded.template, form.values);
+    if (!body) return;
     setSaving(true);
-    setSaveError(null);
+    form.clearGeneralErrors();
     try {
-      const body = {
-        baseRate: Number(baseRate),
-        baseRateUnit,
-        addons: addonTemplates
-          .filter((t) => addonRates[t.id]?.trim())
-          .map((t) => ({
-            templateId: t.id,
-            price: Number(addonRates[t.id]),
-            rateUnit: addonUnits[t.id] ?? "booking",
-          })),
-      };
-
-      // TODO: legacy API removed — implement update service pricing via Laravel API
-      console.log("TODO: implement update service pricing via Laravel API", {
-        userId,
-        id,
-        body,
-      });
-
+      await updateServicePricing(serviceId, body);
       setSavedModalVisible(true);
-    } catch (err: any) {
-      setSaveError(err?.message ?? "Failed to save. Please try again.");
+    } catch (error) {
+      if (isCommercialPublishabilityError(error)) {
+        showFieldErrors("Pricing not publishable yet", form.applyServerErrors(error));
+        return;
+      }
+      const result = form.applyServerIssues(error);
+      if (result) {
+        showFieldErrors("Some details need attention", result);
+        return;
+      }
+      setDialog({
+        title: "Couldn't save pricing",
+        message:
+          error instanceof ApiError
+            ? error.message
+            : "Something went wrong. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
   }
 
-  const canSave = baseRate.trim().length > 0 && !saving;
-
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+        <ScreenHeader title="Pricing" />
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       </SafeAreaView>
     );
   }
 
+  if (!loaded || !pricingField) {
+    return (
+      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+        <ScreenHeader title="Pricing" />
+        <View style={styles.center}>
+          <Feather name="alert-circle" size={36} color={neutral[300]} />
+          <Text style={styles.errorText}>
+            {loadError ?? "Pricing isn't available for this service."}
+          </Text>
+          <Button title="Try again" variant="primary" size="md" onPress={load} />
+          <Button title="Back" variant="ghost" size="md" onPress={() => router.back()} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const hasErrors = Object.keys(form.errors).length > 0;
+
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <ScreenHeader title="Pricing" />
+      <ScreenHeader title="Pricing" subtitle={loaded.record.title ?? undefined} />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -222,75 +186,31 @@ export default function EditServicePricingScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.sectionTitle}>Service Rate</Text>
-          <Text style={styles.sectionDesc}>Service rate = base rate + add-ons</Text>
+          <PublishabilityIssues
+            publishability={loaded.record.publishability}
+            template={loaded.template}
+          />
 
-          {/* Base Rate */}
-          <View style={styles.field}>
-            <Text style={styles.label}>
-              Base Rate <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.rateRow}>
-              <View style={styles.rateInputBox}>
-                <Text style={styles.rateCurrency}>$</Text>
-                <TextInput
-                  style={styles.rateTextInput}
-                  value={baseRate}
-                  onChangeText={setBaseRate}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  placeholderTextColor={neutral[300]}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.rateUnitDropdown}
-                onPress={() => openRateUnitPicker("base")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rateUnitText}>{formatRateUnit(baseRateUnit)}</Text>
-                <Feather name="chevron-down" size={14} color={neutral[400]} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Add-ons */}
-          {addonTemplates.length > 0 && (
-            <View style={styles.field}>
-              <Text style={styles.label}>Add-Ons</Text>
-              {addonTemplates.map((template) => (
-                <View key={template.id} style={styles.addOnRow}>
-                  <Text style={styles.addOnLabel}>{template.name}</Text>
-                  <View style={styles.rateInputBox}>
-                    <Text style={styles.rateCurrency}>$</Text>
-                    <TextInput
-                      style={styles.rateTextInput}
-                      value={addonRates[template.id] ?? ""}
-                      onChangeText={(v) =>
-                        setAddonRates((prev) => ({ ...prev, [template.id]: v }))
-                      }
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor={neutral[300]}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.rateUnitDropdown}
-                    onPress={() => openRateUnitPicker(template.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.rateUnitText}>
-                      {formatRateUnit(addonUnits[template.id] ?? "booking")}
-                    </Text>
-                    <Feather name="chevron-down" size={14} color={neutral[400]} />
-                  </TouchableOpacity>
-                </View>
+          {form.generalErrors.length ? (
+            <View style={styles.generalErrorBox}>
+              {form.generalErrors.map((message, index) => (
+                <Text key={index} style={styles.generalErrorText}>{message}</Text>
               ))}
             </View>
-          )}
+          ) : null}
+
+          <View style={styles.card}>
+            <TemplateField
+              field={pricingField}
+              template={loaded.template}
+              values={form.values}
+              errors={form.errors}
+              required={form.isRequired(pricingField)}
+              setValue={form.setValue}
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
       {/* Footer */}
       <View style={[styles.footer, contentWidthStyle]}>
@@ -306,7 +226,7 @@ export default function EditServicePricingScreen() {
           variant="primary"
           size="md"
           style={{ flex: 1 }}
-          disabled={!canSave}
+          disabled={hasErrors}
           loading={saving}
           onPress={handleSave}
         />
@@ -314,7 +234,7 @@ export default function EditServicePricingScreen() {
 
       <ConfirmModal
         visible={savedModalVisible}
-        icon="success"
+        type="success"
         title="Pricing Updated"
         message="Your service pricing has been saved successfully."
         confirmLabel="View Service"
@@ -324,52 +244,14 @@ export default function EditServicePricingScreen() {
         }}
       />
 
-      {/* Rate Unit bottom sheet */}
-      <Modal
-        visible={rateUnitModalVisible}
-        transparent
-        animationType="none"
-        onRequestClose={() => closeRateUnitPicker()}
-      >
-        <Animated.View
-          style={[styles.bottomSheetBackdrop, { opacity: backdropRateUnitAnim }]}
-        >
-          <Pressable style={{ flex: 1 }} onPress={() => closeRateUnitPicker()} />
-        </Animated.View>
-        <Animated.View
-          style={[styles.bottomSheet, { transform: [{ translateY: slideRateUnitAnim }] }]}
-        >
-          <View style={styles.bottomSheetHandle} />
-          <Text style={styles.bottomSheetTitle}>Billing Unit</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {RATE_UNITS.map((unit, index) => {
-              const isSelected = getActiveRateUnit() === unit;
-              return (
-                <TouchableOpacity
-                  key={unit}
-                  style={[
-                    styles.bottomSheetOption,
-                    index < RATE_UNITS.length - 1 && styles.bottomSheetOptionBorder,
-                    isSelected && styles.bottomSheetOptionSelected,
-                  ]}
-                  onPress={() => closeRateUnitPicker(() => setActiveRateUnit(unit))}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.bottomSheetOptionText,
-                      isSelected && { color: primary[500], fontWeight: "600" },
-                    ]}
-                  >
-                    {formatRateUnit(unit)}
-                  </Text>
-                  {isSelected && <Feather name="check" size={16} color={primary[400]} />}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </Animated.View>
-      </Modal>
+      <ConfirmModal
+        visible={dialog !== null}
+        type="error"
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setDialog(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -379,55 +261,41 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   loader: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: neutral[800], marginBottom: 4 },
-  sectionDesc: { fontSize: 13, color: neutral[400], marginBottom: 20 },
-  field: { marginBottom: 20, gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", color: neutral[700] },
-  required: { color: secondary[500] },
-  rateRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  rateInputBox: {
-    flex: 1, flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: border.default, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 13, gap: 4,
+  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 12 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    paddingHorizontal: 32,
   },
-  rateCurrency: { fontSize: 14, color: neutral[600], fontWeight: "500" },
-  rateTextInput: { flex: 1, fontSize: 14, color: neutral[800], padding: 0 },
-  rateUnitDropdown: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    borderWidth: 1, borderColor: border.default, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 13,
+  errorText: { fontSize: 14, color: neutral[500], textAlign: "center", lineHeight: 20 },
+  card: {
+    backgroundColor: background.card,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: neutral[200],
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    shadowColor: neutral[1000],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  rateUnitText: { fontSize: 13, color: neutral[600], fontWeight: "500" },
-  addOnRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  addOnLabel: { width: 100, fontSize: 13, color: neutral[600], lineHeight: 18 },
-  saveError: {
-    fontSize: 13, color: status.error, textAlign: "center",
-    paddingHorizontal: 24, paddingBottom: 6,
+  generalErrorBox: {
+    borderWidth: 1,
+    borderColor: status.error,
+    borderRadius: 10,
+    padding: 12,
+    gap: 4,
   },
-  footer: { flexDirection: "row", gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8 },
-  bottomSheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: overlay.light },
-  bottomSheet: {
-    position: "absolute", left: 0, right: 0, bottom: 0,
-    backgroundColor: background.screen,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingBottom: 32, maxHeight: "60%",
+  generalErrorText: { fontSize: 13, color: status.error },
+  footer: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  bottomSheetHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: neutral[200], alignSelf: "center",
-    marginTop: 12, marginBottom: 4,
-  },
-  bottomSheetTitle: {
-    fontSize: 15, fontWeight: "700", color: neutral[700],
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: border.default,
-  },
-  bottomSheetOption: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingVertical: 15, paddingHorizontal: 20,
-  },
-  bottomSheetOptionBorder: { borderBottomWidth: 1, borderBottomColor: border.default },
-  bottomSheetOptionSelected: { backgroundColor: primary[50] },
-  bottomSheetOptionText: { fontSize: 15, color: neutral[700] },
 });

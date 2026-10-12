@@ -94,6 +94,18 @@ export interface ServiceCertificate {
   files?: ServiceStoredFile[];
 }
 
+/** Provider address snapshotted on the service (see the service detail example in api-doc.json). */
+export interface ServiceAddressSnapshot {
+  id?: number;
+  address: string;
+  country_id?: number | null;
+  state_id?: number | null;
+  city_id?: number | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  is_default?: boolean;
+}
+
 // api-doc.json types the nested objects below as plain `object`. The keys come
 // from the integration guide (sections 23-25 and 41); treat them as optional.
 export interface ServiceInformationCurrentValues {
@@ -103,7 +115,7 @@ export interface ServiceInformationCurrentValues {
   additional_information?: string | null;
   tagline?: string | null;
   address_id?: number | null;
-  address?: string | null;
+  address?: ServiceAddressSnapshot | null;
   service_radius?: string | number | null;
   service_radius_unit?: "mile" | "km" | null;
   information_accuracy_acknowledgement?: boolean;

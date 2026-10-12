@@ -7,6 +7,7 @@ import {
 } from "../../api/multipart";
 import { getFormat, profilePricingScopeState } from "./capability";
 import { resolveCurrency } from "./currency";
+import type { ServicePricingUpdateRequest } from "../../api/service-management";
 import {
   PRICING_VALUE_KEYS,
   type CertificateBundleValue,
@@ -81,6 +82,17 @@ function isBlank(value: unknown): boolean {
   if (typeof value === "string") return value.trim() === "";
   if (Array.isArray(value)) return value.length === 0;
   return false;
+}
+
+/**
+ * Number controls hold the typed text; `answers_json` is sent as JSON, so the
+ * value must be converted to match the integer/number contract. Unparseable
+ * text is left as-is for the backend to reject.
+ */
+function answerValue(field: TemplateField, value: unknown): unknown {
+  if (field.field_type !== "number" || typeof value !== "string") return value;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : value;
 }
 
 function otherCustomKey(field: TemplateField): string | undefined {
@@ -174,7 +186,7 @@ export function buildPayload(
 
       case "answers_json": {
         const key = submit.key ?? field.field_key;
-        if (!isBlank(value)) answers[key] = value;
+        if (!isBlank(value)) answers[key] = answerValue(field, value);
         const customKey = otherCustomKey(field);
         if (customKey && isOtherSelected(field, value) && !isBlank(values[customKey])) {
           answers[customKey] = values[customKey];
@@ -255,6 +267,35 @@ export function buildCreateFormData(
     business_id:
       identity.providerType === "business" ? identity.businessId ?? undefined : undefined,
   });
+}
+
+/**
+ * `POST /services/{id}/pricing` JSON body. Uses the same routing as create and
+ * candidate, so the unit, currency and scope rules are applied once. `amount`
+ * and `currency` are omitted when blank (allowed for quote-required);
+ * `profile_pricing_scope` is omitted unless the capability allows it.
+ */
+export function buildPricingBody(
+  template: FormTemplate,
+  values: FormValues,
+): ServicePricingUpdateRequest | null {
+  const pricingField = template.fields.find((f) => f.field_type === "pricing");
+  const pricingType = selectedPricingType(values);
+  if (!pricingField || !pricingType) return null;
+  const entries: MultipartEntries = {};
+  routePricing(pricingField, template, values, entries, buildEvaluationContext(template, values));
+  const body: ServicePricingUpdateRequest = {
+    pricing_type: pricingType,
+    price_unit_id:
+      entries.price_unit_id === undefined ? null : Number(entries.price_unit_id),
+  };
+  if (entries.amount !== undefined) body.amount = Number(entries.amount);
+  if (typeof entries.currency === "string") body.currency = entries.currency;
+  if (typeof entries.profile_pricing_scope === "string") {
+    body.profile_pricing_scope =
+      entries.profile_pricing_scope as ServicePricingUpdateRequest["profile_pricing_scope"];
+  }
+  return body;
 }
 
 /** `POST /services/{id}/information`: information and files only. */

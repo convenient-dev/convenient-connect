@@ -21,6 +21,7 @@ import {
   type FormValues,
   type ServiceFormTemplateSection,
   type TemplateField,
+  type ValidationOptions,
 } from "@/services/template";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -59,19 +60,39 @@ function seedDefaults(template: FormTemplate): FormValues {
   return values;
 }
 
+export interface TemplateFormOptions extends ValidationOptions {
+  /**
+   * Saved values to prefill (edit flows), applied over the template defaults.
+   * Re-seeded whenever `template` changes, so pass the values loaded with it.
+   */
+  initialValues?: FormValues;
+}
+
 /**
  * Form state for a template-driven service form. Holds one values object
  * keyed by `field_key`, asks the engine what is visible/required/valid, and
  * prunes selections that the capability no longer allows.
  */
-export function useTemplateForm(template: FormTemplate | null) {
+export function useTemplateForm(
+  template: FormTemplate | null,
+  options: TemplateFormOptions = {},
+) {
+  const { initialValues, existingFileCounts } = options;
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalErrors, setGeneralErrors] = useState<string[]>([]);
 
   useEffect(() => {
-    if (template) setValues(seedDefaults(template));
+    if (template) setValues({ ...seedDefaults(template), ...initialValues });
+    // initialValues is loaded together with the template, so it is only
+    // re-applied when the template itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template]);
+
+  const validation = useMemo<ValidationOptions>(
+    () => ({ existingFileCounts }),
+    [existingFileCounts],
+  );
 
   const setValue = useCallback(
     (key: string, value: unknown) => {
@@ -91,7 +112,8 @@ export function useTemplateForm(template: FormTemplate | null) {
         // upload (type, count, size) is flagged without waiting for Next.
         const live: FormErrors = {};
         if (template && edited && isFileField(edited)) {
-          for (const [k, message] of validateField(edited, template, { ...values, [key]: value })) {
+          const next = { ...values, [key]: value };
+          for (const [k, message] of validateField(edited, template, next, undefined, validation)) {
             if (!(k in live)) live[k] = message;
           }
         }
@@ -101,7 +123,7 @@ export function useTemplateForm(template: FormTemplate | null) {
         return { ...next, ...live };
       });
     },
-    [template, values],
+    [template, values, validation],
   );
 
   // Drop selections the active format no longer permits.
@@ -175,7 +197,7 @@ export function useTemplateForm(template: FormTemplate | null) {
   const validateFields = useCallback(
     (fields: TemplateField[]): boolean => {
       if (!template) return false;
-      const all = validateForm(template, values);
+      const all = validateForm(template, values, validation);
       const keys = new Set(fields.flatMap(fieldValueKeys));
       const scoped: FormErrors = {};
       for (const [key, message] of Object.entries(all)) {
@@ -188,7 +210,7 @@ export function useTemplateForm(template: FormTemplate | null) {
       });
       return Object.keys(scoped).length === 0;
     },
-    [template, values],
+    [template, values, validation],
   );
 
   /**
@@ -214,12 +236,12 @@ export function useTemplateForm(template: FormTemplate | null) {
    */
   const validateAll = useCallback((): number => {
     if (!template) return 0;
-    const all = validateForm(template, values);
+    const all = validateForm(template, values, validation);
     setErrors(all);
     const keys = Object.keys(all);
     if (!keys.length) return -1;
     return Math.max(0, sectionIndexForKeys(keys));
-  }, [template, values, sectionIndexForKeys]);
+  }, [template, values, validation, sectionIndexForKeys]);
 
   /**
    * Maps a publishability 422 onto field keys. Keys that match a field key or

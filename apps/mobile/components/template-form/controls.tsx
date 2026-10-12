@@ -18,6 +18,7 @@ import {
 } from "@/services/template";
 import { Feather } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { FieldShell } from "./FieldShell";
@@ -28,13 +29,41 @@ import { formStyles as s } from "./styles";
 
 const { neutral, primary } = Colors;
 
-export interface ControlProps {
+/** A file the service already stores, shown beside new uploads on edit screens. */
+export interface ExistingFile {
+  /** Stable key: the file id for portfolio/certificate files, the stored path for dynamic files. */
+  key: string;
+  url: string;
+  name?: string | null;
+  /** Marked for deletion on save; shown dimmed with an Undo action. */
+  removed?: boolean;
+}
+
+export interface ExistingFilesProps {
+  /** Stored files per `field_key`. */
+  existingFiles?: Record<string, ExistingFile[]>;
+  onRemoveExistingFile?: (field: TemplateField, file: ExistingFile) => void;
+  onRestoreExistingFile?: (field: TemplateField, file: ExistingFile) => void;
+}
+
+export interface ControlProps extends ExistingFilesProps {
   field: TemplateField;
   template: FormTemplate;
   values: FormValues;
   errors: Record<string, string>;
   required: boolean;
   setValue: (key: string, value: unknown) => void;
+}
+
+const IMAGE_URL = /\.(jpe?g|png|webp|gif|heic)$/i;
+
+function isImageUrl(url: string): boolean {
+  return IMAGE_URL.test(url.split("?")[0]);
+}
+
+function fileNameFromUrl(url: string): string {
+  const last = url.split("?")[0].split("/").pop();
+  return last ? decodeURIComponent(last) : "File";
 }
 
 function stringValue(value: unknown): string {
@@ -317,21 +346,76 @@ export function YesNoControl({ field, values, errors, required, setValue }: Cont
 
 // ---------------------------------------------------------------------------
 
+function ExistingThumb({
+  file,
+  onRemove,
+  onRestore,
+}: {
+  file: ExistingFile;
+  onRemove?: () => void;
+  onRestore?: () => void;
+}) {
+  const image = isImageUrl(file.url);
+  const name = file.name ?? fileNameFromUrl(file.url);
+  return (
+    <View style={[s.thumbWrap, file.removed ? s.thumbRemoved : null]}>
+      {image ? (
+        <ExpoImage source={{ uri: file.url }} style={s.imageThumb} contentFit="cover" />
+      ) : (
+        <TouchableOpacity
+          style={s.docThumb}
+          onPress={() => WebBrowser.openBrowserAsync(file.url)}
+          activeOpacity={0.7}
+          disabled={file.removed}
+        >
+          <Feather name="file-text" size={20} color={neutral[400]} />
+          <Text style={s.docThumbName} numberOfLines={2}>
+            {name}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {file.removed ? (
+        <TouchableOpacity style={s.thumbUndo} onPress={onRestore} activeOpacity={0.7}>
+          <Text style={s.thumbUndoText}>Undo</Text>
+        </TouchableOpacity>
+      ) : onRemove ? (
+        <TouchableOpacity style={s.thumbRemove} onPress={onRemove} activeOpacity={0.7}>
+          <Feather name="x" size={12} color={neutral[0]} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
 function FileThumbs({
   files,
   isImage,
   onRemove,
   onAdd,
   canAdd,
+  existing = [],
+  onRemoveExisting,
+  onRestoreExisting,
 }: {
   files: MultipartFile[];
   isImage: boolean;
   onRemove: (index: number) => void;
   onAdd: () => void;
   canAdd: boolean;
+  existing?: ExistingFile[];
+  onRemoveExisting?: (file: ExistingFile) => void;
+  onRestoreExisting?: (file: ExistingFile) => void;
 }) {
   return (
     <View style={s.fileRow}>
+      {existing.map((file) => (
+        <ExistingThumb
+          key={file.key}
+          file={file}
+          onRemove={onRemoveExisting ? () => onRemoveExisting(file) : undefined}
+          onRestore={onRestoreExisting ? () => onRestoreExisting(file) : undefined}
+        />
+      ))}
       {files.map((file, index) => (
         <View key={`${file.uri}-${index}`} style={s.thumbWrap}>
           {isImage ? (
@@ -359,17 +443,37 @@ function FileThumbs({
   );
 }
 
-/** Portfolio images and dynamic file uploads (new files only). */
-export function FileUploadControl({ field, values, errors, required, setValue }: ControlProps) {
+/** Stored files for a field and how many of them are still kept. */
+function useExistingFiles(props: ControlProps) {
+  const { field, existingFiles, onRemoveExistingFile, onRestoreExistingFile } = props;
+  const existing = existingFiles?.[field.field_key] ?? [];
+  const kept = existing.filter((file) => !file.removed).length;
+  return {
+    existing,
+    kept,
+    onRemoveExisting: onRemoveExistingFile
+      ? (file: ExistingFile) => onRemoveExistingFile(field, file)
+      : undefined,
+    onRestoreExisting: onRestoreExistingFile
+      ? (file: ExistingFile) => onRestoreExistingFile(field, file)
+      : undefined,
+  };
+}
+
+/** Portfolio images and dynamic file uploads: stored files plus new uploads. */
+export function FileUploadControl(props: ControlProps) {
+  const { field, values, errors, required, setValue } = props;
   const files = Array.isArray(values[field.field_key])
     ? (values[field.field_key] as MultipartFile[])
     : [];
   const max = field.maximum_files ?? (field.multiple === false ? 1 : 10);
   const isImage = acceptsOnlyImages(field.allowed_file_types);
   const error = errors[field.field_key];
+  const { existing, kept, onRemoveExisting, onRestoreExisting } = useExistingFiles(props);
+  const remaining = max - kept - files.length;
 
   async function add() {
-    const picked = await pickFilesForField(field.allowed_file_types, max - files.length);
+    const picked = await pickFilesForField(field.allowed_file_types, remaining);
     if (picked.length) setValue(field.field_key, [...files, ...picked]);
   }
 
@@ -378,29 +482,35 @@ export function FileUploadControl({ field, values, errors, required, setValue }:
       <FileThumbs
         files={files}
         isImage={isImage}
-        canAdd={files.length < max}
+        canAdd={remaining > 0}
         onAdd={add}
         onRemove={(index) =>
           setValue(field.field_key, files.filter((_, i) => i !== index))
         }
+        existing={existing}
+        onRemoveExisting={onRemoveExisting}
+        onRestoreExisting={onRestoreExisting}
       />
     </FieldShell>
   );
 }
 
 /** One shared description plus files (certificate bundle). */
-export function CertificateBundleControl({ field, values, errors, required, setValue }: ControlProps) {
+export function CertificateBundleControl(props: ControlProps) {
+  const { field, values, errors, required, setValue } = props;
   const bundle = (values[field.field_key] ?? {}) as CertificateBundleValue;
   const files = bundle.files ?? [];
   const max = field.maximum_files ?? 10;
   const error = errors[field.field_key];
+  const { existing, kept, onRemoveExisting, onRestoreExisting } = useExistingFiles(props);
+  const remaining = max - kept - files.length;
 
   function update(patch: Partial<CertificateBundleValue>) {
     setValue(field.field_key, { ...bundle, ...patch });
   }
 
   async function add() {
-    const picked = await pickFilesForField(field.allowed_file_types, max - files.length);
+    const picked = await pickFilesForField(field.allowed_file_types, remaining);
     if (picked.length) update({ files: [...files, ...picked] });
   }
 
@@ -416,9 +526,12 @@ export function CertificateBundleControl({ field, values, errors, required, setV
       <FileThumbs
         files={files}
         isImage={false}
-        canAdd={files.length < max}
+        canAdd={remaining > 0}
         onAdd={add}
         onRemove={(index) => update({ files: files.filter((_, i) => i !== index) })}
+        existing={existing}
+        onRemoveExisting={onRemoveExisting}
+        onRestoreExisting={onRestoreExisting}
       />
     </FieldShell>
   );
@@ -427,14 +540,16 @@ export function CertificateBundleControl({ field, values, errors, required, setV
 // ---------------------------------------------------------------------------
 
 interface AddressControlProps extends ControlProps {
-  defaultAddress: Address | null | undefined;
-  /** Tapped when there is no default address yet. */
-  onAddAddress: () => void;
+  defaultAddress: Pick<Address, "address"> | null | undefined;
+  /** Tapped when there is no default address yet. Omit both callbacks for a read-only display. */
+  onAddAddress?: () => void;
   /** Tapped to change an existing default address; falls back to `onAddAddress`. */
   onChangeAddress?: () => void;
 }
 
-const RADIUS_CENTRE_HINT = "Your service area radius is measured from this address.";
+const RADIUS_CENTRE_HINT =
+  "Your service area radius is measured from your current default address. " +
+  "It is not saved on this service, so changing your default address moves the area.";
 
 /**
  * Display-only: the backend snapshots the provider's default address for
@@ -462,9 +577,11 @@ export function AddressControl({
         ) : (
           <Text style={s.addressMissing}>No default address yet</Text>
         )}
-        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-          <Text style={s.linkText}>{defaultAddress ? "Change" : "Add"}</Text>
-        </TouchableOpacity>
+        {onPress ? (
+          <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+            <Text style={s.linkText}>{defaultAddress ? "Change" : "Add"}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
       {isRadiusCentre ? <Text style={s.helpText}>{RADIUS_CENTRE_HINT}</Text> : null}
     </FieldShell>

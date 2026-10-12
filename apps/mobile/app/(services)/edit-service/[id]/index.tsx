@@ -1,13 +1,28 @@
+import {
+  ApiError,
+  getPublishabilityFieldMessages,
+  isCommercialPublishabilityError,
+} from "@/api/client";
+import {
+  getServiceCategory,
+  getServiceEditOverview,
+  toggleServiceStatus,
+  type ServiceCategoryInfo,
+  type ServiceEditOverview,
+} from "@/api/service-management";
+import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ServiceStatusBadge } from "@/components/ServiceStatusBadge";
+import {
+  ServiceStatusBadge,
+  statusFromLabel,
+} from "@/components/ServiceStatusBadge";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -21,22 +36,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background } = Colors;
 
-
 const SECTION_ICONS: Record<string, number> = {
   OVERVIEW: require("@/assets/global-icons/provider-type.svg"),
   "SERVICE CATEGORY": require("@/assets/global-icons/category.svg"),
   "SERVICE INFORMATION": require("@/assets/global-icons/info.svg"),
   PRICING: require("@/assets/global-icons/pricing.svg"),
 };
-
-interface ServiceSummary {
-  id: number;
-  title: string;
-  status: "active" | "inactive" | "pendingReview";
-  serviceMode: "freelance" | "business";
-  searchActive: boolean;
-  subcategory: { name: string; category: { name: string } } | null;
-}
 
 function SectionHeader({ label }: { label: string }) {
   return (
@@ -56,19 +61,62 @@ function InlineRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** `individual` is labeled Freelance on this screen; business shows its name. */
+function serviceTypeLabel(overview: ServiceEditOverview): string {
+  if (overview.business_id == null) return "Freelance";
+  return overview.business_name
+    ? `Business · ${overview.business_name}`
+    : "Business";
+}
+
 export default function EditServiceScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [service, setService] = useState<ServiceSummary | null>(null);
+  const serviceId = Number(id);
+
+  const [overview, setOverview] = useState<ServiceEditOverview | null>(null);
+  const [category, setCategory] = useState<ServiceCategoryInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchActive, setSearchActive] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     title: string;
     message: string;
     onConfirm: () => void | Promise<void>;
   } | null>(null);
+  const [resultModal, setResultModal] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const load = useCallback(async () => {
+    if (!id) return;
+    try {
+      // The category card is secondary, so its failure only shows dashes.
+      const [overviewData, categoryData] = await Promise.all([
+        getServiceEditOverview(serviceId),
+        getServiceCategory(serviceId).catch(() => null),
+      ]);
+      setOverview(overviewData);
+      setCategory(categoryData);
+      setLoadError(null);
+    } catch (error) {
+      setOverview(null);
+      setLoadError(
+        error instanceof ApiError ? error.message : "Couldn't load this service.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [id, serviceId]);
+
+  // Reload on focus so edits made on the child screens show up here.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   function navigateToInformation() {
     router.push({ pathname: "/edit-service/[id]/information", params: { id } });
@@ -78,23 +126,70 @@ export default function EditServiceScreen() {
     router.push({ pathname: "/edit-service/[id]/pricing", params: { id } });
   }
 
+  function confirmEditWhilePending(onConfirm: () => void) {
+    setConfirmModal({
+      title: "Service Under Review",
+      message:
+        "Any edits will resubmit this service for review, which may extend the pending period. Do you want to continue?",
+      onConfirm,
+    });
+  }
+
   function handleTapInformation() {
-    if (!service) return;
-    if (service.status === "pendingReview") {
-      setConfirmModal({
-        title: "Service Under Review",
-        message:
-          "Any edits will resubmit this service for review, which may extend the pending period. Do you want to continue?",
-        onConfirm: navigateToInformation,
-      });
+    if (!overview) return;
+    if (statusFromLabel(overview.status_label) === "pendingReview") {
+      confirmEditWhilePending(navigateToInformation);
     } else {
-      // active or inactive: editing information changes status to pendingReview
-      setConfirmModal({
-        title: "Status Will Change",
-        message:
-          "Editing service information will move this service back to Pending Review while it's re-evaluated. Do you want to continue?",
-        onConfirm: navigateToInformation,
-      });
+      navigateToInformation();
+    }
+  }
+
+  function handleTapPricing() {
+    if (!overview) return;
+    if (statusFromLabel(overview.status_label) === "pendingReview") {
+      confirmEditWhilePending(navigateToPricing);
+    } else {
+      navigateToPricing();
+    }
+  }
+
+  async function toggleStatus() {
+    setToggling(true);
+    try {
+      const data = await toggleServiceStatus(serviceId);
+      setOverview((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: data.status,
+              status_label: data.status_label,
+              search_setting: {
+                ...prev.search_setting,
+                is_active: data.status_label === "active",
+              },
+            }
+          : prev,
+      );
+    } catch (error) {
+      if (isCommercialPublishabilityError(error)) {
+        const lines = Object.values(getPublishabilityFieldMessages(error))
+          .flat()
+          .map((message) => `• ${message}`);
+        setResultModal({
+          title: "Can't enable search yet",
+          message: ["Resolve these issues first:", ...lines].join("\n"),
+        });
+      } else {
+        setResultModal({
+          title: "Couldn't update search setting",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "Something went wrong. Please try again.",
+        });
+      }
+    } finally {
+      setToggling(false);
     }
   }
 
@@ -104,43 +199,9 @@ export default function EditServiceScreen() {
       message: newValue
         ? "Clients will be able to discover your service and request bookings."
         : "Your service will be hidden from search results. Existing bookings won't be affected.",
-      onConfirm: async () => {
-        const newStatus = newValue ? "active" : "inactive";
-        setSearchActive(newValue);
-        setService((prev) => (prev ? { ...prev, status: newStatus } : prev));
-        // TODO: legacy API removed — implement toggle service search via Laravel API
-        console.log("TODO: implement toggle service search via Laravel API", {
-          userId,
-          id,
-          searchActive: newValue,
-        });
-      },
+      onConfirm: toggleStatus,
     });
   }
-
-  function handleTapPricing() {
-    if (!service) return;
-    if (service.status === "pendingReview") {
-      setConfirmModal({
-        title: "Service Under Review",
-        message:
-          "Any edits will resubmit this service for review, which may extend the pending period. Do you want to continue?",
-        onConfirm: navigateToPricing,
-      });
-    } else {
-      // active or inactive: pricing edits do not change status
-      navigateToPricing();
-    }
-  }
-
-  useEffect(() => {
-    // TODO: legacy API removed — implement getService via Laravel API
-    console.log("TODO: implement getService via Laravel API", { userId, id });
-    const data = null as ServiceSummary | null;
-    setService(data);
-    setSearchActive(data?.searchActive ?? false);
-    setLoading(false);
-  }, [id, userId]);
 
   if (loading) {
     return (
@@ -154,33 +215,35 @@ export default function EditServiceScreen() {
     );
   }
 
-  if (!service) {
+  if (!overview) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <Text style={styles.errorText}>Service not found.</Text>
+        <ScreenHeader title="Edit Service" />
+        <View style={styles.center}>
+          <Text style={styles.errorText}>
+            {loadError ?? "Service not found."}
+          </Text>
+          <Button title="Try again" variant="primary" size="md" onPress={load} />
+        </View>
       </SafeAreaView>
     );
   }
 
+  const status = statusFromLabel(overview.status_label);
   const searchToggleValue =
-    service.status === "active"
-      ? true
-      : service.status === "inactive"
-        ? false
-        : searchActive;
-  const searchToggleDisabled = service.status === "pendingReview";
+    overview.search_setting?.is_active ?? status === "active";
+  const searchToggleDisabled =
+    toggling || !(overview.search_setting?.can_update ?? status !== "pendingReview");
   const searchHint =
-    service.status === "pendingReview"
+    status === "pendingReview"
       ? "Search is paused while your service is under review."
-      : service.status === "inactive"
-        ? "Search is off while your service is inactive."
-        : searchToggleValue
-          ? "Clients can discover you and request bookings."
-          : "You won't appear in client search results.";
+      : searchToggleValue
+        ? "Clients can discover you and request bookings."
+        : "You won't appear in client search results.";
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <ScreenHeader title="Edit Service" subtitle={service.title} />
+      <ScreenHeader title="Edit Service" subtitle={overview.title ?? ""} />
 
       <ScrollView
         style={styles.scroll}
@@ -214,26 +277,21 @@ export default function EditServiceScreen() {
           <SectionHeader label="OVERVIEW" />
           <View style={styles.inlineRow}>
             <Text style={styles.inlineLabel}>Status</Text>
-            <ServiceStatusBadge status={service.status} />
+            <ServiceStatusBadge status={status} />
           </View>
-          <InlineRow
-            label="Service Type"
-            value={
-              service.serviceMode === "business" ? "Business" : "Freelance"
-            }
-          />
+          <InlineRow label="Service Type" value={serviceTypeLabel(overview)} />
         </View>
 
-        {/* Service Category */}
+        {/* Service Category (read-only; fixed at create) */}
         <View style={styles.section}>
           <SectionHeader label="SERVICE CATEGORY" />
           <InlineRow
             label="Category"
-            value={service.subcategory?.category.name ?? "—"}
+            value={category?.category?.name ?? "—"}
           />
           <InlineRow
             label="Subcategory"
-            value={service.subcategory?.name ?? "—"}
+            value={category?.subcategory?.name ?? "—"}
           />
         </View>
 
@@ -246,7 +304,7 @@ export default function EditServiceScreen() {
             onPress={handleTapInformation}
             activeOpacity={0.7}
           >
-            <View style={[styles.navIcon]}>
+            <View style={styles.navIcon}>
               <ExpoImage
                 source={SECTION_ICONS["SERVICE INFORMATION"]}
                 style={styles.sectionIcon}
@@ -270,7 +328,7 @@ export default function EditServiceScreen() {
             onPress={handleTapPricing}
             activeOpacity={0.7}
           >
-            <View style={[styles.navIcon]}>
+            <View style={styles.navIcon}>
               <ExpoImage
                 source={SECTION_ICONS["PRICING"]}
                 style={styles.sectionIcon}
@@ -278,7 +336,7 @@ export default function EditServiceScreen() {
             </View>
             <View style={styles.navRowContent}>
               <Text style={styles.navRowLabel}>Pricing</Text>
-              <Text style={styles.navRowSub}>Base rate and add-ons</Text>
+              <Text style={styles.navRowSub}>Pricing type, rate and unit</Text>
             </View>
             <MaterialIcons
               name="chevron-right"
@@ -287,7 +345,6 @@ export default function EditServiceScreen() {
             />
           </TouchableOpacity>
         </View>
-
       </ScrollView>
 
       <ConfirmModal
@@ -301,6 +358,15 @@ export default function EditServiceScreen() {
           fn?.();
         }}
       />
+
+      <ConfirmModal
+        visible={resultModal !== null}
+        type="error"
+        title={resultModal?.title ?? ""}
+        message={resultModal?.message ?? ""}
+        confirmLabel="OK"
+        onConfirm={() => setResultModal(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -311,11 +377,18 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   loader: { flex: 1 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    paddingHorizontal: 32,
+  },
   errorText: {
     textAlign: "center",
-    marginTop: 40,
     color: neutral[400],
     fontSize: 14,
+    lineHeight: 20,
   },
 
   // Scroll
@@ -372,6 +445,8 @@ const styles = StyleSheet.create({
   inlineValue: {
     fontSize: 12,
     color: neutral[700],
+    flexShrink: 1,
+    textAlign: "right",
   },
 
   // Toggle
@@ -380,9 +455,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 16,
-  },
-  toggleRowDisabled: {
-    opacity: 0.5,
   },
   toggleLabelGroup: {
     flex: 1,
@@ -417,9 +489,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // navIconTeal: { backgroundColor: primary[50] },
-  // navIconRed: { backgroundColor: "#fdecea" },
-  // navIconImg: { width: 22, height: 22 },
   navRowContent: {
     flex: 1,
     gap: 2,
@@ -433,5 +502,4 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: neutral[400],
   },
-  // Confirmation modal
 });

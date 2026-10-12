@@ -22,9 +22,10 @@ export const CUSTOMER_LOCATION_CODE = "customer_location";
 /**
  * Fulfillment codes for which the provider's default address is shown. The
  * template's own `visible_when` only names `provider_location` and
- * `pickup_delivery` (where the backend snapshots the address), but the backend
- * also centres the `customer_location` service radius on that address, so the
- * provider should see it there too.
+ * `pickup_delivery`, where the backend snapshots the address onto the service.
+ * For `customer_location` nothing is stored (address_id stays null); the
+ * backend centres the service radius on the provider's live default address at
+ * match time (confirmed with the backend team), so the provider sees it there too.
  */
 export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
   "provider_location",

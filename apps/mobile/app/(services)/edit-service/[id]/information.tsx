@@ -7,6 +7,7 @@ import {
 import {
   deleteServiceFile,
   getServiceInformation,
+  getServicePricing,
   updateServiceInformation,
   type ProviderPublishability,
   type ServiceInformationCurrentValues,
@@ -29,7 +30,9 @@ import {
   asTemplate,
   buildInformationFormData,
   findFieldBySubmitKey,
+  isPricingStepField,
   valuesFromCurrent,
+  valuesFromPricing,
   type FormTemplate,
   type FormValues,
   type TemplateField,
@@ -59,9 +62,14 @@ interface LoadedInformation {
   publishability: ProviderPublishability | null;
 }
 
-/** The acknowledgement is accepted at create and never resubmitted, so it is not shown. */
-function isEditableField(field: TemplateField): boolean {
-  return field.field_key !== ACKNOWLEDGEMENT_KEY;
+/**
+ * The acknowledgement is accepted at create and never resubmitted. The business
+ * format and the fields that depend on it or on pricing are edited on the
+ * pricing screen, since changing the format changes the pricing rules. Their
+ * stored values are still submitted here, unchanged.
+ */
+function isEditableField(field: TemplateField, template: FormTemplate): boolean {
+  return field.field_key !== ACKNOWLEDGEMENT_KEY && !isPricingStepField(field, template);
 }
 
 /**
@@ -130,13 +138,21 @@ export default function EditServiceInformationScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getServiceInformation(serviceId);
+      const [data, pricing] = await Promise.all([
+        getServiceInformation(serviceId),
+        // Pricing is not edited here, but capability fields such as session
+        // duration are shown/required based on the saved pricing type and unit.
+        getServicePricing(serviceId).catch(() => null),
+      ]);
       if (!data.template) {
         throw new ApiError("The service form could not be loaded.", 422);
       }
       const template = withoutPricing(asTemplate(data.template));
       const current = data.current_values ?? {};
-      const values = valuesFromCurrent(template, current);
+      const values = {
+        ...valuesFromCurrent(template, current),
+        ...(pricing ? valuesFromPricing(pricing) : {}),
+      };
       // Keeps the hidden acknowledgement valid; it is dropped from the payload.
       values[ACKNOWLEDGEMENT_KEY] = current.information_accuracy_acknowledgement ?? true;
 
@@ -314,7 +330,8 @@ export default function EditServiceInformationScreen() {
 
   async function handleSave() {
     if (!loaded || saving) return;
-    if (form.validateAll() !== -1) {
+    const editable = form.visible.filter((f) => isEditableField(f, loaded.template));
+    if (!form.validateFields(editable)) {
       showFieldErrors("Some details need attention", { sectionIndex: -1, general: [] });
       return;
     }
@@ -377,7 +394,7 @@ export default function EditServiceInformationScreen() {
 
   const { template } = loaded;
   const sections = form.sections;
-  const unsectioned = form.unsectionedFields.filter(isEditableField);
+  const unsectioned = form.unsectionedFields.filter((f) => isEditableField(f, template));
   const hasErrors = Object.keys(form.errors).length > 0;
 
   return (
@@ -405,7 +422,7 @@ export default function EditServiceInformationScreen() {
           ) : null}
 
           {sections.map((section, index) => {
-            const fields = form.fieldsForSection(section).filter(isEditableField);
+            const fields = form.fieldsForSection(section).filter((f) => isEditableField(f, template));
             // Fields the template left outside any section join the last one.
             const all = index === sections.length - 1 ? [...fields, ...unsectioned] : fields;
             if (!all.length) return null;

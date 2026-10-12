@@ -193,27 +193,39 @@ function sectionsFromTemplate(template: FormTemplate): DetailSection[] {
 // Value formatting
 // ---------------------------------------------------------------------------
 
-function formatPricing(pricing: ServicePricingData | undefined): string {
-  if (!pricing) return "—";
-  const unit = pricing.price_unit?.label;
-  if (pricing.pricing_type === "quote_required" || pricing.amount == null) {
-    return unit ? `Quote required · ${unit}` : "Quote required";
-  }
+/** "$50.00 per hour", or null when no amount is stored. */
+function formatAmount(pricing: ServicePricingData): string | null {
+  if (pricing.amount == null || pricing.amount === "") return null;
   const amount = parseFloat(pricing.amount);
+  if (Number.isNaN(amount)) return null;
   const money = pricing.currency
     ? new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: pricing.currency,
       }).format(amount)
     : amount.toFixed(2);
+  const unit = pricing.price_unit?.label;
   return unit ? `${money} ${unit.toLowerCase()}` : money;
 }
 
 function pricingRows(
   pricing: ServicePricingData | undefined,
 ): { label: string; value: string }[] {
-  const rows = [{ label: "Base Rate", value: formatPricing(pricing) }];
-  if (pricing?.profile_pricing_scope) {
+  if (!pricing) return [{ label: "Base Rate", value: "—" }];
+  const amount = formatAmount(pricing);
+  const rows: { label: string; value: string }[] = [];
+  if (pricing.pricing_type === "quote_required") {
+    // Quote-required services may store a reference price; show it alongside.
+    const unit = pricing.price_unit?.label;
+    rows.push({
+      label: "Pricing",
+      value: unit ? `Quote required · ${unit}` : "Quote required",
+    });
+    if (amount) rows.push({ label: "Base Price", value: amount });
+  } else {
+    rows.push({ label: "Base Rate", value: amount ?? "—" });
+  }
+  if (pricing.profile_pricing_scope) {
     rows.push({
       label: "Applies To",
       value:

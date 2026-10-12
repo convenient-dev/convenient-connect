@@ -82,6 +82,8 @@ export function valuesFromPricing(record: ServicePricingRecord): FormValues {
   if (isPresent(record.price_unit_id)) {
     values[PRICING_VALUE_KEYS.priceUnitId] = record.price_unit_id;
   }
+  const unitCode = (record.price_unit as { code?: string | null } | null | undefined)?.code;
+  if (unitCode) values[PRICING_VALUE_KEYS.priceUnitCode] = unitCode;
   if (isPresent(record.profile_pricing_scope)) {
     values[PRICING_VALUE_KEYS.profilePricingScope] = record.profile_pricing_scope;
   }

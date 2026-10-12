@@ -264,4 +264,9 @@ export const PRICING_VALUE_KEYS = {
   priceUnitId: "price_unit_id",
   profilePricingScope: "profile_pricing_scope",
   chargeInUsd: "charge_in_usd",
+  /**
+   * Derived, never submitted: the saved unit's code, so templates without a
+   * pricing field (the information screen) can still resolve pricing context.
+   */
+  priceUnitCode: "price_unit_code",
 } as const;

@@ -336,7 +336,7 @@ export default function EditServiceScreen() {
             </View>
             <View style={styles.navRowContent}>
               <Text style={styles.navRowLabel}>Pricing</Text>
-              <Text style={styles.navRowSub}>Pricing type, rate and unit</Text>
+              <Text style={styles.navRowSub}>Service format, pricing type, rate and unit</Text>
             </View>
             <MaterialIcons
               name="chevron-right"

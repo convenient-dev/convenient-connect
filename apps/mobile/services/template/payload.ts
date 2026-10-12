@@ -85,6 +85,20 @@ function isBlank(value: unknown): boolean {
 }
 
 /**
+ * Edit endpoints keep a value that is omitted, so a text field the provider
+ * cleared must be sent as "" to clear it (Laravel reads "" as null). Blank
+ * values that were never set stay omitted; create never needs to clear.
+ */
+function isClearedText(field: TemplateField, value: unknown, mode: Mode): boolean {
+  return (
+    mode !== "create" &&
+    (field.field_type === "text" || field.field_type === "textarea") &&
+    typeof value === "string" &&
+    value.trim() === ""
+  );
+}
+
+/**
  * Number controls hold the typed text; `answers_json` is sent as JSON, so the
  * value must be converted to match the integer/number contract. Unparseable
  * text is left as-is for the backend to reject.
@@ -178,6 +192,7 @@ export function buildPayload(
         const key = submit.key ?? field.field_key;
         if (mode !== "create" && key === ACKNOWLEDGEMENT_KEY) break;
         if (!isBlank(value)) entries[key] = value as MultipartEntries[string];
+        else if (isClearedText(field, value, mode)) entries[key] = "";
         if (field.unit_value_key && !isBlank(values[field.unit_value_key])) {
           entries[field.unit_value_key] = values[field.unit_value_key] as string;
         }
@@ -187,6 +202,7 @@ export function buildPayload(
       case "answers_json": {
         const key = submit.key ?? field.field_key;
         if (!isBlank(value)) answers[key] = answerValue(field, value);
+        else if (isClearedText(field, value, mode)) answers[key] = "";
         const customKey = otherCustomKey(field);
         if (customKey && isOtherSelected(field, value) && !isBlank(values[customKey])) {
           answers[customKey] = values[customKey];

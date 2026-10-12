@@ -2,7 +2,7 @@ import { ApiError, isCommercialPublishabilityError } from "@/api/client";
 import {
   getServiceInformation,
   getServicePricing,
-  updateServicePricing,
+  saveServiceCandidate,
   type ServicePricingRecord,
 } from "@/api/service-management";
 import { Button } from "@/components/Button";
@@ -18,7 +18,8 @@ import {
 } from "@/hooks/use-template-form";
 import {
   asTemplate,
-  buildPricingBody,
+  buildCandidateFormData,
+  isPricingStepField,
   valuesFromCurrent,
   valuesFromPricing,
   type FormTemplate,
@@ -103,6 +104,10 @@ export default function EditServicePricingScreen() {
   });
 
   const pricingField = loaded?.template.fields.find((f) => f.field_type === "pricing");
+  // Pricing plus the business format and the fields that depend on either.
+  const stepFields = loaded
+    ? form.visible.filter((f) => isPricingStepField(f, loaded.template))
+    : [];
 
   function showFieldErrors(title: string, result: ServerErrorResult) {
     const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
@@ -112,16 +117,17 @@ export default function EditServicePricingScreen() {
 
   async function handleSave() {
     if (!loaded || !pricingField || saving) return;
-    if (!form.validateFields([pricingField])) {
+    if (!form.validateFields(stepFields)) {
       showFieldErrors("Some details need attention", { sectionIndex: -1, general: [] });
       return;
     }
-    const body = buildPricingBody(loaded.template, form.values);
-    if (!body) return;
     setSaving(true);
     form.clearGeneralErrors();
     try {
-      await updateServicePricing(serviceId, body);
+      // The pricing endpoint cannot change the business format, and a format
+      // change alters which pricing fields are valid, so the whole listing is
+      // re-saved in one transaction. Stored information values are re-sent as is.
+      await saveServiceCandidate(serviceId, buildCandidateFormData(loaded.template, form.values));
       setSavedModalVisible(true);
     } catch (error) {
       if (isCommercialPublishabilityError(error)) {
@@ -200,14 +206,17 @@ export default function EditServicePricingScreen() {
           ) : null}
 
           <View style={styles.card}>
-            <TemplateField
-              field={pricingField}
-              template={loaded.template}
-              values={form.values}
-              errors={form.errors}
-              required={form.isRequired(pricingField)}
-              setValue={form.setValue}
-            />
+            {stepFields.map((field) => (
+              <TemplateField
+                key={field.field_key}
+                field={field}
+                template={loaded.template}
+                values={form.values}
+                errors={form.errors}
+                required={form.isRequired(field)}
+                setValue={form.setValue}
+              />
+            ))}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

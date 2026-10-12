@@ -10,6 +10,7 @@ import {
   type FieldOption,
   type FormTemplate,
   type FormValues,
+  type Predicate,
   type PricingType,
   type TemplateField,
 } from "./types";
@@ -32,6 +33,41 @@ export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
   "pickup_delivery",
   CUSTOMER_LOCATION_CODE,
 ];
+
+/** Context keys set by the pricing control. */
+const PRICING_CONTEXT_KEYS = ["pricing_type", "price_unit", "price_unit_code", "price_unit_id"];
+
+function predicateDependsOn(
+  predicate: Predicate | null | undefined,
+  formatKey: string | undefined,
+): boolean {
+  if (!predicate) return false;
+  const subject = predicate.field_key ?? predicate.field;
+  if (formatKey && subject === formatKey) return true;
+  if (predicate.context_key && PRICING_CONTEXT_KEYS.includes(predicate.context_key)) return true;
+  return (
+    (predicate.all ?? []).some((p) => predicateDependsOn(p, formatKey)) ||
+    (predicate.any ?? []).some((p) => predicateDependsOn(p, formatKey)) ||
+    predicateDependsOn(predicate.not, formatKey)
+  );
+}
+
+/**
+ * Fields edited together with pricing: the pricing control, the business
+ * format selector, and every field whose applicability depends on the format
+ * or on the pricing type/unit. Changing the format changes which pricing
+ * rules apply (e.g. profile pricing scope), so these are saved in one
+ * transaction through the candidate endpoint rather than from the
+ * information screen.
+ */
+export function isPricingStepField(field: TemplateField, template: FormTemplate): boolean {
+  if (field.field_type === "pricing") return true;
+  const formatKey = template.provider_listing_capability?.business_format?.field_key;
+  if (formatKey && field.field_key === formatKey) return true;
+  return [field.visible_when, field.required_when, field.prohibited_when].some((p) =>
+    predicateDependsOn(p, formatKey),
+  );
+}
 
 /** The display-only field that mirrors the provider's default address. */
 export function isProviderAddressField(field: TemplateField): boolean {
@@ -82,7 +118,13 @@ export function selectedPriceUnitCode(
   const pricingField = template.fields.find((f) => f.field_type === "pricing");
   const unitId = values[PRICING_VALUE_KEYS.priceUnitId];
   if (unitId === null || unitId === undefined) return null;
-  const unit = pricingField?.price_units?.find(
+  if (!pricingField) {
+    // Information template: no pricing field to map the id, so use the code
+    // seeded from the saved pricing record.
+    const code = values[PRICING_VALUE_KEYS.priceUnitCode];
+    return typeof code === "string" && code ? code : null;
+  }
+  const unit = pricingField.price_units?.find(
     (option) => String(option.value) === String(unitId),
   );
   return unit?.code ?? null;

@@ -285,15 +285,6 @@ export default function EditServiceInformationScreen() {
     }
   }
 
-  function handleRestoreExisting(field: TemplateField, file: ExistingFile) {
-    const fileId = Number(file.key);
-    if (field.submit_as?.type === "certificate_bundle") {
-      setRemovedCertificateIds((prev) => prev.filter((id) => id !== fileId));
-    } else {
-      setRemovedPortfolioIds((prev) => prev.filter((id) => id !== fileId));
-    }
-  }
-
   async function confirmDynamicDelete() {
     const target = pendingDynamicDelete;
     setPendingDynamicDelete(null);
@@ -441,7 +432,6 @@ export default function EditServiceInformationScreen() {
                   onChangeAddress={goToAddAddress}
                   existingFiles={existingFiles}
                   onRemoveExistingFile={handleRemoveExisting}
-                  onRestoreExistingFile={handleRestoreExisting}
                 />
               </View>
             );
@@ -462,7 +452,6 @@ export default function EditServiceInformationScreen() {
                 onChangeAddress={goToAddAddress}
                 existingFiles={existingFiles}
                 onRemoveExistingFile={handleRemoveExisting}
-                onRestoreExistingFile={handleRestoreExisting}
               />
             </View>
           ) : null}

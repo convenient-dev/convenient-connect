@@ -35,7 +35,7 @@ export interface ExistingFile {
   key: string;
   url: string;
   name?: string | null;
-  /** Marked for deletion on save; shown dimmed with an Undo action. */
+  /** Marked for deletion on save; no longer shown. */
   removed?: boolean;
 }
 
@@ -43,7 +43,6 @@ export interface ExistingFilesProps {
   /** Stored files per `field_key`. */
   existingFiles?: Record<string, ExistingFile[]>;
   onRemoveExistingFile?: (field: TemplateField, file: ExistingFile) => void;
-  onRestoreExistingFile?: (field: TemplateField, file: ExistingFile) => void;
 }
 
 export interface ControlProps extends ExistingFilesProps {
@@ -346,19 +345,11 @@ export function YesNoControl({ field, values, errors, required, setValue }: Cont
 
 // ---------------------------------------------------------------------------
 
-function ExistingThumb({
-  file,
-  onRemove,
-  onRestore,
-}: {
-  file: ExistingFile;
-  onRemove?: () => void;
-  onRestore?: () => void;
-}) {
+function ExistingThumb({ file, onRemove }: { file: ExistingFile; onRemove?: () => void }) {
   const image = isImageUrl(file.url);
   const name = file.name ?? fileNameFromUrl(file.url);
   return (
-    <View style={[s.thumbWrap, file.removed ? s.thumbRemoved : null]}>
+    <View style={s.thumbWrap}>
       {image ? (
         <ExpoImage source={{ uri: file.url }} style={s.imageThumb} contentFit="cover" />
       ) : (
@@ -366,7 +357,6 @@ function ExistingThumb({
           style={s.docThumb}
           onPress={() => WebBrowser.openBrowserAsync(file.url)}
           activeOpacity={0.7}
-          disabled={file.removed}
         >
           <Feather name="file-text" size={20} color={neutral[400]} />
           <Text style={s.docThumbName} numberOfLines={2}>
@@ -374,11 +364,7 @@ function ExistingThumb({
           </Text>
         </TouchableOpacity>
       )}
-      {file.removed ? (
-        <TouchableOpacity style={s.thumbUndo} onPress={onRestore} activeOpacity={0.7}>
-          <Text style={s.thumbUndoText}>Undo</Text>
-        </TouchableOpacity>
-      ) : onRemove ? (
+      {onRemove ? (
         <TouchableOpacity style={s.thumbRemove} onPress={onRemove} activeOpacity={0.7}>
           <Feather name="x" size={12} color={neutral[0]} />
         </TouchableOpacity>
@@ -395,7 +381,6 @@ function FileThumbs({
   canAdd,
   existing = [],
   onRemoveExisting,
-  onRestoreExisting,
 }: {
   files: MultipartFile[];
   isImage: boolean;
@@ -404,18 +389,18 @@ function FileThumbs({
   canAdd: boolean;
   existing?: ExistingFile[];
   onRemoveExisting?: (file: ExistingFile) => void;
-  onRestoreExisting?: (file: ExistingFile) => void;
 }) {
   return (
     <View style={s.fileRow}>
-      {existing.map((file) => (
-        <ExistingThumb
-          key={file.key}
-          file={file}
-          onRemove={onRemoveExisting ? () => onRemoveExisting(file) : undefined}
-          onRestore={onRestoreExisting ? () => onRestoreExisting(file) : undefined}
-        />
-      ))}
+      {existing
+        .filter((file) => !file.removed)
+        .map((file) => (
+          <ExistingThumb
+            key={file.key}
+            file={file}
+            onRemove={onRemoveExisting ? () => onRemoveExisting(file) : undefined}
+          />
+        ))}
       {files.map((file, index) => (
         <View key={`${file.uri}-${index}`} style={s.thumbWrap}>
           {isImage ? (
@@ -445,7 +430,7 @@ function FileThumbs({
 
 /** Stored files for a field and how many of them are still kept. */
 function useExistingFiles(props: ControlProps) {
-  const { field, existingFiles, onRemoveExistingFile, onRestoreExistingFile } = props;
+  const { field, existingFiles, onRemoveExistingFile } = props;
   const existing = existingFiles?.[field.field_key] ?? [];
   const kept = existing.filter((file) => !file.removed).length;
   return {
@@ -453,9 +438,6 @@ function useExistingFiles(props: ControlProps) {
     kept,
     onRemoveExisting: onRemoveExistingFile
       ? (file: ExistingFile) => onRemoveExistingFile(field, file)
-      : undefined,
-    onRestoreExisting: onRestoreExistingFile
-      ? (file: ExistingFile) => onRestoreExistingFile(field, file)
       : undefined,
   };
 }
@@ -469,7 +451,7 @@ export function FileUploadControl(props: ControlProps) {
   const max = field.maximum_files ?? (field.multiple === false ? 1 : 10);
   const isImage = acceptsOnlyImages(field.allowed_file_types);
   const error = errors[field.field_key];
-  const { existing, kept, onRemoveExisting, onRestoreExisting } = useExistingFiles(props);
+  const { existing, kept, onRemoveExisting } = useExistingFiles(props);
   const remaining = max - kept - files.length;
 
   async function add() {
@@ -489,7 +471,6 @@ export function FileUploadControl(props: ControlProps) {
         }
         existing={existing}
         onRemoveExisting={onRemoveExisting}
-        onRestoreExisting={onRestoreExisting}
       />
     </FieldShell>
   );
@@ -502,7 +483,7 @@ export function CertificateBundleControl(props: ControlProps) {
   const files = bundle.files ?? [];
   const max = field.maximum_files ?? 10;
   const error = errors[field.field_key];
-  const { existing, kept, onRemoveExisting, onRestoreExisting } = useExistingFiles(props);
+  const { existing, kept, onRemoveExisting } = useExistingFiles(props);
   const remaining = max - kept - files.length;
 
   function update(patch: Partial<CertificateBundleValue>) {
@@ -531,7 +512,6 @@ export function CertificateBundleControl(props: ControlProps) {
         onRemove={(index) => update({ files: files.filter((_, i) => i !== index) })}
         existing={existing}
         onRemoveExisting={onRemoveExisting}
-        onRestoreExisting={onRestoreExisting}
       />
     </FieldShell>
   );

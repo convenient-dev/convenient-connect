@@ -43,7 +43,6 @@ export function TemplateSection({
   hideTitle = false,
   existingFiles,
   onRemoveExistingFile,
-  onRestoreExistingFile,
 }: Props) {
   if (fields.length === 0) return null;
   return (
@@ -68,7 +67,6 @@ export function TemplateSection({
           onChangeAddress={onChangeAddress}
           existingFiles={existingFiles}
           onRemoveExistingFile={onRemoveExistingFile}
-          onRestoreExistingFile={onRestoreExistingFile}
         />
       ))}
     </View>

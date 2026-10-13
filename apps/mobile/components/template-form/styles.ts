@@ -263,25 +263,6 @@ export const formStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  thumbRemoved: {
-    opacity: 0.45,
-  },
-  thumbUndo: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingVertical: 4,
-    backgroundColor: overlay.dark,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    alignItems: "center",
-  },
-  thumbUndoText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: neutral[0],
-  },
   // Pricing
   amountRow: {
     flexDirection: "row",

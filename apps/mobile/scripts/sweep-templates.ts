@@ -1,16 +1,14 @@
 /**
  * Template sweep: pulls GET /service-provider/service-form-template for every
- * subcategory on the configured Laravel API and runs each payload through the
+ * category/subcategory on the configured Laravel API as an individual provider
+ * (provider_type=individual, no business_id) and runs each payload through the
  * same engine the create-service form uses, reporting anything the app would
- * render wrongly or silently drop.
+ * render wrongly or silently drop. Business create forms are not swept.
  *
  * Run from apps/mobile (no test runner in this repo):
  *   node -r sucrase/register/ts scripts/sweep-templates.ts [options]
  *
  * Options:
- *   --provider individual|business|both   templates to request (default: individual;
- *                                         business needs --business-id)
- *   --business-id <id>                    owned business id for business templates
  *   --only <substring>                    only subcategories whose name/id contains this
  *   --save-dir <dir>                      write each raw template JSON into <dir>
  *   --json <file>                         write the findings report as JSON
@@ -23,6 +21,7 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   asTemplate,
+  allowedFulfillmentOptions,
   buildCreateFormData,
   buildEvaluationContext,
   evaluatePredicate,
@@ -63,8 +62,6 @@ const env = (key: string) => process.env[key] ?? fileEnv[key];
 
 function parseArgs(argv: string[]) {
   const args = {
-    provider: "individual" as "individual" | "business" | "both",
-    businessId: undefined as number | undefined,
     only: undefined as string | undefined,
     saveDir: undefined as string | undefined,
     json: undefined as string | undefined,
@@ -73,9 +70,7 @@ function parseArgs(argv: string[]) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
-    if (a === "--provider") args.provider = next() as typeof args.provider;
-    else if (a === "--business-id") args.businessId = Number(next());
-    else if (a === "--only") args.only = next()?.toLowerCase();
+    if (a === "--only") args.only = next()?.toLowerCase();
     else if (a === "--save-dir") args.saveDir = next();
     else if (a === "--json") args.json = next();
     else if (a === "--verbose") args.verbose = true;
@@ -86,14 +81,6 @@ function parseArgs(argv: string[]) {
       console.error(`Unknown argument: ${a}`);
       process.exit(2);
     }
-  }
-  if (!["individual", "business", "both"].includes(args.provider)) {
-    console.error("--provider must be individual, business or both");
-    process.exit(2);
-  }
-  if (args.provider !== "individual" && !args.businessId) {
-    console.error("--business-id is required for business templates");
-    process.exit(2);
   }
   return args;
 }
@@ -172,7 +159,7 @@ const KNOWN_OPERATORS = new Set([
 ]);
 // Mirrors buildEvaluationContext in services/template/visibility.ts.
 const KNOWN_CONTEXT_KEYS = new Set([
-  "pricing_type", "price_unit", "price_unit_code", "price_unit_id", "fulfillment_types", "business_format", "format",
+  "pricing_type", "price_unit", "price_unit_code", "price_unit_id", "fulfillment_types", "fulfillment_type_codes", "fulfillment_type_code", "business_format", "format",
   "provider_type", "business_id", "can_charge_in_usd", "is_usd_currency", "default_currency",
 ]);
 const PRICING_KEYS = new Set<string>(Object.values(PRICING_VALUE_KEYS));
@@ -208,7 +195,7 @@ function seedDefaults(template: FormTemplate): FormValues {
 function checkTemplate(
   template: FormTemplate,
   report: Report,
-  identity: { categoryId: number; subcategoryId: number; providerType: "individual" | "business"; businessId?: number },
+  identity: { categoryId: number; subcategoryId: number; providerType: "individual" },
 ): { visibleEver: string[] } {
   const fields = template.fields ?? [];
   const byKey = new Map(fields.map((f) => [f.field_key, f]));
@@ -556,6 +543,22 @@ function checkTemplate(
     for (const o of f.options ?? []) simulate({ ...defaults, [f.field_key]: [o.value] });
   }
 
+  // Options the control actually offers before any input (what the user sees).
+  if (ff && capability) {
+    const offered = new Set(allowedFulfillmentOptions(template, defaults).map((o) => o.code));
+    const capAll = new Set<string>();
+    for (const fk of formatKeys) {
+      const fmt = formats[fk];
+      (fmt.fulfillment ?? []).forEach((c) => capAll.add(c));
+      const byUnit = Array.isArray(fmt.fulfillment_by_price_unit) ? {} : fmt.fulfillment_by_price_unit ?? {};
+      Object.values(byUnit).forEach((codes) => codes.forEach((c) => capAll.add(c)));
+    }
+    const hidden = (ff.options ?? []).filter((o) => o.code && capAll.has(o.code) && !offered.has(o.code));
+    if (hidden.length) {
+      report.error("fulfillment", `the control offers only ${[...offered].join(", ") || "(nothing)"} before any input; ${hidden.map((o) => o.code).join(", ")} are allowed by the capability but never selectable`);
+    }
+  }
+
   const never = fields.filter((f) => !visibleEver.has(f.field_key));
   for (const f of never) {
     const prohibitedByDesign = f.requiredness === "prohibited";
@@ -586,7 +589,7 @@ interface Result {
   categoryId: number;
   subcategory: string;
   subcategoryId: number;
-  providerType: "individual" | "business";
+  providerType: "individual";
   alias?: string;
   fetchError?: string;
   findings: Finding[];
@@ -596,66 +599,59 @@ interface Result {
 
 async function main() {
   console.log(`Base URL: ${BASE_URL}`);
-  const businessId = ARGS.businessId;
-  const providerTypes: ("individual" | "business")[] =
-    ARGS.provider === "both" ? ["individual", "business"] : [ARGS.provider];
+  const providerType = "individual" as const;
 
   const results: Result[] = [];
-  for (const providerType of providerTypes) {
-    const listBiz = providerType === "business" ? businessId : undefined;
-    const categories = await api<CategoryItem[]>("/service-provider/services/categories", { business_id: listBiz });
-    console.log(`\n[${providerType}] ${categories.length} categories`);
-    for (const cat of categories) {
-      const subs = await api<SubcategoryItem[]>(`/service-provider/services/categories/${cat.category_id}/subcategories`, { business_id: listBiz });
-      for (const sub of subs) {
-        const label = `${cat.category_name} / ${sub.sub_category_name}`;
-        if (ARGS.only && !label.toLowerCase().includes(ARGS.only) && String(sub.sub_category_id) !== ARGS.only) continue;
-        const result: Result = {
-          category: cat.category_name,
+  const categories = await api<CategoryItem[]>("/service-provider/services/categories");
+  console.log(`\n[${providerType}] ${categories.length} categories`);
+  for (const cat of categories) {
+    const subs = await api<SubcategoryItem[]>(`/service-provider/services/categories/${cat.category_id}/subcategories`);
+    for (const sub of subs) {
+      const label = `${cat.category_name} / ${sub.sub_category_name}`;
+      if (ARGS.only && !label.toLowerCase().includes(ARGS.only) && String(sub.sub_category_id) !== ARGS.only) continue;
+      const result: Result = {
+        category: cat.category_name,
+        categoryId: cat.category_id,
+        subcategory: sub.sub_category_name,
+        subcategoryId: sub.sub_category_id,
+        providerType,
+        alias: sub.capability?.is_alias ? `${sub.capability.source_key} -> ${sub.capability.canonical_owner_key}` : undefined,
+        findings: [],
+      };
+      results.push(result);
+      const report = new Report();
+      try {
+        const raw = await api<any>("/service-provider/service-form-template", {
+          category_id: cat.category_id,
+          subcategory_id: sub.sub_category_id,
+          provider_type: providerType,
+        });
+        if (ARGS.saveDir) {
+          fs.mkdirSync(ARGS.saveDir, { recursive: true });
+          const slug = `${cat.category_id}-${sub.sub_category_id}-${providerType}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+          fs.writeFileSync(path.join(ARGS.saveDir, `${slug}.json`), JSON.stringify(raw, null, 2));
+        }
+        const template = asTemplate(raw);
+        result.fieldCount = template.fields?.length ?? 0;
+        result.sectionCount = template.sections?.length ?? 0;
+        checkTemplate(template, report, {
           categoryId: cat.category_id,
-          subcategory: sub.sub_category_name,
           subcategoryId: sub.sub_category_id,
           providerType,
-          alias: sub.capability?.is_alias ? `${sub.capability.source_key} -> ${sub.capability.canonical_owner_key}` : undefined,
-          findings: [],
-        };
-        results.push(result);
-        const report = new Report();
-        try {
-          const raw = await api<any>("/service-provider/service-form-template", {
-            category_id: cat.category_id,
-            subcategory_id: sub.sub_category_id,
-            provider_type: providerType,
-            business_id: providerType === "business" ? businessId : undefined,
-          });
-          if (ARGS.saveDir) {
-            fs.mkdirSync(ARGS.saveDir, { recursive: true });
-            const slug = `${cat.category_id}-${sub.sub_category_id}-${providerType}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-            fs.writeFileSync(path.join(ARGS.saveDir, `${slug}.json`), JSON.stringify(raw, null, 2));
-          }
-          const template = asTemplate(raw);
-          result.fieldCount = template.fields?.length ?? 0;
-          result.sectionCount = template.sections?.length ?? 0;
-          checkTemplate(template, report, {
-            categoryId: cat.category_id,
-            subcategoryId: sub.sub_category_id,
-            providerType,
-            businessId: providerType === "business" ? businessId : undefined,
-          });
-        } catch (e) {
-          result.fetchError = (e as Error).message;
-          report.error("fetch", result.fetchError);
-        }
-        result.findings = report.findings;
+        });
+      } catch (e) {
+        result.fetchError = (e as Error).message;
+        report.error("fetch", result.fetchError);
+      }
+      result.findings = report.findings;
 
-        const errors = report.count("ERROR");
-        const warns = report.count("WARN");
-        const status = errors ? "ERROR" : warns ? "WARN " : "OK   ";
-        console.log(`\n${status} ${label}${result.alias ? `  [alias ${result.alias}]` : ""}  (id ${sub.sub_category_id}, ${result.fieldCount ?? 0} fields, ${result.sectionCount ?? 0} sections)`);
-        for (const f of report.findings) {
-          if (f.level === "INFO" && !ARGS.verbose) continue;
-          console.log(`   ${f.level.padEnd(5)} [${f.check}] ${f.message}`);
-        }
+      const errors = report.count("ERROR");
+      const warns = report.count("WARN");
+      const status = errors ? "ERROR" : warns ? "WARN " : "OK   ";
+      console.log(`\n${status} ${label}${result.alias ? `  [alias ${result.alias}]` : ""}  (id ${sub.sub_category_id}, ${result.fieldCount ?? 0} fields, ${result.sectionCount ?? 0} sections)`);
+      for (const f of report.findings) {
+        if (f.level === "INFO" && !ARGS.verbose) continue;
+        console.log(`   ${f.level.padEnd(5)} [${f.check}] ${f.message}`);
       }
     }
   }

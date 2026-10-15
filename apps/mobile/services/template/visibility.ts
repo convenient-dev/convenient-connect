@@ -169,6 +169,10 @@ export function buildEvaluationContext(
     price_unit_code: priceUnitCode,
     price_unit_id: values[PRICING_VALUE_KEYS.priceUnitId],
     fulfillment_types: fulfillmentCodes,
+    // Names from the PublicDescriptorPredicate contract: the Provider array
+    // (`fulfillment_type_codes`, used by Laundry) and the singular form.
+    fulfillment_type_codes: fulfillmentCodes,
+    fulfillment_type_code: fulfillmentCodes[0] ?? null,
     business_format: businessFormatValue,
     format: resolveActiveFormatKey(capability, {
       businessFormatValue,
@@ -224,14 +228,43 @@ export function isFieldVisible(
   }
 
   if (submitKey === FULFILLMENT_SUBMIT_KEY && capability) {
-    const formatKey = ctx.context.format as string | null;
-    const format = getFormat(capability, formatKey);
-    if (format && allowedFulfillmentCodes(format, selectedPriceUnitCode(template, values)).length === 0) {
-      return false;
-    }
+    const codes = selectableFulfillmentCodes(template, values, ctx);
+    if (codes !== null && codes.length === 0) return false;
   }
 
   return true;
+}
+
+/**
+ * Fulfillment codes the provider may pick right now, or null when the
+ * capability imposes no limit.
+ *
+ * With a `business_format` selector the chosen format decides. Without one
+ * the format is derived from the fulfillment selection itself (Laundry keys
+ * its formats by fulfillment code), so limiting the options to the current
+ * format would lock in whichever format resolved first; offer the union of
+ * every format's codes instead.
+ */
+export function selectableFulfillmentCodes(
+  template: FormTemplate,
+  values: FormValues,
+  ctx: EvaluationContext = buildEvaluationContext(template, values),
+): string[] | null {
+  const capability = template.provider_listing_capability;
+  if (!capability) return null;
+  const unitCode = selectedPriceUnitCode(template, values);
+  if (!capability.business_format) {
+    const formats = Object.values(capability.formats ?? {});
+    if (formats.length === 0) return null;
+    const union = new Set<string>();
+    for (const format of formats) {
+      for (const code of allowedFulfillmentCodes(format, unitCode)) union.add(code);
+    }
+    return [...union];
+  }
+  const format = getFormat(capability, ctx.context.format as string | null);
+  if (!format) return null;
+  return allowedFulfillmentCodes(format, unitCode);
 }
 
 /** Whether a field must have a value: `is_required` or `required_when` holds. */
@@ -268,14 +301,7 @@ export function allowedFulfillmentOptions(
 ): FieldOption[] {
   const field = findFieldBySubmitKey(template, FULFILLMENT_SUBMIT_KEY);
   const options = field?.options ?? [];
-  const capability = template.provider_listing_capability;
-  if (!capability) return options;
-  const ctx = buildEvaluationContext(template, values);
-  const format = getFormat(capability, ctx.context.format as string | null);
-  if (!format) return options;
-  const allowed = allowedFulfillmentCodes(
-    format,
-    selectedPriceUnitCode(template, values),
-  );
+  const allowed = selectableFulfillmentCodes(template, values);
+  if (allowed === null) return options;
   return options.filter((option) => option.code && allowed.includes(option.code));
 }

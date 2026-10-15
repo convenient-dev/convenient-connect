@@ -1,0 +1,1528 @@
+{
+  "status": "Success",
+  "message": "Service form template fetched successfully.",
+  "data": {
+    "category": {
+      "id": 15,
+      "name": "Pet care"
+    },
+    "subcategory": {
+      "id": 98,
+      "category_id": 15,
+      "name": "Pet transport"
+    },
+    "currency_context": {
+      "provider_type": "individual",
+      "business_id": null,
+      "country_id": 233,
+      "default_currency": {
+        "code": "USD",
+        "symbol": "$"
+      },
+      "is_usd_currency": true,
+      "can_charge_in_usd": false
+    },
+    "resolved_template": {
+      "id": 120,
+      "template_chain": [1, 16, 120]
+    },
+    "sections": [
+      {
+        "section_key": "service_information",
+        "title": "Service Information",
+        "help_text": "Core listing identity, fulfillment, and location inputs.",
+        "display_order": 1,
+        "field_keys": [
+          "title",
+          "description",
+          "additional_information",
+          "tagline",
+          "information_accuracy_acknowledgement"
+        ]
+      },
+      {
+        "section_key": "fulfillment_location",
+        "title": "Fulfillment Location",
+        "help_text": null,
+        "display_order": 2,
+        "field_keys": ["address", "service_radius"]
+      },
+      {
+        "section_key": "portfolio",
+        "title": "Portfolio",
+        "help_text": "Portfolio images shown on the listing.",
+        "display_order": 3,
+        "field_keys": ["portfolio_images"]
+      },
+      {
+        "section_key": "certifications_licenses",
+        "title": "Certifications / Licenses",
+        "help_text": "Optional certification files sharing one description.",
+        "display_order": 4,
+        "field_keys": ["certificates"]
+      },
+      {
+        "section_key": "pricing",
+        "title": "Pricing",
+        "help_text": "Pricing type, amount, currency, and price unit.",
+        "display_order": 5,
+        "field_keys": ["pricing", "additional_pet_fee"]
+      }
+    ],
+    "fields": [
+      {
+        "field_key": "title",
+        "label": "Service Title",
+        "field_type": "text",
+        "field_scope": "generic",
+        "is_required": true,
+        "requiredness": "required",
+        "section": "Service Information",
+        "section_key": "service_information",
+        "submit_as": {
+          "type": "top_level",
+          "key": "title"
+        },
+        "placeholder": "Enter a clear and specific service title",
+        "help_text": "Use a short title that clearly describes the service you provide.",
+        "value_key": "title",
+        "validation": {
+          "data_type": "string",
+          "minimum_length": 3,
+          "maximum_length": 150
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "title",
+          "payload_path": "title",
+          "transport": {
+            "type": "top_level",
+            "key": "title"
+          },
+          "label": "Service Title",
+          "help_text": "Use a short title that clearly describes the service you provide.",
+          "control": "text",
+          "value_type": "string",
+          "step": "about",
+          "section": "service_information",
+          "group": "Service Information",
+          "display_order": 1,
+          "owner": "provider",
+          "requiredness": "required",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "string",
+            "minimum_length": 3,
+            "maximum_length": 150,
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "service_information",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "description",
+        "label": "Service Description",
+        "field_type": "textarea",
+        "field_scope": "generic",
+        "is_required": true,
+        "requiredness": "required",
+        "section": "Service Information",
+        "section_key": "service_information",
+        "submit_as": {
+          "type": "top_level",
+          "key": "description"
+        },
+        "placeholder": "Describe your service, what is included, and what customers can expect",
+        "help_text": "Provide a clear and complete description of the service.",
+        "value_key": "description",
+        "validation": {
+          "data_type": "string",
+          "minimum_length": 20,
+          "maximum_length": 5000
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "description",
+          "payload_path": "description",
+          "transport": {
+            "type": "top_level",
+            "key": "description"
+          },
+          "label": "Service Description",
+          "help_text": "Provide a clear and complete description of the service.",
+          "control": "textarea",
+          "value_type": "string",
+          "step": "about",
+          "section": "service_information",
+          "group": "Service Information",
+          "display_order": 2,
+          "owner": "provider",
+          "requiredness": "required",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "string",
+            "minimum_length": 20,
+            "maximum_length": 5000,
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "service_information",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "additional_information",
+        "label": "Additional information customer should know",
+        "field_type": "textarea",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Service Information",
+        "section_key": "service_information",
+        "submit_as": {
+          "type": "top_level",
+          "key": "additional_information"
+        },
+        "placeholder": "Add any additional details customers should know",
+        "help_text": "Include preparation instructions, limitations, requirements, or any other useful information.",
+        "value_key": "additional_information",
+        "validation": {
+          "data_type": "string",
+          "maximum_length": 3000,
+          "minimum_length": 0
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "additional_information",
+          "payload_path": "additional_information",
+          "transport": {
+            "type": "top_level",
+            "key": "additional_information"
+          },
+          "label": "Additional information customer should know",
+          "help_text": "Include preparation instructions, limitations, requirements, or any other useful information.",
+          "control": "textarea",
+          "value_type": "string",
+          "step": "about",
+          "section": "service_information",
+          "group": "Service Information",
+          "display_order": 3,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "string",
+            "maximum_length": 3000,
+            "minimum_length": 0,
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "service_information",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "tagline",
+        "label": "Your Tagline",
+        "field_type": "text",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Service Information",
+        "section_key": "service_information",
+        "submit_as": {
+          "type": "top_level",
+          "key": "tagline"
+        },
+        "placeholder": "Enter a short tagline for your service",
+        "help_text": "Write a short phrase that summarizes what makes your service valuable.",
+        "value_key": "tagline",
+        "validation": {
+          "data_type": "string",
+          "maximum_length": 150,
+          "minimum_length": 0
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "tagline",
+          "payload_path": "tagline",
+          "transport": {
+            "type": "top_level",
+            "key": "tagline"
+          },
+          "label": "Your Tagline",
+          "help_text": "Write a short phrase that summarizes what makes your service valuable.",
+          "control": "text",
+          "value_type": "string",
+          "step": "about",
+          "section": "service_information",
+          "group": "Service Information",
+          "display_order": 4,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "string",
+            "maximum_length": 150,
+            "minimum_length": 0,
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "service_information",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "information_accuracy_acknowledgement",
+        "label": "I confirm that the information provided is accurate. I acknowledge that providing false or misleading information may result in removal from the platform.",
+        "field_type": "yes_no",
+        "field_scope": "generic",
+        "is_required": true,
+        "requiredness": "required",
+        "section": "Service Information",
+        "section_key": "service_information",
+        "submit_as": {
+          "type": "top_level",
+          "key": "information_accuracy_acknowledgement"
+        },
+        "placeholder": "Confirm the accuracy of your service information",
+        "help_text": "You must accept this confirmation before submitting the service.",
+        "value_key": "information_accuracy_acknowledgement",
+        "options": [
+          {
+            "label": "Yes",
+            "value": true
+          },
+          {
+            "label": "No",
+            "value": false
+          }
+        ],
+        "validation": {
+          "accepted_value": true,
+          "allowed_values": [true, false]
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "information_accuracy_acknowledgement",
+          "payload_path": "information_accuracy_acknowledgement",
+          "transport": {
+            "type": "top_level",
+            "key": "information_accuracy_acknowledgement"
+          },
+          "label": "I confirm that the information provided is accurate. I acknowledge that providing false or misleading information may result in removal from the platform.",
+          "help_text": "You must accept this confirmation before submitting the service.",
+          "control": "boolean",
+          "value_type": "boolean",
+          "step": "about",
+          "section": "service_information",
+          "group": "Verification & Compliance",
+          "display_order": 5,
+          "owner": "provider",
+          "requiredness": "required",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false
+            }
+          ],
+          "set": null,
+          "constraints": {
+            "accepted_value": true,
+            "allowed_values": [true, false],
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "yes_no_string",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "service_information",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "address",
+        "label": "Service Address",
+        "field_type": "address",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "prohibited",
+        "section": "Fulfillment Location",
+        "section_key": "fulfillment_location",
+        "submit_as": {
+          "type": "display_only",
+          "source": "provider_default_address"
+        },
+        "placeholder": "Your default provider address",
+        "help_text": "When fulfillment includes at your location or pickup and delivery, the backend saves your default provider address automatically. Clients do not submit address_id.",
+        "visible_when": {
+          "field_key": "fulfillment_types",
+          "operator": "contains_any",
+          "values": ["provider_location", "pickup_delivery"]
+        },
+        "required_when": {
+          "field_key": "fulfillment_types",
+          "operator": "contains_any",
+          "values": ["provider_location", "pickup_delivery"]
+        },
+        "validation": {
+          "data_type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "prohibited_when": {
+          "not": {
+            "field_key": "fulfillment_types",
+            "operator": "contains_any",
+            "values": ["provider_location", "pickup_delivery"]
+          }
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "address",
+          "payload_path": null,
+          "transport": {
+            "type": "display_only",
+            "source": "provider_default_address"
+          },
+          "label": "Service Address",
+          "help_text": "When fulfillment includes at your location or pickup and delivery, the backend saves your default provider address automatically. Clients do not submit address_id.",
+          "control": "address",
+          "value_type": "object",
+          "step": "fulfillment",
+          "section": "fulfillment_location",
+          "group": "Service Information",
+          "display_order": 6,
+          "owner": "read_only",
+          "requiredness": "prohibited",
+          "applicability": {
+            "visible_when": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["provider_location", "pickup_delivery"]
+            },
+            "required_when": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["provider_location", "pickup_delivery"]
+            },
+            "prohibited_when": {
+              "not": {
+                "field_key": "fulfillment_types",
+                "operator": "contains_any",
+                "values": ["provider_location", "pickup_delivery"]
+              }
+            }
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "location_authority",
+          "edit": {
+            "writable": false,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "fulfillment_location",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "service_radius",
+        "label": "Service Area Radius",
+        "field_type": "number",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Fulfillment Location",
+        "section_key": "fulfillment_location",
+        "submit_as": {
+          "type": "top_level",
+          "key": "service_radius"
+        },
+        "placeholder": "Enter your service area radius",
+        "help_text": "Enter how far you are willing to travel to provide this service.",
+        "value_key": "service_radius",
+        "unit_value_key": "service_radius_unit",
+        "unit_placeholder": "Select unit",
+        "unit_options": [
+          {
+            "label": "mile",
+            "value": "mile"
+          },
+          {
+            "label": "km",
+            "value": "km"
+          }
+        ],
+        "visible_when": {
+          "field_key": "fulfillment_types",
+          "operator": "contains_any",
+          "values": ["customer_location", "pickup_delivery"]
+        },
+        "required_when": {
+          "field_key": "fulfillment_types",
+          "operator": "contains_any",
+          "values": ["customer_location", "pickup_delivery"]
+        },
+        "validation": {
+          "data_type": "number",
+          "minimum": 0.01,
+          "maximum": 99999999.99
+        },
+        "unit_validation": {
+          "data_type": "string",
+          "allowed_values": ["mile", "km"],
+          "minimum_length": 2,
+          "maximum_length": 4
+        },
+        "prohibited_when": {
+          "not": {
+            "field_key": "fulfillment_types",
+            "operator": "contains_any",
+            "values": ["customer_location", "pickup_delivery"]
+          }
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "service_radius",
+          "payload_path": "service_radius",
+          "transport": {
+            "type": "top_level",
+            "key": "service_radius"
+          },
+          "label": "Service Area Radius",
+          "help_text": "Enter how far you are willing to travel to provide this service.",
+          "control": "number",
+          "value_type": "number",
+          "step": "fulfillment",
+          "section": "fulfillment_location",
+          "group": "Service Information",
+          "display_order": 7,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["customer_location", "pickup_delivery"]
+            },
+            "required_when": {
+              "field_key": "fulfillment_types",
+              "operator": "contains_any",
+              "values": ["customer_location", "pickup_delivery"]
+            },
+            "prohibited_when": {
+              "not": {
+                "field_key": "fulfillment_types",
+                "operator": "contains_any",
+                "values": ["customer_location", "pickup_delivery"]
+              }
+            }
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "data_type": "number",
+            "minimum": 0.01,
+            "maximum": 99999999.99,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "location_authority",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "fulfillment_location",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "portfolio_images",
+        "label": "Images / Portfolio",
+        "field_type": "file_upload",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Portfolio",
+        "section_key": "portfolio",
+        "submit_as": {
+          "type": "top_level",
+          "key": "portfolio_images"
+        },
+        "placeholder": "Upload images that showcase your work",
+        "help_text": "Optional images can help customers understand this service.",
+        "value_key": "portfolio_images",
+        "multiple": true,
+        "minimum_files": 0,
+        "maximum_files": 10,
+        "allowed_file_types": ["image/jpeg", "image/png", "image/webp"],
+        "allowed_extensions": ["jpg", "jpeg", "png", "webp"],
+        "descriptor": {
+          "version": 1,
+          "key": "portfolio_images",
+          "payload_path": "portfolio_images",
+          "transport": {
+            "type": "top_level",
+            "key": "portfolio_images"
+          },
+          "label": "Images / Portfolio",
+          "help_text": "Optional images can help customers understand this service.",
+          "control": "files",
+          "value_type": "array",
+          "step": "about",
+          "section": "portfolio",
+          "group": "Portfolio",
+          "display_order": 8,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "portfolio",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "certificates",
+        "label": "Certifications / Licenses",
+        "field_type": "file_upload",
+        "field_scope": "generic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Certifications / Licenses",
+        "section_key": "certifications_licenses",
+        "submit_as": {
+          "type": "certificate_bundle",
+          "description_key": "certificate_description",
+          "files_key": "certificate_files",
+          "multiple_files": true
+        },
+        "placeholder": "Describe and upload your certifications or licenses",
+        "help_text": "Enter one description for all certification files. Upload multiple files under that same description.",
+        "value_key": "certificate_description",
+        "description_key": "certificate_description",
+        "files_key": "certificate_files",
+        "multiple": true,
+        "maximum_files": 10,
+        "allowed_file_types": ["application/pdf", "image/jpeg", "image/png"],
+        "allowed_extensions": ["pdf", "jpg", "jpeg", "png"],
+        "minimum_files": 0,
+        "descriptor": {
+          "version": 1,
+          "key": "certificates",
+          "payload_path": null,
+          "transport": {
+            "type": "certificate_bundle",
+            "description_key": "certificate_description",
+            "files_key": "certificate_files",
+            "multiple_files": true
+          },
+          "label": "Certifications / Licenses",
+          "help_text": "Enter one description for all certification files. Upload multiple files under that same description.",
+          "control": "files",
+          "value_type": "array",
+          "step": "about",
+          "section": "certifications_licenses",
+          "group": "Certifications / Licenses",
+          "display_order": 9,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "none",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "certifications_licenses",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "pricing",
+        "label": "Service Price",
+        "field_type": "pricing",
+        "field_scope": "generic",
+        "is_required": true,
+        "requiredness": "required",
+        "section": "Pricing",
+        "section_key": "pricing",
+        "submit_as": {
+          "type": "pricing_fields",
+          "keys": [
+            "pricing_type",
+            "amount",
+            "currency",
+            "price_unit_id",
+            "profile_pricing_scope"
+          ]
+        },
+        "placeholder": "Select how customers will be charged",
+        "help_text": "Choose a fixed price or require customers to request a quote.",
+        "value_key": "pricing",
+        "pricing_types": [
+          {
+            "label": "Fixed Price",
+            "value": "fixed_price"
+          },
+          {
+            "label": "Quote Required",
+            "value": "quote_required"
+          }
+        ],
+        "price_units_source": {
+          "table": "service_price_units",
+          "label_column": "name",
+          "value_column": "id",
+          "code_column": "code"
+        },
+        "fixed_price_fields": {
+          "amount": {
+            "label": "Base Price",
+            "value_key": "amount",
+            "placeholder": "Enter base price",
+            "required": true,
+            "minimum": 0.01,
+            "maximum": 9999999999.99,
+            "validation": {
+              "data_type": "number",
+              "minimum": 0.01,
+              "maximum": 9999999999.99
+            }
+          },
+          "currency": {
+            "value_key": "currency",
+            "source": "currency_context.default_currency",
+            "allow_usd_override": true,
+            "required": true,
+            "validation": {
+              "data_type": "string",
+              "minimum_length": 3,
+              "maximum_length": 3
+            }
+          },
+          "price_unit_id": {
+            "label": "Price Unit",
+            "placeholder": "Select price unit",
+            "required": true,
+            "validation": {
+              "data_type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "charge_in_usd": {
+          "label": "Charge in USD",
+          "value_key": "charge_in_usd",
+          "control_type": "boolean",
+          "default": false,
+          "validation": {
+            "allowed_values": [true, false]
+          },
+          "visible_when": {
+            "all": [
+              {
+                "field_key": "fulfillment_types",
+                "operator": "contains",
+                "value": "online_remote"
+              },
+              {
+                "context_key": "can_charge_in_usd",
+                "operator": "equals",
+                "value": true
+              }
+            ]
+          }
+        },
+        "base_price": {
+          "label": "Base Price",
+          "value_key": "amount",
+          "placeholder": "Enter base price",
+          "minimum": 0.01,
+          "maximum": 9999999999.99
+        },
+        "currency": {
+          "value_key": "currency",
+          "source": "currency_context.default_currency",
+          "allow_usd_override": true,
+          "validation": {
+            "data_type": "string",
+            "minimum_length": 3,
+            "maximum_length": 3
+          }
+        },
+        "quote_required_fields": {
+          "amount": {
+            "label": "Base Price",
+            "value_key": "amount",
+            "placeholder": "Enter an optional base price",
+            "required": false,
+            "visible": true,
+            "validation": {
+              "data_type": "number",
+              "minimum": 0.01,
+              "maximum": 9999999999.99
+            }
+          },
+          "currency": {
+            "value_key": "currency",
+            "source": "currency_context.default_currency",
+            "allow_usd_override": true,
+            "required": false,
+            "visible": true,
+            "validation": {
+              "data_type": "string",
+              "minimum_length": 3,
+              "maximum_length": 3
+            }
+          },
+          "price_unit_id": {
+            "label": "Price Unit",
+            "placeholder": "Select price unit",
+            "required": true,
+            "visible": true,
+            "validation": {
+              "data_type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "price_units": [
+          {
+            "label": "Per service",
+            "value": 1,
+            "code": "per_service"
+          },
+          {
+            "label": "Per mile",
+            "value": 5,
+            "code": "per_mile"
+          }
+        ],
+        "descriptor": {
+          "version": 1,
+          "key": "pricing",
+          "payload_path": null,
+          "transport": {
+            "type": "pricing_fields",
+            "keys": [
+              "pricing_type",
+              "amount",
+              "currency",
+              "price_unit_id",
+              "profile_pricing_scope"
+            ]
+          },
+          "label": "Service Price",
+          "help_text": "Choose a fixed price or require customers to request a quote.",
+          "control": "pricing",
+          "value_type": "object",
+          "step": "pricing",
+          "section": "pricing",
+          "group": "Pricing",
+          "display_order": 10,
+          "owner": "provider",
+          "requiredness": "required",
+          "applicability": {
+            "visible_when": null,
+            "required_when": null,
+            "prohibited_when": null
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "minimum": null,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "provider_monetary_authority",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "pricing",
+            "omit_when_empty": true
+          }
+        }
+      },
+      {
+        "field_key": "additional_pet_fee",
+        "label": "Additional Pet Fee",
+        "field_type": "number",
+        "field_scope": "dynamic",
+        "is_required": false,
+        "requiredness": "optional",
+        "section": "Pricing",
+        "section_key": "pricing",
+        "submit_as": {
+          "type": "answers_json",
+          "key": "additional_pet_fee"
+        },
+        "value_key": "additional_pet_fee",
+        "options": [],
+        "validation": {
+          "minimum": 0,
+          "data_type": "number",
+          "maximum": 99999999.99
+        },
+        "capability_required_for": [
+          {
+            "pricing_type": ["fixed_price"]
+          }
+        ],
+        "customer_visible": false,
+        "canonical_managed": true,
+        "capability_visible_for": [
+          {
+            "pricing_type": ["fixed_price"]
+          }
+        ],
+        "relations": [],
+        "visible_when": {
+          "any": [
+            {
+              "all": [
+                {
+                  "context_key": "pricing_type",
+                  "operator": "in",
+                  "values": ["fixed_price"]
+                }
+              ]
+            }
+          ]
+        },
+        "required_when": {
+          "any": [
+            {
+              "all": [
+                {
+                  "context_key": "pricing_type",
+                  "operator": "in",
+                  "values": ["fixed_price"]
+                }
+              ]
+            }
+          ]
+        },
+        "prohibited_when": {
+          "not": {
+            "any": [
+              {
+                "all": [
+                  {
+                    "context_key": "pricing_type",
+                    "operator": "in",
+                    "values": ["fixed_price"]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "descriptor": {
+          "version": 1,
+          "key": "additional_pet_fee",
+          "payload_path": "answers_json.additional_pet_fee",
+          "transport": {
+            "type": "answers_json",
+            "key": "additional_pet_fee"
+          },
+          "label": "Additional Pet Fee",
+          "help_text": null,
+          "control": "number",
+          "value_type": "number",
+          "step": "pricing",
+          "section": "pricing",
+          "group": "Service Capability",
+          "display_order": 11,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": {
+              "any": [
+                {
+                  "all": [
+                    {
+                      "context_key": "pricing_type",
+                      "operator": "in",
+                      "values": ["fixed_price"]
+                    }
+                  ]
+                }
+              ]
+            },
+            "required_when": {
+              "any": [
+                {
+                  "all": [
+                    {
+                      "context_key": "pricing_type",
+                      "operator": "in",
+                      "values": ["fixed_price"]
+                    }
+                  ]
+                }
+              ]
+            },
+            "prohibited_when": {
+              "not": {
+                "any": [
+                  {
+                    "all": [
+                      {
+                        "context_key": "pricing_type",
+                        "operator": "in",
+                        "values": ["fixed_price"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "minimum": 0,
+            "data_type": "number",
+            "maximum": 99999999.99,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "provider_monetary_authority",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "pricing",
+            "omit_when_empty": true
+          }
+        }
+      }
+    ],
+    "provider_listing_capability": {
+      "version": 1,
+      "descriptor_version": 1,
+      "descriptors": [
+        {
+          "version": 1,
+          "key": "additional_pet_fee",
+          "payload_path": "answers_json.additional_pet_fee",
+          "transport": null,
+          "label": "Additional Pet Fee",
+          "help_text": null,
+          "control": "number",
+          "value_type": "number",
+          "step": "pricing",
+          "section": "pricing",
+          "group": null,
+          "display_order": 1,
+          "owner": "provider",
+          "requiredness": "optional",
+          "applicability": {
+            "visible_when": {
+              "any": [
+                {
+                  "all": [
+                    {
+                      "context_key": "pricing_type",
+                      "operator": "in",
+                      "values": ["fixed_price"]
+                    }
+                  ]
+                }
+              ]
+            },
+            "required_when": {
+              "any": [
+                {
+                  "all": [
+                    {
+                      "context_key": "pricing_type",
+                      "operator": "in",
+                      "values": ["fixed_price"]
+                    }
+                  ]
+                }
+              ]
+            },
+            "prohibited_when": {
+              "not": {
+                "any": [
+                  {
+                    "all": [
+                      {
+                        "context_key": "pricing_type",
+                        "operator": "in",
+                        "values": ["fixed_price"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "options": [],
+          "set": null,
+          "constraints": {
+            "minimum": 0,
+            "maximum": null,
+            "integer": false,
+            "step": null
+          },
+          "other_input": false,
+          "value_encoding": "native",
+          "relations": [],
+          "pricing_relevance": "provider_monetary_authority",
+          "fulfillment_relevance": "none",
+          "edit": {
+            "writable": true,
+            "hidden_value": "omit",
+            "read_only_value": "reject"
+          },
+          "readback": {
+            "step": "summary",
+            "section": "pricing",
+            "omit_when_empty": true
+          }
+        }
+      ],
+      "source": {
+        "category": "Pet Care",
+        "subcategory": "Pet Transport",
+        "key": "pet care|pet transport"
+      },
+      "canonical_owner": {
+        "category": "Pet Care",
+        "subcategory": "Pet Transport",
+        "key": "pet care|pet transport"
+      },
+      "is_alias": false,
+      "business_format": null,
+      "formats": {
+        "default": {
+          "label": "Default",
+          "pricing": {
+            "fixed_price": ["per_service", "per_mile"],
+            "quote_required": ["per_service", "per_mile"]
+          },
+          "fulfillment": [],
+          "fulfillment_by_price_unit": [],
+          "profile_pricing_scope": {
+            "descriptor": {
+              "version": 1,
+              "key": "profile_pricing_scope",
+              "payload_path": "profile_pricing_scope",
+              "transport": null,
+              "label": "Price Applies To",
+              "help_text": null,
+              "control": "single_select",
+              "value_type": "string",
+              "step": "pricing",
+              "section": "pricing",
+              "group": null,
+              "display_order": 50,
+              "owner": "provider",
+              "requiredness": "optional",
+              "applicability": {
+                "visible_when": {
+                  "any": []
+                },
+                "required_when": {
+                  "any": []
+                },
+                "prohibited_when": {
+                  "not": {
+                    "any": []
+                  }
+                }
+              },
+              "options": [
+                {
+                  "value": "per_request",
+                  "label": "Entire Request"
+                },
+                {
+                  "value": "per_profile",
+                  "label": "Each Selected Profile"
+                }
+              ],
+              "set": {
+                "mode": "closed",
+                "item_type": "string",
+                "entry": "options_only",
+                "relation": "member_of",
+                "pair_encoding": null
+              },
+              "constraints": {
+                "minimum": null,
+                "maximum": null,
+                "integer": false,
+                "step": null
+              },
+              "other_input": false,
+              "value_encoding": "native",
+              "relations": [],
+              "pricing_relevance": "provider_monetary_authority",
+              "fulfillment_relevance": "none",
+              "edit": {
+                "writable": true,
+                "hidden_value": "omit",
+                "read_only_value": "reject"
+              },
+              "readback": {
+                "step": "summary",
+                "section": "pricing",
+                "omit_when_empty": true
+              }
+            },
+            "field_key": "profile_pricing_scope",
+            "label": "Price Applies To",
+            "help_text": "Choose whether the fixed price applies to the entire request or each selected profile.",
+            "options": [
+              {
+                "value": "per_request",
+                "label": "Entire Request"
+              },
+              {
+                "value": "per_profile",
+                "label": "Each Selected Profile"
+              }
+            ],
+            "default_state": {
+              "state": "prohibited",
+              "applicable": false,
+              "required": false,
+              "allowed_values": []
+            },
+            "by_pricing_type": {
+              "fixed_price": {
+                "per_service": {
+                  "state": "prohibited",
+                  "applicable": false,
+                  "required": false,
+                  "allowed_values": []
+                },
+                "per_mile": {
+                  "state": "prohibited",
+                  "applicable": false,
+                  "required": false,
+                  "allowed_values": []
+                }
+              },
+              "quote_required": {
+                "per_service": {
+                  "state": "prohibited",
+                  "applicable": false,
+                  "required": false,
+                  "allowed_values": []
+                },
+                "per_mile": {
+                  "state": "prohibited",
+                  "applicable": false,
+                  "required": false,
+                  "allowed_values": []
+                }
+              }
+            }
+          },
+          "provider_fields": [
+            {
+              "field_key": "additional_pet_fee",
+              "label": "Additional Pet Fee",
+              "field_type": "number",
+              "is_required": false,
+              "validation": {
+                "minimum": 0
+              },
+              "required_for": [
+                {
+                  "pricing_type": ["fixed_price"]
+                }
+              ],
+              "descriptor": {
+                "version": 1,
+                "key": "additional_pet_fee",
+                "payload_path": "answers_json.additional_pet_fee",
+                "transport": null,
+                "label": "Additional Pet Fee",
+                "help_text": null,
+                "control": "number",
+                "value_type": "number",
+                "step": "pricing",
+                "section": "pricing",
+                "group": null,
+                "display_order": 1,
+                "owner": "provider",
+                "requiredness": "optional",
+                "applicability": {
+                  "visible_when": {
+                    "any": [
+                      {
+                        "all": [
+                          {
+                            "context_key": "pricing_type",
+                            "operator": "in",
+                            "values": ["fixed_price"]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "required_when": {
+                    "any": [
+                      {
+                        "all": [
+                          {
+                            "context_key": "pricing_type",
+                            "operator": "in",
+                            "values": ["fixed_price"]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "prohibited_when": {
+                    "not": {
+                      "any": [
+                        {
+                          "all": [
+                            {
+                              "context_key": "pricing_type",
+                              "operator": "in",
+                              "values": ["fixed_price"]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "options": [],
+                "set": null,
+                "constraints": {
+                  "minimum": 0,
+                  "maximum": null,
+                  "integer": false,
+                  "step": null
+                },
+                "other_input": false,
+                "value_encoding": "native",
+                "relations": [],
+                "pricing_relevance": "provider_monetary_authority",
+                "fulfillment_relevance": "none",
+                "edit": {
+                  "writable": true,
+                  "hidden_value": "omit",
+                  "read_only_value": "reject"
+                },
+                "readback": {
+                  "step": "summary",
+                  "section": "pricing",
+                  "omit_when_empty": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prohibited_provider_fields": [
+        "booking_policy",
+        "booking_policy.schedule_family",
+        "booking_policy.profile_mode"
+      ]
+    }
+  },
+  "meta": []
+}
+
+

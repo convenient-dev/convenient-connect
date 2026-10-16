@@ -23,6 +23,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -91,44 +92,53 @@ export default function ServicesScreen() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] =
     useState<ServiceListItem | null>(null);
   // Ignore responses from a superseded request (tab switched, screen refocused).
   const requestId = useRef(0);
 
-  const loadServices = useCallback(async (tab: TabKey, pageToLoad: number) => {
-    const id = ++requestId.current;
-    const isFirstPage = pageToLoad === 1;
-    if (isFirstPage) setLoading(true);
-    else setLoadingMore(true);
-    try {
-      const result = await listMyServices({ tab, page: pageToLoad });
-      if (id !== requestId.current) return;
-      setServices((prev) =>
-        isFirstPage ? result.data : [...prev, ...result.data],
-      );
-      setPage(result.meta?.current_page ?? pageToLoad);
-      setLastPage(result.meta?.last_page ?? pageToLoad);
-      if (result.meta?.total !== undefined) {
-        const total = result.meta.total;
-        setTabTotals((prev) => ({ ...prev, [tab]: total }));
+  const loadServices = useCallback(
+    async (
+      tab: TabKey,
+      pageToLoad: number,
+      // Pull-to-refresh shows its own spinner, so skip the full-screen loader.
+      { silent = false }: { silent?: boolean } = {},
+    ) => {
+      const id = ++requestId.current;
+      const isFirstPage = pageToLoad === 1;
+      if (!isFirstPage) setLoadingMore(true);
+      else if (!silent) setLoading(true);
+      try {
+        const result = await listMyServices({ tab, page: pageToLoad });
+        if (id !== requestId.current) return;
+        setServices((prev) =>
+          isFirstPage ? result.data : [...prev, ...result.data],
+        );
+        setPage(result.meta?.current_page ?? pageToLoad);
+        setLastPage(result.meta?.last_page ?? pageToLoad);
+        if (result.meta?.total !== undefined) {
+          const total = result.meta.total;
+          setTabTotals((prev) => ({ ...prev, [tab]: total }));
+        }
+      } catch (err) {
+        if (id !== requestId.current) return;
+        if (isFirstPage) setServices([]);
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong while loading your services.",
+        );
+      } finally {
+        if (id === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-    } catch (err) {
-      if (id !== requestId.current) return;
-      if (isFirstPage) setServices([]);
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Something went wrong while loading your services.",
-      );
-    } finally {
-      if (id === requestId.current) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    }
-  }, []);
+    },
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -162,8 +172,17 @@ export default function ServicesScreen() {
   );
 
   function handleEndReached() {
-    if (loading || loadingMore || page >= lastPage) return;
+    if (loading || loadingMore || refreshing || page >= lastPage) return;
     loadServices(activeTab, page + 1);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([
+      loadServices(activeTab, 1, { silent: true }),
+      loadTabTotals(),
+    ]);
+    setRefreshing(false);
   }
 
   return (
@@ -212,6 +231,14 @@ export default function ServicesScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={primary[400]}
+              colors={[primary[400]]}
+            />
+          }
           ListEmptyComponent={
             <Text style={styles.emptyText}>No services found</Text>
           }

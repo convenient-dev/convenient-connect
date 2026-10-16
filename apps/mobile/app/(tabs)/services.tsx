@@ -16,6 +16,7 @@ import { TabBar } from "@/components/TabBar";
 import { withCount } from "@/constants/labels";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
+import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -40,6 +41,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "independent", label: "Freelance" },
   { key: "affiliated", label: "Business" },
 ];
+
+type ViewMode = "card" | "list";
 
 function ServiceCard({
   service,
@@ -78,10 +81,69 @@ function ServiceCard({
   );
 }
 
+function ListRowSeparator() {
+  return <View style={styles.rowSeparator} />;
+}
+
+/** "Caregiving | Seniors"; falls back to whichever name is present. */
+function categoryLine(service: ServiceListItem): string | null {
+  return (
+    [service.category_name, service.subcategory_name]
+      .filter(Boolean)
+      .join(" | ") || null
+  );
+}
+
+/** Compact text-only variant of ServiceCard for the list view. */
+function ServiceRow({
+  service,
+  onMore,
+}: {
+  service: ServiceListItem;
+  onMore: () => void;
+}) {
+  const category = categoryLine(service);
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {service.title}
+        </Text>
+        <View style={styles.rowMeta}>
+          <ServiceStatusBadge
+            status={statusFromLabel(service.status_label)}
+            size="sm"
+          />
+          {category && (
+            <Text style={styles.rowCategory} numberOfLines={1}>
+              · {category}
+            </Text>
+          )}
+        </View>
+        {service.provider_type === "business" && service.business_name && (
+          <View style={styles.businessRow}>
+            <ExpoImage
+              source={require("@/assets/global-icons/business.svg")}
+              style={{ width: 12, height: 12 }}
+            />
+            <Text style={styles.businessName} numberOfLines={1}>
+              {service.business_name}
+            </Text>
+          </View>
+        )}
+      </View>
+      <TouchableOpacity hitSlop={8} onPress={onMore}>
+        <MaterialIcons name="more-horiz" size={22} color={neutral[700]} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function ServicesScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [services, setServices] = useState<ServiceListItem[]>([]);
   // Per-tab totals for the tab labels. The list endpoint only reports
   // meta.total for the tab it was asked for, so each tab is counted separately.
@@ -191,13 +253,39 @@ export default function ServicesScreen() {
         title="My Services"
         onBack={() => router.push("/home")}
         rightAccessory={
-          <TouchableOpacity
-            style={styles.addButton}
-            hitSlop={8}
-            onPress={() => router.push("/create-service")}
-          >
-            <MaterialIcons name="add" size={22} color={primary[400]} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {/* The icon shows the view you'd switch to, not the current one. */}
+            <TouchableOpacity
+              style={styles.headerButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={
+                viewMode === "card"
+                  ? "Switch to list view"
+                  : "Switch to card view"
+              }
+              onPress={() =>
+                setViewMode((mode) => (mode === "card" ? "list" : "card"))
+              }
+            >
+              {viewMode === "card" ? (
+                <Feather name="list" size={22} color={primary[400]} />
+              ) : (
+                <MaterialIcons
+                  name="view-agenda"
+                  size={22}
+                  color={primary[400]}
+                />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              hitSlop={8}
+              onPress={() => router.push("/create-service")}
+            >
+              <MaterialIcons name="add" size={22} color={primary[400]} />
+            </TouchableOpacity>
+          </View>
         }
       />
       {/* Filter tabs */}
@@ -220,14 +308,28 @@ export default function ServicesScreen() {
         <FlatList
           data={services}
           keyExtractor={(service) => String(service.service_id)}
-          renderItem={({ item }) => (
-            <ServiceCard
-              service={item}
-              onMore={() => setSelectedService(item)}
-            />
-          )}
+          renderItem={({ item }) =>
+            viewMode === "card" ? (
+              <ServiceCard
+                service={item}
+                onMore={() => setSelectedService(item)}
+              />
+            ) : (
+              <ServiceRow
+                service={item}
+                onMore={() => setSelectedService(item)}
+              />
+            )
+          }
           style={styles.list}
-          contentContainerStyle={[styles.listContent, contentWidthStyle]}
+          contentContainerStyle={[
+            styles.listContent,
+            viewMode === "card" && styles.cardListContent,
+            contentWidthStyle,
+          ]}
+          ItemSeparatorComponent={
+            viewMode === "list" ? ListRowSeparator : undefined
+          }
           showsVerticalScrollIndicator={false}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
@@ -305,7 +407,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
-  addButton: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  headerButton: {
     width: 22,
     height: 22,
     alignItems: "center",
@@ -320,8 +427,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 30,
-    gap: 20,
     paddingBottom: 20,
+  },
+  cardListContent: {
+    gap: 20,
   },
   emptyText: {
     textAlign: "center",
@@ -364,5 +473,37 @@ const styles = StyleSheet.create({
   moreButton: {
     alignSelf: "flex-start",
     padding: 2,
+  },
+  // Row (list view)
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  rowInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: neutral[700],
+    letterSpacing: -0.408,
+  },
+  rowCategory: {
+    flexShrink: 1,
+    fontSize: 12,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
+  rowMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  rowSeparator: {
+    height: 0.5,
+    backgroundColor: neutral[300],
   },
 });

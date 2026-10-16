@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 40 },
   headerRight: {
-    width: 40,
+    minWidth: 40,
     alignItems: "flex-end",
     justifyContent: "center",
   },

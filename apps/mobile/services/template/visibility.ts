@@ -10,7 +10,6 @@ import {
   type FieldOption,
   type FormTemplate,
   type FormValues,
-  type Predicate,
   type PricingType,
   type TemplateField,
 } from "./types";
@@ -34,39 +33,36 @@ export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
   CUSTOMER_LOCATION_CODE,
 ];
 
-/** Context keys set by the pricing control. */
-const PRICING_CONTEXT_KEYS = ["pricing_type", "price_unit", "price_unit_code", "price_unit_id"];
+/**
+ * Sections whose fields only describe the listing: title, description,
+ * additional information, tagline, portfolio and certificates. In every
+ * template these fields carry no applicability rules and no other field's
+ * rules read them, so they are edited on their own screen through the
+ * information endpoint. Everything else (business format, fulfillment,
+ * address, capability answers, pricing) can change which other fields are
+ * valid, so it is edited together and saved in one transaction through the
+ * candidate endpoint.
+ */
+export const LISTING_SECTION_KEYS = [
+  "service_information",
+  "portfolio",
+  "certifications_licenses",
+];
 
-function predicateDependsOn(
-  predicate: Predicate | null | undefined,
-  formatKey: string | undefined,
-): boolean {
-  if (!predicate) return false;
-  const subject = predicate.field_key ?? predicate.field;
-  if (formatKey && subject === formatKey) return true;
-  if (predicate.context_key && PRICING_CONTEXT_KEYS.includes(predicate.context_key)) return true;
-  return (
-    (predicate.all ?? []).some((p) => predicateDependsOn(p, formatKey)) ||
-    (predicate.any ?? []).some((p) => predicateDependsOn(p, formatKey)) ||
-    predicateDependsOn(predicate.not, formatKey)
-  );
+export function isListingSectionKey(key: string | null | undefined): boolean {
+  return !!key && LISTING_SECTION_KEYS.includes(key);
 }
 
 /**
- * Fields edited together with pricing: the pricing control, the business
- * format selector, and every field whose applicability depends on the format
- * or on the pricing type/unit. Changing the format changes which pricing
- * rules apply (e.g. profile pricing scope), so these are saved in one
- * transaction through the candidate endpoint rather than from the
- * information screen.
+ * Whether the field belongs to a listing section. Fields outside every
+ * section are treated as setup fields, the safe default.
  */
-export function isPricingStepField(field: TemplateField, template: FormTemplate): boolean {
-  if (field.field_type === "pricing") return true;
-  const formatKey = template.provider_listing_capability?.business_format?.field_key;
-  if (formatKey && field.field_key === formatKey) return true;
-  return [field.visible_when, field.required_when, field.prohibited_when].some((p) =>
-    predicateDependsOn(p, formatKey),
-  );
+export function isListingField(field: TemplateField, template: FormTemplate): boolean {
+  const key =
+    field.section_key ??
+    template.sections?.find((section) => section.field_keys?.includes(field.field_key))
+      ?.section_key;
+  return isListingSectionKey(key);
 }
 
 /** The display-only field that mirrors the provider's default address. */

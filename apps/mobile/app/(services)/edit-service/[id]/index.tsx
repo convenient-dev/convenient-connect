@@ -104,7 +104,9 @@ export default function EditServiceScreen() {
     } catch (error) {
       setOverview(null);
       setLoadError(
-        error instanceof ApiError ? error.message : "Couldn't load this service.",
+        error instanceof ApiError
+          ? error.message
+          : "Couldn't load this service.",
       );
     } finally {
       setLoading(false);
@@ -118,12 +120,12 @@ export default function EditServiceScreen() {
     }, [load]),
   );
 
-  function navigateToInformation() {
-    router.push({ pathname: "/edit-service/[id]/information", params: { id } });
+  function navigateToDetails() {
+    router.push({ pathname: "/edit-service/[id]/details", params: { id } });
   }
 
-  function navigateToPricing() {
-    router.push({ pathname: "/edit-service/[id]/pricing", params: { id } });
+  function navigateToSetup() {
+    router.push({ pathname: "/edit-service/[id]/setup", params: { id } });
   }
 
   function confirmEditWhilePending(onConfirm: () => void) {
@@ -135,21 +137,21 @@ export default function EditServiceScreen() {
     });
   }
 
-  function handleTapInformation() {
+  function handleTapDetails() {
     if (!overview) return;
     if (statusFromLabel(overview.status_label) === "pendingReview") {
-      confirmEditWhilePending(navigateToInformation);
+      confirmEditWhilePending(navigateToDetails);
     } else {
-      navigateToInformation();
+      navigateToDetails();
     }
   }
 
-  function handleTapPricing() {
+  function handleTapSetup() {
     if (!overview) return;
     if (statusFromLabel(overview.status_label) === "pendingReview") {
-      confirmEditWhilePending(navigateToPricing);
+      confirmEditWhilePending(navigateToSetup);
     } else {
-      navigateToPricing();
+      navigateToSetup();
     }
   }
 
@@ -223,7 +225,12 @@ export default function EditServiceScreen() {
           <Text style={styles.errorText}>
             {loadError ?? "Service not found."}
           </Text>
-          <Button title="Try again" variant="primary" size="md" onPress={load} />
+          <Button
+            title="Try again"
+            variant="primary"
+            size="md"
+            onPress={load}
+          />
         </View>
       </SafeAreaView>
     );
@@ -233,7 +240,8 @@ export default function EditServiceScreen() {
   const searchToggleValue =
     overview.search_setting?.is_active ?? status === "active";
   const searchToggleDisabled =
-    toggling || !(overview.search_setting?.can_update ?? status !== "pendingReview");
+    toggling ||
+    !(overview.search_setting?.can_update ?? status !== "pendingReview");
   const searchHint =
     status === "pendingReview"
       ? "Search is paused while your service is under review."
@@ -285,10 +293,7 @@ export default function EditServiceScreen() {
         {/* Service Category (read-only; fixed at create) */}
         <View style={styles.section}>
           <SectionHeader label="SERVICE CATEGORY" />
-          <InlineRow
-            label="Category"
-            value={category?.category?.name ?? "—"}
-          />
+          <InlineRow label="Category" value={category?.category?.name ?? "—"} />
           <InlineRow
             label="Subcategory"
             value={category?.subcategory?.name ?? "—"}
@@ -301,7 +306,7 @@ export default function EditServiceScreen() {
 
           <TouchableOpacity
             style={styles.navRow}
-            onPress={handleTapInformation}
+            onPress={handleTapDetails}
             activeOpacity={0.7}
           >
             <View style={styles.navIcon}>
@@ -311,8 +316,10 @@ export default function EditServiceScreen() {
               />
             </View>
             <View style={styles.navRowContent}>
-              <Text style={styles.navRowLabel}>Service Information</Text>
-              <Text style={styles.navRowSub}>Title, description, location</Text>
+              <Text style={styles.navRowLabel}>Service Details</Text>
+              <Text style={styles.navRowSub}>
+                Title, description, photos and certificates
+              </Text>
             </View>
             <MaterialIcons
               name="chevron-right"
@@ -325,7 +332,7 @@ export default function EditServiceScreen() {
 
           <TouchableOpacity
             style={styles.navRow}
-            onPress={handleTapPricing}
+            onPress={handleTapSetup}
             activeOpacity={0.7}
           >
             <View style={styles.navIcon}>
@@ -335,8 +342,10 @@ export default function EditServiceScreen() {
               />
             </View>
             <View style={styles.navRowContent}>
-              <Text style={styles.navRowLabel}>Pricing</Text>
-              <Text style={styles.navRowSub}>Service format, pricing type, rate and unit</Text>
+              <Text style={styles.navRowLabel}>Setup & Pricing</Text>
+              <Text style={styles.navRowSub}>
+                Format, fulfillment, options and pricing
+              </Text>
             </View>
             <MaterialIcons
               name="chevron-right"

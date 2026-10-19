@@ -2,14 +2,16 @@ import { ApiError, isCommercialPublishabilityError } from "@/api/client";
 import {
   getServiceInformation,
   getServicePricing,
-  saveServiceCandidate,
-  type ServicePricingRecord,
+  updateServiceInformation,
+  type ProviderPublishability,
+  type ServiceInformationCurrentValues,
 } from "@/api/service-management";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { PublishabilityIssues } from "@/components/template-form/PublishabilityIssues";
-import { TemplateField } from "@/components/template-form/TemplateField";
+import { TemplateSection } from "@/components/template-form/TemplateSection";
+import type { ExistingFile } from "@/components/template-form/controls";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import {
@@ -17,17 +19,21 @@ import {
   type ServerErrorResult,
 } from "@/hooks/use-template-form";
 import {
+  ACKNOWLEDGEMENT_KEY,
   asTemplate,
-  buildCandidateFormData,
-  isPricingStepField,
+  buildInformationFormData,
+  findFieldBySubmitKey,
+  isListingField,
+  isListingSectionKey,
   valuesFromCurrent,
   valuesFromPricing,
   type FormTemplate,
   type FormValues,
+  type TemplateField,
 } from "@/services/template";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -41,22 +47,50 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background, status } = Colors;
 
-interface LoadedPricing {
-  /** The full template; its `pricing` field carries the types and price units. */
+const PORTFOLIO_SUBMIT_KEY = "portfolio_images";
+
+interface LoadedDetails {
   template: FormTemplate;
   values: FormValues;
-  record: ServicePricingRecord;
+  current: ServiceInformationCurrentValues;
+  publishability: ProviderPublishability | null;
 }
 
-export default function EditServicePricingScreen() {
+/**
+ * Only the listing sections are edited here. The acknowledgement is accepted
+ * at create and never resubmitted. Setup fields (format, fulfillment,
+ * capability answers) are edited on the setup screen; their stored values are
+ * still submitted here, unchanged.
+ */
+function isEditableField(field: TemplateField, template: FormTemplate): boolean {
+  return field.field_key !== ACKNOWLEDGEMENT_KEY && isListingField(field, template);
+}
+
+/**
+ * The information template comes without the pricing field. Pricing is
+ * dropped here too so it can never be rendered or validated on this screen.
+ */
+function withoutPricing(template: FormTemplate): FormTemplate {
+  return {
+    ...template,
+    fields: template.fields.filter((field) => field.field_type !== "pricing"),
+  };
+}
+
+export default function EditServiceDetailsScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const serviceId = Number(id);
 
-  const [loaded, setLoaded] = useState<LoadedPricing | null>(null);
+  const [loaded, setLoaded] = useState<LoadedDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Stored files marked for deletion; sent as delete_*_ids[] on save.
+  const [removedPortfolioIds, setRemovedPortfolioIds] = useState<number[]>([]);
+  const [removedCertificateIds, setRemovedCertificateIds] = useState<number[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
@@ -66,29 +100,32 @@ export default function EditServicePricingScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      // The pricing record has the saved values; the information endpoint's
-      // candidate_template has the pricing field (types, price units) and the
-      // other saved values that decide the active format and currency.
-      const [record, info] = await Promise.all([
-        getServicePricing(serviceId),
+      const [data, pricing] = await Promise.all([
         getServiceInformation(serviceId),
+        // Pricing is not edited here, but the stored capability answers that
+        // are re-sent depend on the saved pricing type and unit for visibility.
+        getServicePricing(serviceId).catch(() => null),
       ]);
-      if (!info.candidate_template) {
-        throw new ApiError("The pricing form could not be loaded.", 422);
+      if (!data.template) {
+        throw new ApiError("The service form could not be loaded.", 422);
       }
-      const template = asTemplate(info.candidate_template);
+      const template = withoutPricing(asTemplate(data.template));
+      const current = data.current_values ?? {};
+      setRemovedPortfolioIds([]);
+      setRemovedCertificateIds([]);
       setLoaded({
         template,
         values: {
-          ...valuesFromCurrent(template, info.current_values),
-          ...valuesFromPricing(record),
+          ...valuesFromCurrent(template, current),
+          ...(pricing ? valuesFromPricing(pricing) : {}),
         },
-        record,
+        current,
+        publishability: data.publishability ?? null,
       });
     } catch (error) {
       setLoaded(null);
       setLoadError(
-        error instanceof ApiError ? error.message : "Couldn't load the service pricing.",
+        error instanceof ApiError ? error.message : "Couldn't load the listing details.",
       );
     } finally {
       setLoading(false);
@@ -99,16 +136,63 @@ export default function EditServicePricingScreen() {
     load();
   }, [load]);
 
+  // ── Stored files ─────────────────────────────────────────────────────────
+  const existingFiles = useMemo<Record<string, ExistingFile[]>>(() => {
+    if (!loaded) return {};
+    const { template, current } = loaded;
+    const map: Record<string, ExistingFile[]> = {};
+
+    const portfolioField = findFieldBySubmitKey(template, PORTFOLIO_SUBMIT_KEY);
+    if (portfolioField) {
+      map[portfolioField.field_key] = (current.portfolio_images ?? [])
+        .filter((file) => file.id != null && !!file.url)
+        .map((file) => ({
+          key: String(file.id),
+          url: file.url!,
+          removed: removedPortfolioIds.includes(file.id!),
+        }));
+    }
+
+    const certificateField = template.fields.find(
+      (field) => field.submit_as?.type === "certificate_bundle",
+    );
+    if (certificateField) {
+      map[certificateField.field_key] = (current.certificate?.files ?? [])
+        .filter((file) => file.id != null && !!file.url)
+        .map((file) => ({
+          key: String(file.id),
+          url: file.url!,
+          removed: removedCertificateIds.includes(file.id!),
+        }));
+    }
+    return map;
+  }, [loaded, removedPortfolioIds, removedCertificateIds]);
+
+  const existingFileCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(existingFiles).map(([key, files]) => [
+          key,
+          files.filter((file) => !file.removed).length,
+        ]),
+      ),
+    [existingFiles],
+  );
+
   const form = useTemplateForm(loaded?.template ?? null, {
     initialValues: loaded?.values,
+    existingFileCounts,
   });
 
-  const pricingField = loaded?.template.fields.find((f) => f.field_type === "pricing");
-  // Pricing plus the business format and the fields that depend on either.
-  const stepFields = loaded
-    ? form.visible.filter((f) => isPricingStepField(f, loaded.template))
-    : [];
+  function handleRemoveExisting(field: TemplateField, file: ExistingFile) {
+    if (field.submit_as?.type === "certificate_bundle") {
+      setRemovedCertificateIds((prev) => [...prev, Number(file.key)]);
+    } else {
+      setRemovedPortfolioIds((prev) => [...prev, Number(file.key)]);
+    }
+  }
 
+  // ── Save ─────────────────────────────────────────────────────────────────
   function showFieldErrors(title: string, result: ServerErrorResult) {
     const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
     const prompt = "Please review the highlighted fields before saving.";
@@ -116,22 +200,24 @@ export default function EditServicePricingScreen() {
   }
 
   async function handleSave() {
-    if (!loaded || !pricingField || saving) return;
-    if (!form.validateFields(stepFields)) {
+    if (!loaded || saving) return;
+    const editable = form.visible.filter((f) => isEditableField(f, loaded.template));
+    if (!form.validateFields(editable)) {
       showFieldErrors("Some details need attention", { sectionIndex: -1, general: [] });
       return;
     }
     setSaving(true);
     form.clearGeneralErrors();
     try {
-      // The pricing endpoint cannot change the business format, and a format
-      // change alters which pricing fields are valid, so the whole listing is
-      // re-saved in one transaction. Stored information values are re-sent as is.
-      await saveServiceCandidate(serviceId, buildCandidateFormData(loaded.template, form.values));
+      const formData = buildInformationFormData(loaded.template, form.values, {
+        deletePortfolioIds: removedPortfolioIds,
+        deleteCertificateIds: removedCertificateIds,
+      });
+      await updateServiceInformation(serviceId, formData);
       setSavedModalVisible(true);
     } catch (error) {
       if (isCommercialPublishabilityError(error)) {
-        showFieldErrors("Pricing not publishable yet", form.applyServerErrors(error));
+        showFieldErrors("Listing not publishable yet", form.applyServerErrors(error));
         return;
       }
       const result = form.applyServerIssues(error);
@@ -140,7 +226,7 @@ export default function EditServicePricingScreen() {
         return;
       }
       setDialog({
-        title: "Couldn't save pricing",
+        title: "Couldn't save changes",
         message:
           error instanceof ApiError
             ? error.message
@@ -151,23 +237,24 @@ export default function EditServicePricingScreen() {
     }
   }
 
+  // ── Render ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <ScreenHeader title="Pricing" />
+        <ScreenHeader title="Listing Details" />
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       </SafeAreaView>
     );
   }
 
-  if (!loaded || !pricingField) {
+  if (!loaded) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <ScreenHeader title="Pricing" />
+        <ScreenHeader title="Listing Details" />
         <View style={styles.center}>
           <Feather name="alert-circle" size={36} color={neutral[300]} />
           <Text style={styles.errorText}>
-            {loadError ?? "Pricing isn't available for this service."}
+            {loadError ?? "Couldn't load the listing details."}
           </Text>
           <Button title="Try again" variant="primary" size="md" onPress={load} />
           <Button title="Back" variant="ghost" size="md" onPress={() => router.back()} />
@@ -176,11 +263,13 @@ export default function EditServicePricingScreen() {
     );
   }
 
+  const { template } = loaded;
+  const sections = form.sections.filter((section) => isListingSectionKey(section.section_key));
   const hasErrors = Object.keys(form.errors).length > 0;
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <ScreenHeader title="Pricing" subtitle={loaded.record.title ?? undefined} />
+      <ScreenHeader title="Listing Details" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -192,10 +281,7 @@ export default function EditServicePricingScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <PublishabilityIssues
-            publishability={loaded.record.publishability}
-            template={loaded.template}
-          />
+          <PublishabilityIssues publishability={loaded.publishability} template={template} />
 
           {form.generalErrors.length ? (
             <View style={styles.generalErrorBox}>
@@ -205,19 +291,25 @@ export default function EditServicePricingScreen() {
             </View>
           ) : null}
 
-          <View style={styles.card}>
-            {stepFields.map((field) => (
-              <TemplateField
-                key={field.field_key}
-                field={field}
-                template={loaded.template}
-                values={form.values}
-                errors={form.errors}
-                required={form.isRequired(field)}
-                setValue={form.setValue}
-              />
-            ))}
-          </View>
+          {sections.map((section, index) => {
+            const fields = form.fieldsForSection(section).filter((f) => isEditableField(f, template));
+            if (!fields.length) return null;
+            return (
+              <View key={section.section_key ?? String(index)} style={styles.card}>
+                <TemplateSection
+                  section={section}
+                  fields={fields}
+                  template={template}
+                  values={form.values}
+                  errors={form.errors}
+                  isRequired={form.isRequired}
+                  setValue={form.setValue}
+                  existingFiles={existingFiles}
+                  onRemoveExistingFile={handleRemoveExisting}
+                />
+              </View>
+            );
+          })}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -244,8 +336,8 @@ export default function EditServicePricingScreen() {
       <ConfirmModal
         visible={savedModalVisible}
         type="success"
-        title="Pricing Updated"
-        message="Your service pricing has been saved successfully."
+        title="Listing Updated"
+        message="Your listing details have been saved successfully."
         confirmLabel="View Service"
         onConfirm={() => {
           setSavedModalVisible(false);

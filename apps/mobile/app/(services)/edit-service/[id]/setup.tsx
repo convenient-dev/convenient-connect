@@ -8,9 +8,9 @@ import {
   deleteServiceFile,
   getServiceInformation,
   getServicePricing,
-  updateServiceInformation,
+  saveServiceCandidate,
   type ProviderPublishability,
-  type ServiceInformationCurrentValues,
+  type ServicePricingRecord,
 } from "@/api/service-management";
 import { AddressModal } from "@/components/AddressModal";
 import { Button } from "@/components/Button";
@@ -26,11 +26,10 @@ import {
   type ServerErrorResult,
 } from "@/hooks/use-template-form";
 import {
-  ACKNOWLEDGEMENT_KEY,
   asTemplate,
-  buildInformationFormData,
-  findFieldBySubmitKey,
-  isPricingStepField,
+  buildCandidateFormData,
+  isListingField,
+  isListingSectionKey,
   valuesFromCurrent,
   valuesFromPricing,
   type FormTemplate,
@@ -53,34 +52,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, background, status } = Colors;
 
-const PORTFOLIO_SUBMIT_KEY = "portfolio_images";
-
-interface LoadedInformation {
+interface LoadedSetup {
+  /** The candidate template: every field including pricing (types, price units). */
   template: FormTemplate;
   values: FormValues;
-  current: ServiceInformationCurrentValues;
+  record: ServicePricingRecord;
   publishability: ProviderPublishability | null;
 }
 
 /**
- * The acknowledgement is accepted at create and never resubmitted. The business
- * format and the fields that depend on it or on pricing are edited on the
- * pricing screen, since changing the format changes the pricing rules. Their
- * stored values are still submitted here, unchanged.
+ * Everything except the listing sections is edited here: business format,
+ * fulfillment and address, capability answers and pricing. These depend on
+ * one another, so they are shown together and saved in one transaction.
+ * Listing values are re-sent unchanged.
  */
 function isEditableField(field: TemplateField, template: FormTemplate): boolean {
-  return field.field_key !== ACKNOWLEDGEMENT_KEY && !isPricingStepField(field, template);
-}
-
-/**
- * The information template comes without the pricing field. Pricing is
- * dropped here too so it can never be rendered or validated on this screen.
- */
-function withoutPricing(template: FormTemplate): FormTemplate {
-  return {
-    ...template,
-    fields: template.fields.filter((field) => field.field_type !== "pricing"),
-  };
+  return !isListingField(field, template);
 }
 
 /**
@@ -98,13 +85,13 @@ function dynamicFieldKey(field: TemplateField): string {
     : field.field_key;
 }
 
-export default function EditServiceInformationScreen() {
+export default function EditServiceSetupScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const serviceId = Number(id);
 
-  const [loaded, setLoaded] = useState<LoadedInformation | null>(null);
+  const [loaded, setLoaded] = useState<LoadedSetup | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   // The address shown for provider-location fulfillment: the provider default
@@ -118,9 +105,6 @@ export default function EditServiceInformationScreen() {
   // picked up when they come back.
   const refreshAddressOnFocus = useRef(false);
 
-  // Stored files marked for deletion; sent as delete_*_ids[] on save.
-  const [removedPortfolioIds, setRemovedPortfolioIds] = useState<number[]>([]);
-  const [removedCertificateIds, setRemovedCertificateIds] = useState<number[]>([]);
   // Stored dynamic file paths per field_key. These can only be removed through
   // the file endpoint, so deletion is immediate after confirmation.
   const [dynamicPaths, setDynamicPaths] = useState<Record<string, string[]>>({});
@@ -138,23 +122,18 @@ export default function EditServiceInformationScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [data, pricing] = await Promise.all([
+      // The information endpoint's candidate_template has every field including
+      // pricing, plus the saved information values; the pricing record has the
+      // saved pricing values.
+      const [info, record] = await Promise.all([
         getServiceInformation(serviceId),
-        // Pricing is not edited here, but capability fields such as session
-        // duration are shown/required based on the saved pricing type and unit.
-        getServicePricing(serviceId).catch(() => null),
+        getServicePricing(serviceId),
       ]);
-      if (!data.template) {
+      if (!info.candidate_template) {
         throw new ApiError("The service form could not be loaded.", 422);
       }
-      const template = withoutPricing(asTemplate(data.template));
-      const current = data.current_values ?? {};
-      const values = {
-        ...valuesFromCurrent(template, current),
-        ...(pricing ? valuesFromPricing(pricing) : {}),
-      };
-      // Keeps the hidden acknowledgement valid; it is dropped from the payload.
-      values[ACKNOWLEDGEMENT_KEY] = current.information_accuracy_acknowledgement ?? true;
+      const template = asTemplate(info.candidate_template);
+      const current = info.current_values ?? {};
 
       const answers = current.answers_json ?? {};
       const paths: Record<string, string[]> = {};
@@ -163,13 +142,14 @@ export default function EditServiceInformationScreen() {
         paths[field.field_key] = storedDynamicPaths(answers[dynamicFieldKey(field)]);
       }
       setDynamicPaths(paths);
-      setRemovedPortfolioIds([]);
-      setRemovedCertificateIds([]);
       setLoaded({
         template,
-        values,
-        current,
-        publishability: data.publishability ?? null,
+        values: {
+          ...valuesFromCurrent(template, current),
+          ...valuesFromPricing(record),
+        },
+        record,
+        publishability: info.publishability ?? null,
       });
 
       setAddress(current.address?.address ?? null);
@@ -181,9 +161,7 @@ export default function EditServiceInformationScreen() {
     } catch (error) {
       setLoaded(null);
       setLoadError(
-        error instanceof ApiError
-          ? error.message
-          : "Couldn't load the service information.",
+        error instanceof ApiError ? error.message : "Couldn't load the service setup.",
       );
     } finally {
       setLoading(false);
@@ -217,52 +195,22 @@ export default function EditServiceInformationScreen() {
     setAddressModalOpen(false);
   }
 
-  // ── Stored files ─────────────────────────────────────────────────────────
-  const existingFiles = useMemo<Record<string, ExistingFile[]>>(() => {
-    if (!loaded) return {};
-    const { template, current } = loaded;
-    const map: Record<string, ExistingFile[]> = {};
-
-    const portfolioField = findFieldBySubmitKey(template, PORTFOLIO_SUBMIT_KEY);
-    if (portfolioField) {
-      map[portfolioField.field_key] = (current.portfolio_images ?? [])
-        .filter((file) => file.id != null && !!file.url)
-        .map((file) => ({
-          key: String(file.id),
-          url: file.url!,
-          removed: removedPortfolioIds.includes(file.id!),
-        }));
-    }
-
-    const certificateField = template.fields.find(
-      (field) => field.submit_as?.type === "certificate_bundle",
-    );
-    if (certificateField) {
-      map[certificateField.field_key] = (current.certificate?.files ?? [])
-        .filter((file) => file.id != null && !!file.url)
-        .map((file) => ({
-          key: String(file.id),
-          url: file.url!,
-          removed: removedCertificateIds.includes(file.id!),
-        }));
-    }
-
-    for (const [fieldKey, paths] of Object.entries(dynamicPaths)) {
-      map[fieldKey] = paths.map((path) => ({
-        key: path,
-        url: toAbsoluteUrl(path) ?? path,
-      }));
-    }
-    return map;
-  }, [loaded, removedPortfolioIds, removedCertificateIds, dynamicPaths]);
+  // ── Stored dynamic files ─────────────────────────────────────────────────
+  const existingFiles = useMemo<Record<string, ExistingFile[]>>(
+    () =>
+      Object.fromEntries(
+        Object.entries(dynamicPaths).map(([fieldKey, paths]) => [
+          fieldKey,
+          paths.map((path) => ({ key: path, url: toAbsoluteUrl(path) ?? path })),
+        ]),
+      ),
+    [dynamicPaths],
+  );
 
   const existingFileCounts = useMemo(
     () =>
       Object.fromEntries(
-        Object.entries(existingFiles).map(([key, files]) => [
-          key,
-          files.filter((file) => !file.removed).length,
-        ]),
+        Object.entries(existingFiles).map(([key, files]) => [key, files.length]),
       ),
     [existingFiles],
   );
@@ -273,15 +221,8 @@ export default function EditServiceInformationScreen() {
   });
 
   function handleRemoveExisting(field: TemplateField, file: ExistingFile) {
-    switch (field.submit_as?.type) {
-      case "certificate_bundle":
-        setRemovedCertificateIds((prev) => [...prev, Number(file.key)]);
-        break;
-      case "dynamic_files":
-        setPendingDynamicDelete({ field, file });
-        break;
-      default:
-        setRemovedPortfolioIds((prev) => [...prev, Number(file.key)]);
+    if (field.submit_as?.type === "dynamic_files") {
+      setPendingDynamicDelete({ field, file });
     }
   }
 
@@ -329,11 +270,9 @@ export default function EditServiceInformationScreen() {
     setSaving(true);
     form.clearGeneralErrors();
     try {
-      const formData = buildInformationFormData(loaded.template, form.values, {
-        deletePortfolioIds: removedPortfolioIds,
-        deleteCertificateIds: removedCertificateIds,
-      });
-      await updateServiceInformation(serviceId, formData);
+      // A format, fulfillment or unit change alters which other fields are
+      // valid, so the whole listing is re-validated and saved atomically.
+      await saveServiceCandidate(serviceId, buildCandidateFormData(loaded.template, form.values));
       setSavedModalVisible(true);
     } catch (error) {
       if (isCommercialPublishabilityError(error)) {
@@ -361,7 +300,7 @@ export default function EditServiceInformationScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <ScreenHeader title="Service Information" />
+        <ScreenHeader title="Setup & Pricing" />
         <ActivityIndicator size="large" color={primary[400]} style={styles.loader} />
       </SafeAreaView>
     );
@@ -370,11 +309,11 @@ export default function EditServiceInformationScreen() {
   if (!loaded) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <ScreenHeader title="Service Information" />
+        <ScreenHeader title="Setup & Pricing" />
         <View style={styles.center}>
           <Feather name="alert-circle" size={36} color={neutral[300]} />
           <Text style={styles.errorText}>
-            {loadError ?? "Couldn't load the service information."}
+            {loadError ?? "Couldn't load the service setup."}
           </Text>
           <Button title="Try again" variant="primary" size="md" onPress={load} />
           <Button title="Back" variant="ghost" size="md" onPress={() => router.back()} />
@@ -384,13 +323,27 @@ export default function EditServiceInformationScreen() {
   }
 
   const { template } = loaded;
-  const sections = form.sections;
+  const sections = form.sections.filter((section) => !isListingSectionKey(section.section_key));
+  // Fields the template left outside any section are edited here, the safe default.
   const unsectioned = form.unsectionedFields.filter((f) => isEditableField(f, template));
   const hasErrors = Object.keys(form.errors).length > 0;
 
+  const sectionProps = {
+    template,
+    values: form.values,
+    errors: form.errors,
+    isRequired: form.isRequired,
+    setValue: form.setValue,
+    defaultAddress: address ? { address } : null,
+    onAddAddress: () => setAddressModalOpen(true),
+    onChangeAddress: goToAddAddress,
+    existingFiles,
+    onRemoveExistingFile: handleRemoveExisting,
+  };
+
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <ScreenHeader title="Service Information" />
+      <ScreenHeader title="Setup & Pricing" subtitle={loaded.record.title ?? undefined} />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -414,25 +367,11 @@ export default function EditServiceInformationScreen() {
 
           {sections.map((section, index) => {
             const fields = form.fieldsForSection(section).filter((f) => isEditableField(f, template));
-            // Fields the template left outside any section join the last one.
             const all = index === sections.length - 1 ? [...fields, ...unsectioned] : fields;
             if (!all.length) return null;
             return (
               <View key={section.section_key ?? String(index)} style={styles.card}>
-                <TemplateSection
-                  section={section}
-                  fields={all}
-                  template={template}
-                  values={form.values}
-                  errors={form.errors}
-                  isRequired={form.isRequired}
-                  setValue={form.setValue}
-                  defaultAddress={address ? { address } : null}
-                  onAddAddress={() => setAddressModalOpen(true)}
-                  onChangeAddress={goToAddAddress}
-                  existingFiles={existingFiles}
-                  onRemoveExistingFile={handleRemoveExisting}
-                />
+                <TemplateSection section={section} fields={all} {...sectionProps} />
               </View>
             );
           })}
@@ -440,18 +379,9 @@ export default function EditServiceInformationScreen() {
           {!sections.length && unsectioned.length ? (
             <View style={styles.card}>
               <TemplateSection
-                section={{ title: "Service Information", help_text: null }}
+                section={{ title: "Service Setup", help_text: null }}
                 fields={unsectioned}
-                template={template}
-                values={form.values}
-                errors={form.errors}
-                isRequired={form.isRequired}
-                setValue={form.setValue}
-                defaultAddress={address ? { address } : null}
-                onAddAddress={() => setAddressModalOpen(true)}
-                onChangeAddress={goToAddAddress}
-                existingFiles={existingFiles}
-                onRemoveExistingFile={handleRemoveExisting}
+                {...sectionProps}
               />
             </View>
           ) : null}
@@ -488,8 +418,8 @@ export default function EditServiceInformationScreen() {
       <ConfirmModal
         visible={savedModalVisible}
         type="success"
-        title="Information Updated"
-        message="Your service information has been saved successfully."
+        title="Service Updated"
+        message="Your service setup and pricing have been saved successfully."
         confirmLabel="View Service"
         onConfirm={() => {
           setSavedModalVisible(false);

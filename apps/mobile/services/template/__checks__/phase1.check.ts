@@ -20,6 +20,7 @@ import {
   evaluatePredicate,
   filterPriceUnits,
   getFormat,
+  isListingField,
   profilePricingScopeState,
   resolveActiveFormatKey,
   resolveCurrency,
@@ -32,6 +33,9 @@ import {
 import petFixture from "../__fixtures__/pet-sitting-template.json";
 import tutoringFixture from "../__fixtures__/education-tutoring-template.json";
 import personalFixture from "../__fixtures__/personal-holistic-business-template.json";
+// Real UAT responses (full envelopes) kept under docs/.
+import cateringResponse from "../../../docs/subcategory-form-templates-oct-19/template-catering.json";
+import laundryResponse from "../../../docs/subcategory-form-templates-oct-19/template-laundry.json";
 
 // --- recording FormData -----------------------------------------------------
 type Entry = [string, unknown];
@@ -72,6 +76,8 @@ function section(title: string): void {
 const pet = asTemplate(petFixture as any);
 const tutoring = asTemplate(tutoringFixture as any);
 const personal = asTemplate(personalFixture as any);
+const catering = asTemplate((cateringResponse as any).data);
+const laundry = asTemplate((laundryResponse as any).data);
 
 const file = (name: string, type: string): MultipartFile => ({ uri: `file:///${name}`, name, type });
 const jpg = file("front.jpg", "image/jpeg");
@@ -332,6 +338,26 @@ check(mapped.fieldErrors.portfolio_images === "File 2: Too large.", "portfolio_i
 check(mapped.general.length === 2 && mapped.general[0] === "Cross-field problem." && mapped.general[1] === "unknown_key: Unknown.", "$ and unknown paths go to general");
 const dynMapped = mapIssuesToFields(tutoring, { ...baseValues(), cori_background_check: [cori] }, [issue("dynamic_files.0", "Bad file.")] as any);
 check(dynMapped.fieldErrors.cori_background_check === "File 1: Bad file.", "dynamic_files.N resolves to the paired field_key");
+
+// ===========================================================================
+section("edit screens: listing details vs setup & pricing split");
+const LISTING = ["title", "description", "additional_information", "tagline", "information_accuracy_acknowledgement", "portfolio_images", "certificates"];
+const listingKeys = (t: typeof catering) => t.fields.filter((f) => isListingField(f, t)).map((f) => f.field_key).sort();
+const setupKeys = (t: typeof catering) => t.fields.filter((f) => !isListingField(f, t)).map((f) => f.field_key).sort();
+for (const [name, t] of [["catering", catering], ["laundry", laundry], ["tutoring", tutoring], ["pet", pet], ["personal", personal]] as const) {
+  const present = LISTING.filter((k) => t.fields.some((f) => f.field_key === k)).sort();
+  check(JSON.stringify(listingKeys(t)) === JSON.stringify(present), `${name}: listing screen holds exactly the listing fields`, listingKeys(t));
+  check(!setupKeys(t).some((k) => LISTING.includes(k)), `${name}: no listing field leaks onto the setup screen`);
+  check(["fulfillment_types", "address", "service_radius", "pricing"].every((k) => setupKeys(t).includes(k)), `${name}: fulfillment, address, radius and pricing are on the setup screen`, setupKeys(t));
+}
+check(["catering_execution_mode", "min_guest_count", "service_duration_minutes", "item_unit_label"].every((k) => setupKeys(catering).includes(k)), "catering: execution mode and every capability answer are on the setup screen");
+check(["learner_delivery", "session_duration_minutes", "qualifications", "cori_background_check"].every((k) => setupKeys(tutoring).includes(k)), "tutoring: business format, capability answers and dynamic files are on the setup screen");
+// Laundry has no format selector: the format (and so the price units) follows the fulfillment selection, which is why fulfillment is edited next to pricing.
+check(["maximum_turnaround_days", "weight_unit", "min_weight_value", "max_weight_value"].every((k) => setupKeys(laundry).includes(k)), "laundry: turnaround and weight fields are on the setup screen", setupKeys(laundry));
+check(!laundry.provider_listing_capability?.business_format && buildEvaluationContext(laundry, { fulfillment_types: [2] }).context.format === "customer_location" && allowedPriceUnitCodes(getFormat(laundry.provider_listing_capability, "customer_location"), "fixed_price").includes("per_hour") && !allowedPriceUnitCodes(getFormat(laundry.provider_listing_capability, "provider_location"), "fixed_price").includes("per_hour"), "laundry: fulfillment selection picks the format and changes the allowed price units");
+const orphan = { ...catering.fields[0], field_key: "mystery", section_key: undefined } as any;
+check(!isListingField(orphan, { ...catering, sections: catering.sections } as any), "a field outside every section defaults to the setup screen");
+check(isListingField({ ...orphan, section_key: undefined, field_key: "title" }, catering), "a field without section_key is placed via the section that lists it");
 
 // ===========================================================================
 console.log(`\n${passes} passed, ${failures} failed`);

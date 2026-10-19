@@ -1,11 +1,16 @@
 # Template fixtures
 
-Synthetic templates used by `../__checks__/phase1.check.ts` for features the UAT provider cannot produce:
+Real UAT responses to `GET /service-provider/service-form-template` for an **individual** provider, stored as the full `{ status, message, data }` envelope. Used by `../__checks__/phase1.check.ts`, which unwraps `data`.
 
-- `pet-sitting-template.json`: copied verbatim from the `ServiceFormTemplateResponse` example in `api-doc.json`.
-- `education-tutoring-template.json`: hand-built from guide sections 8 and 12 (CAD currency with `can_charge_in_usd`, `learner_delivery` business format, Other option with a custom text key, optional CORI).
-- `personal-holistic-business-template.json`: hand-built from guide section 14 (exclusive `na`, required CORI and business verification files, USD).
+| File | Template | Why it is here |
+| --- | --- | --- |
+| `template-catering.json` | Culinary / Catering | `catering_execution_mode` selector that changes fulfillment but not pricing; guest and item bounds |
+| `template-laundry.json` | Sanitation / Laundry | no selector: the fulfillment selection picks the format, and the formats allow different price units |
+| `education-tutoring-template.json` | Education / Tutoring | `learner_delivery` selector with a required profile pricing scope for `shared_group`; free-entry subjects; optional CORI dynamic file |
+| `personal-holistic-template.json` | Personal / Holistic | min/max participant relation; CORI and business verification dynamic files |
+| `pet-sitting-template.json` | Pet care / Pet sitting | single `default` format with `fulfillment_by_price_unit`; pricing-driven surcharge |
+| `caregiving-seniors-template.json` | Caregiving / Seniors | Other option with a custom text key; yes/no answers |
 
-These are not UAT responses and have drifted from them: real Tutoring uses `individual` / `shared_group` (not `group`), `supported_subjects` (not `subjects_taught`), has no Other option and prices in USD. Keep them only for the CAD / Other / business-file paths.
+Refresh them with `node -r sucrase/register/ts scripts/sweep-templates.ts --save-dir <dir>` (the sweep writes the unwrapped `data`; wrap it to match).
 
-Real UAT responses (full `{ status, message, data }` envelopes) live in `docs/subcategory-form-templates-oct-19/` (Catering, Chef, Laundry, Pet transport) and are imported by the checks directly. Pull more with `scripts/sweep-templates.ts --save-dir <dir>`.
+Not covered by any UAT template yet, so the checks tweak a copy in place and say so in the label: a non-USD currency with `can_charge_in_usd`, a required dynamic file, the `on_or_after` relation, and the optional profile pricing scope state. Business listings are out of scope for now.

@@ -25,6 +25,8 @@ import {
   PRICING_VALUE_KEYS,
   asTemplate,
   buildCreateFormData,
+  formatLanguagePair,
+  isLanguagePairField,
   resolveCurrency,
   selectedFulfillmentCodes,
   type CertificateBundleValue,
@@ -65,8 +67,13 @@ const ADDRESS_ERROR_HINT = "default address";
 
 function optionLabels(field: TemplateField, value: unknown): string {
   const list = Array.isArray(value) ? value : [value];
+  const pairs = isLanguagePairField(field);
   return list
-    .map((v) => field.options?.find((o) => String(o.value) === String(v))?.label ?? String(v))
+    .map(
+      (v) =>
+        field.options?.find((o) => String(o.value) === String(v))?.label ??
+        (pairs ? formatLanguagePair(v) : String(v)),
+    )
     .join(", ");
 }
 

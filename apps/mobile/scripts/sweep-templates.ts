@@ -245,7 +245,11 @@ function checkTemplate(
       if (opts.length === 0) {
         const set: any = (f as any).descriptor?.set;
         if (set?.mode === "open" || set?.entry === "free_entry") {
-          report.error("free_entry", `${tag}: free-entry select (descriptor.set ${JSON.stringify(set)}) with no options; MultiSelectControl/SingleSelectControl render no input${f.is_required ? " and the field is required, so the form cannot be submitted" : ""}`);
+          if (f.field_type === "multi_select") {
+            report.info("free_entry", `${tag}: free-entry multi_select with no options; renders as a typed chip input`);
+          } else {
+            report.error("free_entry", `${tag}: free-entry select (descriptor.set ${JSON.stringify(set)}) with no options; SingleSelectControl renders no input${f.is_required ? " and the field is required, so the form cannot be submitted" : ""}`);
+          }
         } else {
           report.error("options", `${tag}: select field has no options`);
         }

@@ -73,6 +73,17 @@ export function isProviderAddressField(field: TemplateField): boolean {
   );
 }
 
+/**
+ * A select whose values the provider types rather than picks: the descriptor
+ * set is open / free_entry and no options are supplied. A closed set with no
+ * options is unsatisfiable by contract and is not free entry.
+ */
+export function isFreeEntryField(field: TemplateField): boolean {
+  if (field.options?.length) return false;
+  const set = field.descriptor?.set;
+  return set?.mode !== "closed" && set?.entry !== "options_only";
+}
+
 export function findField(
   template: FormTemplate,
   fieldKey: string,

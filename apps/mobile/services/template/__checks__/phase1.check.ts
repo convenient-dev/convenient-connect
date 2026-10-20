@@ -25,7 +25,12 @@ import {
   evaluatePredicate,
   filterPriceUnits,
   getFormat,
+  encodeLanguagePair,
+  formatLanguagePair,
+  isFreeEntryField,
+  isLanguagePairField,
   isListingField,
+  parseLanguagePair,
   mapIssuesToFields,
   profilePricingScopeState,
   resolveActiveFormatKey,
@@ -43,6 +48,8 @@ import holisticResponse from "../__fixtures__/personal-holistic-template.json";
 import petResponse from "../__fixtures__/pet-sitting-template.json";
 import seniorsResponse from "../__fixtures__/caregiving-seniors-template.json";
 import moversResponse from "../__fixtures__/misc-movers-template.json";
+import editingResponse from "../__fixtures__/editing-template.json";
+import interpretersResponse from "../__fixtures__/misc-interpreters-template.json";
 
 // --- recording FormData -----------------------------------------------------
 type Entry = [string, unknown];
@@ -89,6 +96,8 @@ const holistic = unwrap(holisticResponse);
 const pet = unwrap(petResponse);
 const seniors = unwrap(seniorsResponse);
 const movers = unwrap(moversResponse);
+const editing = unwrap(editingResponse);
+const interpreters = unwrap(interpretersResponse);
 const copyOf = (t: FormTemplate): FormTemplate => JSON.parse(JSON.stringify(t));
 
 /** Fulfillment option id for a code, from the template's own options. */
@@ -234,6 +243,38 @@ check("title" in validateForm(tutoring, { ...baseValues(), title: "ab" }) && "ti
 check(!("title" in validateForm(tutoring, { ...baseValues(), title: "abc" })) && !("title" in validateForm(tutoring, { ...baseValues(), title: "a".repeat(150) })), "title of 3 and 150 characters pass");
 check("fulfillment_types" in validateForm(tutoring, { ...baseValues(), fulfillment_types: [] }), "multi_select with 0 selections fails minimum_selections 1");
 check("supported_subjects" in validateForm(tutoring, { ...baseValues(), supported_subjects: [] }), "free-entry multi_select with 0 entries fails minimum_selections 1");
+// Selection bounds (an empty list fails as "required" first, so use a minimum of 2 on a copy).
+const tutoringMin2 = copyOf(tutoring);
+for (const key of ["supported_subjects", "fulfillment_types"]) {
+  (tutoringMin2.fields.find((f) => f.field_key === key)!.validation as any) = { minimum_selections: 2 };
+}
+check(validateForm(tutoringMin2, baseValues()).supported_subjects?.startsWith("Add at least 2") === true, "free-entry multi_select below minimum says Add, not Select (tweaked copy: minimum_selections 2)", validateForm(tutoringMin2, baseValues()));
+check(validateForm(tutoringMin2, baseValues()).fulfillment_types?.startsWith("Select at least 2") === true, "option multi_select below minimum says Select (tweaked copy: minimum_selections 2)", validateForm(tutoringMin2, baseValues()));
+// Free entry: open / free_entry descriptor set with no options
+const byKey = (t: FormTemplate, key: string) => t.fields.find((f) => f.field_key === key)!;
+check(isFreeEntryField(byKey(editing, "supported_source_media_types")), "editing supported_source_media_types is free entry");
+check(isFreeEntryField(byKey(tutoring, "supported_subjects")), "tutoring supported_subjects is free entry");
+check(!isFreeEntryField(byKey(editing, "fulfillment_types")), "fulfillment_types with options is not free entry");
+check(!isFreeEntryField(byKey(seniors, "specialized_care_experience")), "option multi_select is not free entry");
+check(!isFreeEntryField({ ...byKey(editing, "supported_source_media_types"), descriptor: { ...byKey(editing, "supported_source_media_types").descriptor!, set: { mode: "closed", entry: "options_only" } } } as any), "closed set with no options is not free entry (unsatisfiable, never free text)");
+check(isFreeEntryField({ ...byKey(editing, "supported_source_media_types"), descriptor: undefined } as any), "no descriptor and no options falls back to free entry");
+check(!("supported_source_media_types" in validateForm(editing, { supported_source_media_types: ["Photos", "Video"] })), "typed entries pass free-entry validation");
+// Directed language pairs (Misc / Interpreters): `source->target`, lower case as in the spec example
+section("1.4b language pairs (Misc / Interpreters)");
+const pairsField = byKey(interpreters, "supported_language_pairs");
+check(isLanguagePairField(pairsField) && isFreeEntryField(pairsField), "supported_language_pairs is a free-entry directed pair set");
+check(!isLanguagePairField(byKey(editing, "supported_source_media_types")), "plain free-entry set is not a pair set");
+check(encodeLanguagePair(" English ", "Urdu") === "english->urdu", "pair encodes as lower-case source->target");
+check(JSON.stringify(parseLanguagePair("english->urdu")) === JSON.stringify({ source: "english", target: "urdu" }), "pair parses back");
+check(parseLanguagePair("english") === null && parseLanguagePair("->urdu") === null && parseLanguagePair(3) === null, "values without both sides do not parse");
+check(formatLanguagePair("mandarin chinese->english") === "Mandarin Chinese \u2192 English", "pair displays title-cased with an arrow", formatLanguagePair("mandarin chinese->english"));
+check(formatLanguagePair("not a pair") === "not a pair", "unparseable value displays as stored");
+const pairsOnly = (list: unknown[]) => validateForm(interpreters, { supported_language_pairs: list }).supported_language_pairs;
+check(pairsOnly(["english->urdu", "urdu->english"]) === undefined, "forward and reverse pairs are distinct entries", pairsOnly(["english->urdu", "urdu->english"]));
+check(pairsOnly(["english->english"])?.includes("different") === true, "same source and target fails", pairsOnly(["english->english"]));
+check(pairsOnly(["english->urdu", "English -> Urdu"])?.includes("twice") === true, "duplicate pair (any spacing/case) fails", pairsOnly(["english->urdu", "English -> Urdu"]));
+check(pairsOnly(["english"])?.includes("source and a target") === true, "entry without a target fails", pairsOnly(["english"]));
+check(pairsOnly([])?.includes("required") === true, "empty pair list fails as required");
 // Other option with a custom text key (caregiving specialized care experience)
 check("specialized_care_experience_other" in validateForm(seniors, { specialized_care_experience: ["general_caregiving", "other"] }), "other selected without custom value fails");
 check("specialized_care_experience_other" in validateForm(seniors, { specialized_care_experience: ["general_caregiving"], specialized_care_experience_other: "Respite care" }), "custom value without other selected fails");

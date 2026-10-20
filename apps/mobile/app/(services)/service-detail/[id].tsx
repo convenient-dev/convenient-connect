@@ -18,6 +18,8 @@ import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import {
   asTemplate,
+  formatLanguagePair,
+  isLanguagePairField,
   type FieldOption,
   type FormTemplate,
   type TemplateField,
@@ -77,6 +79,8 @@ interface DetailField {
   key: string;
   label: string;
   options?: FieldOption[];
+  /** Items are `source->target` language pairs, shown as "Source → Target". */
+  languagePairs?: boolean;
 }
 
 interface DetailSection {
@@ -119,10 +123,11 @@ const FALLBACK_SECTIONS: DetailSection[] = [
 const OTHER_SECTION_KEY = "other_details";
 
 // Short label/value sections read better as single rows than stacked blocks.
+// Service capability holds free-entry lists and language pairs, which wrap
+// badly on one line, so it stays stacked.
 const INLINE_SECTION_KEYS = new Set([
   "fulfillment_location",
   "pricing",
-  "service_capability",
   "service_format",
   "business_format",
 ]);
@@ -158,6 +163,7 @@ function toDetailField(field: TemplateField): DetailField {
     key: field.field_key ?? "",
     label: field.label ?? field.field_key ?? "",
     options: field.options,
+    languagePairs: isLanguagePairField(field),
   };
 }
 
@@ -245,7 +251,16 @@ function formatRadius(info: ServiceInfo): string | null {
   return `${value} ${unit}`;
 }
 
-function formatDynamicAnswer(answer: ServiceDynamicAnswer): string | null {
+/**
+ * The template's own option labels win when they cover the stored value: the
+ * API's `display_value` is documented as human-readable, but single selects
+ * have come back with the raw option value (e.g. `defined_project`).
+ */
+function formatDynamicAnswer(answer: ServiceDynamicAnswer, field?: DetailField): string | null {
+  if (field?.options?.length || field?.languagePairs) {
+    const labeled = formatRawValue(answer.value, field.options, field.languagePairs);
+    if (labeled) return labeled;
+  }
   if (answer.display_value) return answer.display_value;
   if (answer.labeled_values?.length) {
     return answer.labeled_values.map((item) => item.label).join(", ");
@@ -254,14 +269,19 @@ function formatDynamicAnswer(answer: ServiceDynamicAnswer): string | null {
 }
 
 /** Raw answers_json values, mapped through template options when available. */
-function formatRawValue(raw: unknown, options?: FieldOption[]): string | null {
+function formatRawValue(
+  raw: unknown,
+  options?: FieldOption[],
+  languagePairs = false,
+): string | null {
   if (raw == null || raw === "") return null;
   if (typeof raw === "boolean") return raw ? "Yes" : "No";
   const list = Array.isArray(raw) ? raw : [raw];
   const labels = list.flatMap((item) => {
     const option = options?.find((o) => String(o.value) === String(item));
     if (option) return [option.label];
-    return typeof item === "object" ? [] : [String(item)];
+    if (typeof item === "object") return [];
+    return [languagePairs ? formatLanguagePair(item) : String(item)];
   });
   return labels.length ? labels.join(", ") : null;
 }
@@ -356,9 +376,11 @@ function contentFor(
       return { kind: "pricing", rows: pricingRows(service.pricing) };
     default: {
       const answer = answersByKey.get(field.key);
-      if (answer) return textContent(formatDynamicAnswer(answer));
+      if (answer) return textContent(formatDynamicAnswer(answer, field));
       const answers = (service.answers_json ?? {}) as Record<string, unknown>;
-      return textContent(formatRawValue(answers[field.key], field.options));
+      return textContent(
+        formatRawValue(answers[field.key], field.options, field.languagePairs),
+      );
     }
   }
 }

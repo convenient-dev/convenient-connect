@@ -15,10 +15,12 @@ import {
   type Scalar,
   type TemplateField,
 } from "./types";
+import { isLanguagePairField, languagePairsError } from "./language-pairs";
 import {
   buildEvaluationContext,
   isFieldRequired,
   isFieldVisible,
+  isFreeEntryField,
   selectedPriceUnitCode,
   selectedPricingType,
 } from "./visibility";
@@ -117,11 +119,16 @@ function validateMultiSelect(field: TemplateField, value: unknown): string | nul
     return `${field.label} contains an invalid selection.`;
   }
   const v = validationOf(field);
+  const verb = isFreeEntryField(field) ? "Add" : "Select";
   if (v.minimum_selections !== undefined && value.length < v.minimum_selections) {
-    return `Select at least ${v.minimum_selections} for ${field.label}.`;
+    return `${verb} at least ${v.minimum_selections} for ${field.label}.`;
   }
   if (v.maximum_selections !== undefined && value.length > v.maximum_selections) {
-    return `Select at most ${v.maximum_selections} for ${field.label}.`;
+    return `${verb} at most ${v.maximum_selections} for ${field.label}.`;
+  }
+  if (isLanguagePairField(field)) {
+    const pairError = languagePairsError(field, value);
+    if (pairError) return pairError;
   }
   const exclusive = field.selection_rules?.exclusive_values ?? [];
   if (value.length > 1) {

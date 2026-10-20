@@ -1,11 +1,19 @@
 import type { Address } from "@/api/address";
-import type { FormTemplate, FormValues, TemplateField as Field } from "@/services/template";
+import {
+  isFreeEntryField,
+  isLanguagePairField,
+  type FormTemplate,
+  type FormValues,
+  type TemplateField as Field,
+} from "@/services/template";
 import React from "react";
 import { PricingControl } from "./PricingControl";
 import {
   AddressControl,
   CertificateBundleControl,
   FileUploadControl,
+  FreeEntryMultiSelectControl,
+  LanguagePairControl,
   MultiSelectControl,
   NumberControl,
   SingleSelectControl,
@@ -55,7 +63,12 @@ export function TemplateField(props: Props) {
     case "single_select":
       return <SingleSelectControl {...base} />;
     case "multi_select":
-      return <MultiSelectControl {...base} />;
+      if (isLanguagePairField(field)) return <LanguagePairControl {...base} />;
+      return isFreeEntryField(field) ? (
+        <FreeEntryMultiSelectControl {...base} />
+      ) : (
+        <MultiSelectControl {...base} />
+      );
     case "yes_no":
       return <YesNoControl {...base} />;
     case "file_upload":

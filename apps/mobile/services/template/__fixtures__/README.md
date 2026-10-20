@@ -10,6 +10,7 @@ Real UAT responses to `GET /service-provider/service-form-template` for an **ind
 | `personal-holistic-template.json` | Personal / Holistic | min/max participant relation; CORI and business verification dynamic files |
 | `pet-sitting-template.json` | Pet care / Pet sitting | single `default` format with `fulfillment_by_price_unit`; pricing-driven surcharge |
 | `caregiving-seniors-template.json` | Caregiving / Seniors | Other option with a custom text key; yes/no answers |
+| `misc-movers-template.json` | Misc / Movers (alias of Delivery / Movers) | no `fulfillment_types` field: address and radius rules never hold, no fulfillment step, `fulfillment_type_ids` omitted; one of eight such templates (courier, errands, grocery, movers, mobility, rentals, pet transport) |
 
 Refresh them with `node -r sucrase/register/ts scripts/sweep-templates.ts --save-dir <dir>` (the sweep writes the unwrapped `data`; wrap it to match).
 

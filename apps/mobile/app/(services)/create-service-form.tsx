@@ -212,10 +212,31 @@ export default function CreateServiceFormScreen() {
   const form = useTemplateForm(template);
   const { sections, fieldsForSection, unsectionedFields } = form;
 
+  /**
+   * Wizard steps: the sections that currently show at least one field, in
+   * template order, with fields outside every section joining the last one.
+   * A section whose fields are all hidden is skipped instead of rendering an
+   * empty page, e.g. Fulfillment Location on a template with no fulfillment
+   * field, where address and service radius never become visible.
+   */
+  const steps = useMemo(
+    () =>
+      sections
+        .map((section, index) => {
+          const fields = fieldsForSection(section);
+          return {
+            section,
+            fields: index === sections.length - 1 ? [...fields, ...unsectionedFields] : fields,
+          };
+        })
+        .filter((step) => step.fields.length > 0),
+    [sections, fieldsForSection, unsectionedFields],
+  );
+
   const [pageIndex, setPageIndex] = useState(0);
-  const reviewIndex = sections.length;
-  const isReview = pageIndex === reviewIndex;
-  const totalSteps = CREATE_SERVICE_BASE_STEPS + sections.length + 1;
+  const reviewIndex = steps.length;
+  const isReview = pageIndex >= reviewIndex;
+  const totalSteps = CREATE_SERVICE_BASE_STEPS + steps.length + 1;
   const currentStep = CREATE_SERVICE_BASE_STEPS + pageIndex + 1;
   const scrollRef = useRef<ScrollView>(null);
 
@@ -223,14 +244,23 @@ export default function CreateServiceFormScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [pageIndex]);
 
+  // Steps can disappear as values change; never point past the review page.
+  useEffect(() => {
+    if (pageIndex > reviewIndex) setPageIndex(reviewIndex);
+  }, [pageIndex, reviewIndex]);
+
   const pageFields = useCallback(
-    (index: number): TemplateField[] => {
-      const section = sections[index];
-      if (!section) return [];
-      const fields = fieldsForSection(section);
-      return index === sections.length - 1 ? [...fields, ...unsectionedFields] : fields;
+    (index: number): TemplateField[] => steps[index]?.fields ?? [],
+    [steps],
+  );
+
+  /** The step showing the given template section, or the first step when none does. */
+  const stepIndexForSection = useCallback(
+    (sectionIndex: number): number => {
+      const index = steps.findIndex((step) => step.section === sections[sectionIndex]);
+      return index === -1 ? 0 : index;
     },
-    [sections, fieldsForSection, unsectionedFields],
+    [steps, sections],
   );
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -244,7 +274,7 @@ export default function CreateServiceFormScreen() {
    * since the general error box only renders on the review page.
    */
   function showFieldErrors(title: string, result: ServerErrorResult) {
-    if (result.sectionIndex !== -1) setPageIndex(result.sectionIndex);
+    if (result.sectionIndex !== -1) setPageIndex(stepIndexForSection(result.sectionIndex));
     const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
     const prompt = "Please review the highlighted fields before submitting.";
     setDialog({ title, message: unmapped ? `${prompt}\n\n${unmapped}` : prompt });
@@ -359,7 +389,7 @@ export default function CreateServiceFormScreen() {
     );
   }
 
-  const section = sections[pageIndex];
+  const step = steps[pageIndex];
   // Next stays disabled while the current step shows an error.
   const pageHasErrors =
     !isReview &&
@@ -385,13 +415,13 @@ export default function CreateServiceFormScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {!isReview && section ? (
+          {!isReview && step ? (
             <>
-              <Text style={styles.title}>{section.title}</Text>
-              {section.help_text ? <Text style={styles.subtitle}>{section.help_text}</Text> : null}
+              <Text style={styles.title}>{step.section.title}</Text>
+              {step.section.help_text ? <Text style={styles.subtitle}>{step.section.help_text}</Text> : null}
               <TemplateSection
-                section={section}
-                fields={pageFields(pageIndex)}
+                section={step.section}
+                fields={step.fields}
                 template={template}
                 values={form.values}
                 errors={form.errors}
@@ -428,9 +458,7 @@ export default function CreateServiceFormScreen() {
                 />
               </View>
 
-              {sections.map((s, index) => {
-                const fields = pageFields(index);
-                if (!fields.length) return null;
+              {steps.map(({ section: s, fields }, index) => {
                 return (
                   <View key={s.section_key} style={styles.reviewSection}>
                     <View style={styles.reviewHeaderRow}>

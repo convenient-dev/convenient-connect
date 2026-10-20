@@ -42,6 +42,7 @@ import tutoringResponse from "../__fixtures__/education-tutoring-template.json";
 import holisticResponse from "../__fixtures__/personal-holistic-template.json";
 import petResponse from "../__fixtures__/pet-sitting-template.json";
 import seniorsResponse from "../__fixtures__/caregiving-seniors-template.json";
+import moversResponse from "../__fixtures__/misc-movers-template.json";
 
 // --- recording FormData -----------------------------------------------------
 type Entry = [string, unknown];
@@ -87,6 +88,7 @@ const tutoring = unwrap(tutoringResponse);
 const holistic = unwrap(holisticResponse);
 const pet = unwrap(petResponse);
 const seniors = unwrap(seniorsResponse);
+const movers = unwrap(moversResponse);
 const copyOf = (t: FormTemplate): FormTemplate => JSON.parse(JSON.stringify(t));
 
 /** Fulfillment option id for a code, from the template's own options. */
@@ -369,6 +371,42 @@ check(mapped.fieldErrors.portfolio_images === "File 2: Too large.", "portfolio_i
 check(mapped.general.length === 2 && mapped.general[0] === "Cross-field problem." && mapped.general[1] === "unknown_key: Unknown.", "$ and unknown paths go to general");
 const dynMapped = mapIssuesToFields(tutoring, { ...baseValues(), cori_background_check: [cori] }, [issue("dynamic_files.0", "Bad file.")] as any);
 check(dynMapped.fieldErrors.cori_background_check === "File 1: Bad file.", "dynamic_files.N resolves to the paired field_key");
+
+// ===========================================================================
+section("templates without a fulfillment field (Misc / Movers, alias of Delivery / Movers)");
+// Eight templates ship no fulfillment_types field while address and radius
+// still carry fulfillment rules. Backend: no fulfillment step, nothing to
+// select, fulfillment_type_ids omitted (or []) on create/update.
+const moversValues = (): FormValues => ({
+  title: "Apartment move crew",
+  description: "One origin to one destination moving with a two-person crew and a van.",
+  information_accuracy_acknowledgement: true,
+  pricing_type: "fixed_price",
+  amount: 3.5,
+  price_unit_id: uid(movers, "per_mile"),
+});
+const moversCap = movers.provider_listing_capability!;
+check(!movers.fields.some((f) => f.submit_as?.key === "fulfillment_type_ids"), "fixture has no fulfillment field");
+check(moversCap.is_alias === true && Object.keys(moversCap.formats).join() === "default" && (moversCap.formats.default.fulfillment ?? []).length === 0, "alias capability: single default format allowing no fulfillment");
+check(JSON.stringify(buildEvaluationContext(movers, moversValues()).context.fulfillment_types) === "[]", "context exposes no fulfillment codes");
+const moversVisible = visibleFields(movers, moversValues()).map((f) => f.field_key);
+check(!moversVisible.includes("address") && !moversVisible.includes("service_radius"), "address and service radius stay hidden", moversVisible);
+check(moversVisible.join() === "title,description,additional_information,tagline,information_accuracy_acknowledgement,portfolio_images,certificates,pricing", "every other field is visible, in template order", moversVisible);
+const fulfillmentSection = movers.sections!.find((s) => s.section_key === "fulfillment_location")!;
+check(fulfillmentSection.field_keys!.every((k) => !moversVisible.includes(k)), "the Fulfillment Location section shows no field, so the wizard skips that step");
+check(resolveActiveFormatKey(moversCap, { fulfillmentCodes: [] }) === "default", "default format resolves with no fulfillment selected");
+check(JSON.stringify(allowedPriceUnitCodes(getFormat(moversCap, "default"), "fixed_price")) === JSON.stringify(["per_service", "per_hour", "per_mile"]), "price units come from the default format (per_mile allowed)");
+check(Object.keys(validateForm(movers, moversValues())).length === 0, "valid without any fulfillment selection", validateForm(movers, moversValues()));
+check(Object.keys(validateForm(movers, { ...moversValues(), pricing_type: "quote_required", amount: undefined })).length === 0, "quote required per mile is valid too");
+const moversCreate = buildCreateFormData(movers, moversValues(), { categoryId: 13, subcategoryId: 81, providerType: "individual" });
+const moversCreateKeys = keysOf(moversCreate);
+check(!moversCreateKeys.some((k) => k.startsWith("fulfillment_type_ids")), "create omits fulfillment_type_ids", moversCreateKeys);
+check(!moversCreateKeys.includes("address_id") && !moversCreateKeys.includes("service_radius") && !moversCreateKeys.includes("service_radius_unit"), "create omits address and radius", moversCreateKeys);
+check(get(moversCreate, "price_unit_id")[0] === String(uid(movers, "per_mile")) && get(moversCreate, "currency")[0] === "USD" && get(moversCreate, "answers_json")[0] === "{}", "create sends per-mile pricing in USD with empty answers_json");
+const staleRadius = buildPayload(movers, { ...moversValues(), service_radius: "5", service_radius_unit: "mile" }, "candidate").entries;
+check(!("service_radius" in staleRadius) && !("service_radius_unit" in staleRadius) && !("fulfillment_type_ids" in staleRadius), "candidate drops a stale saved radius and never invents fulfillment_type_ids", Object.keys(staleRadius));
+check(!keysOf(buildCandidateFormData(movers, moversValues())).some((k) => k.startsWith("fulfillment_type_ids")), "candidate omits fulfillment_type_ids");
+check(JSON.stringify(movers.fields.filter((f) => !isListingField(f, movers)).map((f) => f.field_key)) === JSON.stringify(["address", "service_radius", "pricing"]), "setup screen holds only address, radius and pricing (address and radius hidden)");
 
 // ===========================================================================
 section("edit screens: listing details vs setup & pricing split");

@@ -208,8 +208,9 @@ function checkTemplate(
 
   // --- Alias / identity ----------------------------------------------------
   const rt: any = template.resolved_template;
-  if (capability && (capability as any).is_alias) {
-    report.info("alias", `alias ${(capability as any).source_key} -> owner ${(capability as any).canonical_owner_key}`);
+  const cap: any = capability;
+  if (cap?.is_alias) {
+    report.info("alias", `alias ${cap.source?.key ?? cap.source_key} -> owner ${cap.canonical_owner?.key ?? cap.canonical_owner_key}`);
   }
   if (rt?.child_template_applied === false && rt?.child_template_key) {
     report.info("resolved_template", `child template ${rt.child_template_key} present but not applied`);
@@ -350,7 +351,9 @@ function checkTemplate(
         if (!subject) {
           if (PRICING_KEYS.has(subjectKey) || subjectKey === capability?.business_format?.field_key) return;
           if (subjectKey === "fulfillment_types") {
-            report.warn("predicate", `${loc}: rule depends on fulfillment_types but this template has no fulfillment field (capability fulfillment is empty); the field can never become visible`);
+            // Expected for listings without a fulfillment step (e.g. Movers): the
+            // engine sees no fulfillment codes, so the rule never holds.
+            report.info("predicate", `${loc}: rule depends on fulfillment_types but this template has no fulfillment field; never holds, so the field stays hidden (expected without a fulfillment step)`);
           } else if (KNOWN_CONTEXT_KEYS.has(subjectKey)) {
             report.error("predicate", `${loc}: "${subjectKey}" is sent as field_key but it is a context value; the engine looks it up in form values and gets undefined, so the rule never holds (backend should send context_key, or the engine should fall back to context)`);
           } else {
@@ -431,6 +434,7 @@ function checkTemplate(
     }
     if (!ff) {
       if (capFulfillment.size) report.error("fulfillment", `capability names fulfillment ${[...capFulfillment].join(", ")} but no field submits fulfillment_type_ids`);
+      else report.info("fulfillment", "no fulfillment field and the capability allows no fulfillment: no fulfillment step; address and radius stay hidden and fulfillment_type_ids is omitted on create/update");
     } else {
       const codes = (ff.options ?? []).map((o) => o.code);
       const noCode = (ff.options ?? []).filter((o) => !o.code);

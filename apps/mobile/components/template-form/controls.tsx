@@ -29,6 +29,7 @@ import { FieldShell } from "./FieldShell";
 import { HelpTooltip } from "./HelpTooltip";
 import { OptionSheet } from "./OptionSheet";
 import { acceptsOnlyImages, pickFilesForField } from "./file-pickers";
+import { formatThousands } from "./number-format";
 import { formStyles as s } from "./styles";
 
 const { neutral, primary } = Colors;
@@ -157,7 +158,7 @@ export function NumberControl({
       placeholder={field.placeholder ?? undefined}
       placeholderTextColor={neutral[300]}
       keyboardType="decimal-pad"
-      value={stringValue(values[field.field_key])}
+      value={formatThousands(stringValue(values[field.field_key]))}
       onChangeText={(text) =>
         setValue(field.field_key, text.replace(/[^0-9.]/g, ""))
       }

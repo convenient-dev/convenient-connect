@@ -9,6 +9,7 @@ import { AddressModal } from "@/components/AddressModal";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { StepProgressHeader } from "@/components/StepProgressHeader";
+import { formatThousands } from "@/components/template-form/number-format";
 import { TemplateSection } from "@/components/template-form/TemplateSection";
 import {
   CREATE_SERVICE_BASE_STEPS,
@@ -94,7 +95,8 @@ function reviewValue(
   switch (field.field_type) {
     case "number": {
       const unit = field.unit_value_key ? values[field.unit_value_key] : undefined;
-      return unit ? `${value} ${unit}` : String(value);
+      const number = formatThousands(String(value));
+      return unit ? `${number} ${unit}` : number;
     }
     case "multi_select":
     case "single_select":

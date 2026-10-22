@@ -25,6 +25,7 @@ import {
   findFieldBySubmitKey,
   isListingField,
   isListingSectionKey,
+  removeFileBlockedMessage,
   valuesFromCurrent,
   valuesFromPricing,
   type FormTemplate,
@@ -187,9 +188,18 @@ export default function EditServiceDetailsScreen() {
   function handleRemoveExisting(field: TemplateField, file: ExistingFile) {
     if (field.submit_as?.type === "certificate_bundle") {
       setRemovedCertificateIds((prev) => [...prev, Number(file.key)]);
-    } else {
-      setRemovedPortfolioIds((prev) => [...prev, Number(file.key)]);
+      return;
     }
+    const added = Array.isArray(form.values[field.field_key])
+      ? (form.values[field.field_key] as unknown[]).length
+      : 0;
+    const keptAfterRemoval = (existingFileCounts[field.field_key] ?? 0) - 1 + added;
+    const blocked = removeFileBlockedMessage(field, keptAfterRemoval);
+    if (blocked) {
+      setDialog({ title: "Cannot Remove Photo", message: blocked });
+      return;
+    }
+    setRemovedPortfolioIds((prev) => [...prev, Number(file.key)]);
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────

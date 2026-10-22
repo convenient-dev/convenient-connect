@@ -150,11 +150,24 @@ function validateSingleSelect(field: TemplateField, value: unknown): string | nu
   return null;
 }
 
+/**
+ * Message for a required field left blank. An untouched acknowledgement
+ * checkbox is blank, so it reports its acceptance message rather than
+ * "<whole acknowledgement sentence> is required.".
+ */
+function requiredMessage(field: TemplateField): string {
+  const v = validationOf(field);
+  if (field.field_type === "yes_no" && v.accepted_value !== undefined) {
+    return v.acceptance_failed_message ?? `${field.label} must be accepted.`;
+  }
+  return `${field.label} is required.`;
+}
+
 function validateYesNo(field: TemplateField, value: unknown): string | null {
   if (typeof value !== "boolean") return `${field.label} must be yes or no.`;
   const v = validationOf(field);
   if (v.accepted_value !== undefined && value !== v.accepted_value) {
-    return `${field.label} must be accepted.`;
+    return v.acceptance_failed_message ?? `${field.label} must be accepted.`;
   }
   return null;
 }
@@ -177,12 +190,16 @@ function validateFiles(
   const min = field.minimum_files ?? 0;
   const max = field.maximum_files ?? Infinity;
   const total = files.length + existing;
+  const v = validationOf(field);
   if (total < min) {
+    if (v.minimum_files_failed_message) return v.minimum_files_failed_message;
     return min === 1
       ? `${field.label} requires at least one file.`
       : `${field.label} requires at least ${min} files.`;
   }
-  if (total > max) return `${field.label} allows at most ${max} files.`;
+  if (total > max) {
+    return v.maximum_files_failed_message ?? `${field.label} allows at most ${max} files.`;
+  }
   const extensions = (field.allowed_extensions ?? []).map((e) => e.toLowerCase());
   const types = field.allowed_file_types ?? [];
   for (const file of files) {
@@ -387,6 +404,23 @@ function validateRelations(
   return null;
 }
 
+/**
+ * Message to show instead of removing a stored file when doing so would leave
+ * fewer than `minimum_files` (stored plus newly added), or null when the
+ * removal is allowed. Prefers the template's `cannot_remove_last_message`.
+ */
+export function removeFileBlockedMessage(
+  field: TemplateField,
+  keptAfterRemoval: number,
+): string | null {
+  const min = field.minimum_files ?? 0;
+  if (keptAfterRemoval >= min) return null;
+  return (
+    validationOf(field).cannot_remove_last_message ??
+    `Keep at least ${min === 1 ? "one file" : `${min} files`} on ${field.label}. Add another before removing this one.`
+  );
+}
+
 export function validateField(
   field: TemplateField,
   template: FormTemplate,
@@ -423,13 +457,18 @@ export function validateField(
   }
 
   if (isBlank(value)) {
-    // A file field with stored files is not empty; only its count rules apply.
-    if (field.field_type === "file_upload" && existing > 0) {
-      const fileError = validateFiles(field, [], existing);
+    if (field.field_type === "file_upload") {
+      // Stored files count towards the rules. An empty required field reports
+      // its minimum_files rule (with the template's own message when it has
+      // one) and only falls back to "required" when no minimum is set.
+      const fileError = existing > 0 || required ? validateFiles(field, [], existing) : null;
       if (fileError) errors.push([field.field_key, fileError]);
+      else if (required && existing === 0) {
+        errors.push([field.field_key, `${field.label} is required.`]);
+      }
       return errors;
     }
-    if (required) errors.push([field.field_key, `${field.label} is required.`]);
+    if (required) errors.push([field.field_key, requiredMessage(field)]);
     const unitError = validateUnit(field, values, false);
     if (unitError) errors.push(unitError);
     return errors;

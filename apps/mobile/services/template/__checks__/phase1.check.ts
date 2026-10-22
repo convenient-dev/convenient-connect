@@ -33,6 +33,7 @@ import {
   parseLanguagePair,
   mapIssuesToFields,
   profilePricingScopeState,
+  removeFileBlockedMessage,
   resolveActiveFormatKey,
   resolveCurrency,
   validateForm,
@@ -330,6 +331,41 @@ check(!visibleFields(dietitianBusiness, { ...dietitianValues(), provider_type: "
   check(keys.filter((k) => k === "provider_type").length === 1 && keys.filter((k) => k === "business_id").length === 1, "business create: identity value keys in form state do not duplicate the identity fields", keys);
   check(get(fd, "dynamic_file_keys[]").join() === "business_verification", "business create: business_verification paired as a dynamic file", keys);
   check(!("provider_type" in JSON.parse(e.answers_json as string)), "business create: provider_type absent from answers_json", e.answers_json);
+}
+
+// Template-authored messages win over the client's generic wording when present.
+section("template-authored validation messages");
+{
+  const ack = dietitianBusiness.fields.find((f) => f.field_key === "information_accuracy_acknowledgement")!;
+  const portfolio = dietitianBusiness.fields.find((f) => f.field_key === "portfolio_images")!;
+  const ackMsg = (ack.validation as any).acceptance_failed_message as string;
+  const minMsg = (portfolio.validation as any).minimum_files_failed_message as string;
+  const maxMsg = (portfolio.validation as any).maximum_files_failed_message as string;
+  const lastMsg = (portfolio.validation as any).cannot_remove_last_message as string;
+  check(!!ackMsg && !!minMsg && !!maxMsg && !!lastMsg, "fixture carries the four template messages");
+  const base = { ...dietitianValues(), business_verification: [file("registration.pdf", "application/pdf")] };
+  check(validateForm(dietitianBusiness, { ...base, information_accuracy_acknowledgement: false }).information_accuracy_acknowledgement === ackMsg, "acknowledgement declined uses acceptance_failed_message");
+  check(validateForm(dietitianBusiness, { ...base, information_accuracy_acknowledgement: undefined }).information_accuracy_acknowledgement === ackMsg, "untouched acknowledgement uses acceptance_failed_message, not '<label> is required'");
+  check(validateForm(dietitianBusiness, base).portfolio_images === minMsg, "empty required portfolio on create uses minimum_files_failed_message");
+  const eleven = Array.from({ length: 11 }, (_, i) => file(`p${i}.png`, "image/png"));
+  check(validateForm(dietitianBusiness, { ...base, portfolio_images: eleven }).portfolio_images === maxMsg, "too many portfolio files uses maximum_files_failed_message");
+  check(validateForm(dietitianBusiness, base, { existingFileCounts: { portfolio_images: 1 } }).portfolio_images === undefined, "a stored portfolio photo satisfies the minimum");
+  check(removeFileBlockedMessage(portfolio, 0) === lastMsg, "removing the last stored photo is blocked with cannot_remove_last_message");
+  check(removeFileBlockedMessage(portfolio, 1) === null, "removing a photo while another remains is allowed");
+  // Generic fallbacks when the template sends no messages.
+  const plain = copyOf(dietitianBusiness);
+  for (const f of plain.fields) if (f.validation && !Array.isArray(f.validation)) {
+    const v = f.validation as Record<string, unknown>;
+    for (const k of ["acceptance_failed_message", "minimum_files_failed_message", "maximum_files_failed_message", "cannot_remove_last_message"]) delete v[k];
+  }
+  const plainPortfolio = plain.fields.find((f) => f.field_key === "portfolio_images")!;
+  check(validateForm(plain, { ...base, information_accuracy_acknowledgement: false }).information_accuracy_acknowledgement?.endsWith("must be accepted.") === true, "fallback: generic acceptance message");
+  check(validateForm(plain, { ...base, information_accuracy_acknowledgement: undefined }).information_accuracy_acknowledgement?.endsWith("must be accepted.") === true, "fallback: untouched acknowledgement uses the generic acceptance message");
+  check(validateForm(plain, base).portfolio_images?.includes("requires at least one file") === true, "fallback: generic minimum files message for an empty required portfolio");
+  check(validateForm(plain, { ...base, portfolio_images: eleven }).portfolio_images?.includes("allows at most 10 files") === true, "fallback: generic maximum files message");
+  check(removeFileBlockedMessage(plainPortfolio, 0)?.startsWith("Keep at least one file") === true, "fallback: generic cannot-remove message");
+  // A required dynamic file with minimum_files 0 still reports "required".
+  check(validateForm(dietitianBusiness, dietitianValues()).business_verification === "Business verification (if agency) is required.", "required file field without a minimum keeps the generic required message");
 }
 check(buildEvaluationContext(holistic, holisticBusiness).context.provider_type === "business" && buildEvaluationContext(holistic, holisticBusiness).context.business_id === 7, "evaluation context exposes identity from form state");
 {

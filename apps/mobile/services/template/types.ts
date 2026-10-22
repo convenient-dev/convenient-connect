@@ -86,6 +86,16 @@ export interface FieldValidation {
   /** yes_no fields that must be answered with this value (acknowledgement). */
   accepted_value?: Scalar;
   integer?: boolean;
+  /**
+   * Template-authored messages. When present they replace the client's generic
+   * wording for the matching rule. Not documented in api-doc.json yet; seen on
+   * the acknowledgement and portfolio fields of the Personal templates.
+   */
+  acceptance_failed_message?: string;
+  minimum_files_failed_message?: string;
+  maximum_files_failed_message?: string;
+  /** Shown when removing a stored file would drop below `minimum_files`. */
+  cannot_remove_last_message?: string;
 }
 
 export interface SelectionRules {

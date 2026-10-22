@@ -12,7 +12,9 @@ import { StepProgressHeader } from "@/components/StepProgressHeader";
 import { formatThousands } from "@/components/template-form/number-format";
 import { TemplateSection } from "@/components/template-form/TemplateSection";
 import {
-  CREATE_SERVICE_BASE_STEPS,
+  CREATE_SERVICE_DISPLAY_TOTAL_STEPS,
+  CREATE_SERVICE_FORM_STEP,
+  CREATE_SERVICE_REVIEW_STEP,
   type CreateServiceContextParams,
 } from "@/constants/create-service";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -245,8 +247,8 @@ export default function CreateServiceFormScreen() {
   const [pageIndex, setPageIndex] = useState(0);
   const reviewIndex = steps.length;
   const isReview = pageIndex >= reviewIndex;
-  const totalSteps = CREATE_SERVICE_BASE_STEPS + steps.length + 1;
-  const currentStep = CREATE_SERVICE_BASE_STEPS + pageIndex + 1;
+  // Every form page is the same wizard step; the bar advances within it.
+  const currentStep = isReview ? CREATE_SERVICE_REVIEW_STEP : CREATE_SERVICE_FORM_STEP;
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -366,7 +368,7 @@ export default function CreateServiceFormScreen() {
   if (templateLoading && !template) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <StepProgressHeader step={CREATE_SERVICE_BASE_STEPS + 1} totalSteps={CREATE_SERVICE_BASE_STEPS + 2} />
+        <StepProgressHeader step={CREATE_SERVICE_FORM_STEP} totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={primary[400]} />
         </View>
@@ -377,7 +379,7 @@ export default function CreateServiceFormScreen() {
   if (!template) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <StepProgressHeader step={CREATE_SERVICE_BASE_STEPS + 1} totalSteps={CREATE_SERVICE_BASE_STEPS + 2} />
+        <StepProgressHeader step={CREATE_SERVICE_FORM_STEP} totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS} />
         <View style={styles.center}>
           <Feather name="alert-circle" size={36} color={neutral[300]} />
           <Text style={styles.errorText}>{templateError ?? "Couldn't load the service form."}</Text>
@@ -408,7 +410,12 @@ export default function CreateServiceFormScreen() {
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <StepProgressHeader step={currentStep} totalSteps={totalSteps} />
+      <StepProgressHeader
+        step={currentStep}
+        totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS}
+        substep={isReview ? undefined : pageIndex + 1}
+        substepCount={isReview ? undefined : steps.length}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}

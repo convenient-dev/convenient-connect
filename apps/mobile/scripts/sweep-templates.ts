@@ -359,7 +359,7 @@ function checkTemplate(
             // engine sees no fulfillment codes, so the rule never holds.
             report.info("predicate", `${loc}: rule depends on fulfillment_types but this template has no fulfillment field; never holds, so the field stays hidden (expected without a fulfillment step)`);
           } else if (KNOWN_CONTEXT_KEYS.has(subjectKey)) {
-            report.error("predicate", `${loc}: "${subjectKey}" is sent as field_key but it is a context value; the engine looks it up in form values and gets undefined, so the rule never holds (backend should send context_key, or the engine should fall back to context)`);
+            report.info("predicate", `${loc}: "${subjectKey}" is sent as field_key but it is a context value; the engine falls back to the evaluation context (provider_type / business_id come from the wizard identity, else currency_context)`);
           } else {
             report.error("predicate", `${loc}: references unknown field_key "${subjectKey}"`);
           }

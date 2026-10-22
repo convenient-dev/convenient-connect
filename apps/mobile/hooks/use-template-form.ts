@@ -6,6 +6,7 @@ import {
 } from "@/api/client";
 import { mapIssuesToFields } from "@/services/template";
 import {
+  IDENTITY_VALUE_KEYS,
   PRICING_VALUE_KEYS,
   allowedFulfillmentOptions,
   allowedPriceUnitCodes,
@@ -19,6 +20,7 @@ import {
   type FormErrors,
   type FormTemplate,
   type FormValues,
+  type ProviderType,
   type ServiceFormTemplateSection,
   type TemplateField,
   type ValidationOptions,
@@ -60,12 +62,34 @@ function seedDefaults(template: FormTemplate): FormValues {
   return values;
 }
 
+/** Who the listing is for, as chosen in the wizard before the template loads. */
+export interface TemplateFormIdentity {
+  providerType: ProviderType;
+  businessId?: number | null;
+}
+
 export interface TemplateFormOptions extends ValidationOptions {
   /**
    * Saved values to prefill (edit flows), applied over the template defaults.
    * Re-seeded whenever `template` changes, so pass the values loaded with it.
    */
   initialValues?: FormValues;
+  /**
+   * Listing identity from the wizard. Seeded into form values under
+   * `IDENTITY_VALUE_KEYS` so rules such as business_verification's
+   * `visible_when provider_type equals business` read the wizard's choice.
+   * Edit flows may omit it; the engine then uses the template's currency_context.
+   */
+  identity?: TemplateFormIdentity;
+}
+
+function seedIdentity(identity: TemplateFormIdentity | undefined): FormValues {
+  if (!identity) return {};
+  return {
+    [IDENTITY_VALUE_KEYS.providerType]: identity.providerType,
+    [IDENTITY_VALUE_KEYS.businessId]:
+      identity.providerType === "business" ? identity.businessId ?? null : null,
+  };
 }
 
 /**
@@ -77,15 +101,17 @@ export function useTemplateForm(
   template: FormTemplate | null,
   options: TemplateFormOptions = {},
 ) {
-  const { initialValues, existingFileCounts } = options;
+  const { initialValues, existingFileCounts, identity } = options;
   const [values, setValues] = useState<FormValues>({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalErrors, setGeneralErrors] = useState<string[]>([]);
 
   useEffect(() => {
-    if (template) setValues({ ...seedDefaults(template), ...initialValues });
-    // initialValues is loaded together with the template, so it is only
-    // re-applied when the template itself changes.
+    if (template) {
+      setValues({ ...seedDefaults(template), ...seedIdentity(identity), ...initialValues });
+    }
+    // initialValues and identity are fixed for the loaded template, so they
+    // are only re-applied when the template itself changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template]);
 

@@ -270,3 +270,16 @@ export const PRICING_VALUE_KEYS = {
    */
   priceUnitCode: "price_unit_code",
 } as const;
+
+/**
+ * Listing identity carried in form values but never submitted as answers.
+ * `provider_type` is chosen in the wizard before the template loads (and is
+ * fixed on a saved service), yet templates gate fields on it with
+ * `field_key: "provider_type"` (business_verification). Seeding it here lets
+ * the condition engine resolve those rules from form state; see
+ * `buildEvaluationContext`, which falls back to `currency_context`.
+ */
+export const IDENTITY_VALUE_KEYS = {
+  providerType: "provider_type",
+  businessId: "business_id",
+} as const;

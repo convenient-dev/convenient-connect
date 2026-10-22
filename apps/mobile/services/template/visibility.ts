@@ -6,6 +6,7 @@ import {
 } from "./capability";
 import { evaluatePredicate, type EvaluationContext } from "./predicates";
 import {
+  IDENTITY_VALUE_KEYS,
   PRICING_VALUE_KEYS,
   type FieldOption,
   type FormTemplate,
@@ -170,6 +171,16 @@ export function buildEvaluationContext(
   const pricingType = selectedPricingType(values);
   const priceUnitCode = selectedPriceUnitCode(template, values);
 
+  // Listing identity: the wizard / saved-service value in form state wins; the
+  // template's currency_context (resolved for the same identity) is the
+  // fallback for forms that did not seed it.
+  const providerType =
+    values[IDENTITY_VALUE_KEYS.providerType] ?? template.currency_context?.provider_type;
+  const businessId =
+    values[IDENTITY_VALUE_KEYS.businessId] ?? template.currency_context?.business_id ?? null;
+  fields[IDENTITY_VALUE_KEYS.providerType] = providerType;
+  fields[IDENTITY_VALUE_KEYS.businessId] = businessId;
+
   const context: Record<string, unknown> = {
     pricing_type: pricingType,
     price_unit: priceUnitCode,
@@ -185,8 +196,8 @@ export function buildEvaluationContext(
       businessFormatValue,
       fulfillmentCodes,
     }),
-    provider_type: template.currency_context?.provider_type,
-    business_id: template.currency_context?.business_id ?? null,
+    provider_type: providerType,
+    business_id: businessId,
     can_charge_in_usd: template.currency_context?.can_charge_in_usd ?? false,
     is_usd_currency: template.currency_context?.is_usd_currency ?? false,
     default_currency: template.currency_context?.default_currency?.code,

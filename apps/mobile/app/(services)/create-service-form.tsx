@@ -218,7 +218,7 @@ export default function CreateServiceFormScreen() {
   }
 
   // ── Form state ───────────────────────────────────────────────────────────
-  const form = useTemplateForm(template);
+  const form = useTemplateForm(template, { identity });
   const { sections, fieldsForSection, unsectionedFields } = form;
 
   /**

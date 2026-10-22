@@ -45,6 +45,7 @@ import cateringResponse from "../__fixtures__/template-catering.json";
 import laundryResponse from "../__fixtures__/template-laundry.json";
 import tutoringResponse from "../__fixtures__/education-tutoring-template.json";
 import holisticResponse from "../__fixtures__/personal-holistic-template.json";
+import dietitianBusinessResponse from "../__fixtures__/personal-dietitian-business-template.json";
 import petResponse from "../__fixtures__/pet-sitting-template.json";
 import seniorsResponse from "../__fixtures__/caregiving-seniors-template.json";
 import moversResponse from "../__fixtures__/misc-movers-template.json";
@@ -93,6 +94,7 @@ const catering = unwrap(cateringResponse);
 const laundry = unwrap(laundryResponse);
 const tutoring = unwrap(tutoringResponse);
 const holistic = unwrap(holisticResponse);
+const dietitianBusiness = unwrap(dietitianBusinessResponse);
 const pet = unwrap(petResponse);
 const seniors = unwrap(seniorsResponse);
 const movers = unwrap(moversResponse);
@@ -293,6 +295,47 @@ const holisticValues = (): FormValues => ({
 });
 check(Object.keys(validateForm(holistic, holisticValues())).length === 0, "complete holistic form validates", validateForm(holistic, holisticValues()));
 check(!("business_verification" in validateForm(holistic, { ...holisticValues(), cori_background_check: [] })), "business verification not required for an individual provider");
+// provider_type is gated by `field_key: "provider_type"` in the template, but it
+// is never an answer: the engine reads it from form state (seeded from the
+// wizard identity), falling back to currency_context.
+const holisticBusiness = { ...holisticValues(), provider_type: "business", business_id: 7 };
+check(!visibleFields(holistic, holisticValues()).some((f) => f.field_key === "business_verification"), "business_verification hidden for an individual provider (currency_context fallback)");
+check(visibleFields(holistic, holisticBusiness).some((f) => f.field_key === "business_verification"), "business_verification visible when form state says provider_type=business");
+check("business_verification" in validateForm(holistic, holisticBusiness), "business_verification required for a business provider");
+check(!("business_verification" in validateForm(holistic, { ...holisticBusiness, business_verification: [file("license.pdf", "application/pdf")] })), "business_verification satisfied by an uploaded file");
+check(!visibleFields(holistic, { ...holisticValues(), provider_type: "individual" }).some((f) => f.field_key === "business_verification"), "form state individual hides business_verification");
+// Real UAT response for the same subcategory fetched as a business provider:
+// only currency_context.provider_type / business_id differ from the individual one.
+const dietitianValues = (): FormValues => ({
+  title: "Nutrition consultations",
+  fulfillment_types: [fid(dietitianBusiness, "online_remote")],
+  description: "One-to-one nutrition consultations with a personalised plan.",
+  pricing_type: "fixed_price",
+  amount: 90,
+  price_unit_id: uid(dietitianBusiness, "per_hour"),
+  information_accuracy_acknowledgement: true,
+  consultation_format: "individual",
+  conditions_worked_with: ["chronic_conditions"],
+});
+check(dietitianBusiness.currency_context?.provider_type === "business" && dietitianBusiness.currency_context?.business_id === 10, "business fixture carries provider_type=business in currency_context");
+check(visibleFields(dietitianBusiness, dietitianValues()).some((f) => f.field_key === "business_verification"), "currency_context provider_type=business shows business_verification when form state has none (edit flow)");
+check("business_verification" in validateForm(dietitianBusiness, dietitianValues()), "business_verification required from currency_context alone");
+check(!("business_verification" in validateForm(dietitianBusiness, { ...dietitianValues(), business_verification: [file("registration.pdf", "application/pdf")] })), "business fixture: complete form validates with the verification file", validateForm(dietitianBusiness, { ...dietitianValues(), business_verification: [file("registration.pdf", "application/pdf")] }));
+check(!visibleFields(dietitianBusiness, { ...dietitianValues(), provider_type: "individual" }).some((f) => f.field_key === "business_verification"), "form state provider_type wins over currency_context");
+{
+  const fd = buildCreateFormData(dietitianBusiness, { ...dietitianValues(), provider_type: "business", business_id: 10, portfolio_images: [file("plan.png", "image/png")], business_verification: [file("registration.pdf", "application/pdf")] }, { categoryId: 14, subcategoryId: 88, providerType: "business", businessId: 10 });
+  const e = Object.fromEntries(entriesOf(fd).filter(([k]) => !k.endsWith("[]")));
+  const keys = keysOf(fd);
+  check(e.provider_type === "business" && e.business_id === "10", "business create: identity fields submitted from the identity argument", e);
+  check(keys.filter((k) => k === "provider_type").length === 1 && keys.filter((k) => k === "business_id").length === 1, "business create: identity value keys in form state do not duplicate the identity fields", keys);
+  check(get(fd, "dynamic_file_keys[]").join() === "business_verification", "business create: business_verification paired as a dynamic file", keys);
+  check(!("provider_type" in JSON.parse(e.answers_json as string)), "business create: provider_type absent from answers_json", e.answers_json);
+}
+check(buildEvaluationContext(holistic, holisticBusiness).context.provider_type === "business" && buildEvaluationContext(holistic, holisticBusiness).context.business_id === 7, "evaluation context exposes identity from form state");
+{
+  const { entries, answers } = buildPayload(holistic, { ...holisticBusiness, business_verification: [file("license.pdf", "application/pdf")] }, "create");
+  check(!("provider_type" in answers) && !("business_id" in answers) && !("provider_type" in entries) && !("business_id" in entries), "identity value keys never routed into answers_json or entries by buildPayload", { entries: Object.keys(entries), answers: Object.keys(answers) });
+}
 const requiredCori = copyOf(holistic);
 Object.assign(requiredCori.fields.find((f) => f.field_key === "cori_background_check")!, { is_required: true, requiredness: "required", minimum_files: 1 });
 check("cori_background_check" in validateForm(requiredCori, { ...holisticValues(), cori_background_check: [] }), "required dynamic file missing fails (tweaked copy: no UAT template requires one yet)");

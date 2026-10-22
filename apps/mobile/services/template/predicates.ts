@@ -2,9 +2,10 @@ import type { Predicate, Scalar } from "./types";
 
 /**
  * Values a predicate can be evaluated against. Field subjects are looked up by
- * `field_key`; context subjects by `context_key`. Field values for fields with
- * coded options (fulfillment types) must already be mapped to codes, see
- * `buildEvaluationContext` in visibility.ts.
+ * `field_key`; context subjects by `context_key`. A `field_key` that is not a
+ * form answer (templates name `provider_type` this way) falls back to the
+ * context. Field values for fields with coded options (fulfillment types) must
+ * already be mapped to codes, see `buildEvaluationContext` in visibility.ts.
  */
 export interface EvaluationContext {
   fields: Record<string, unknown>;
@@ -53,7 +54,9 @@ function resolveSubject(predicate: Predicate, ctx: EvaluationContext): unknown {
     return ctx.context[predicate.context_key];
   }
   const key = predicate.field_key ?? predicate.field;
-  return key === undefined ? undefined : ctx.fields[key];
+  if (key === undefined) return undefined;
+  if (key in ctx.fields && ctx.fields[key] !== undefined) return ctx.fields[key];
+  return ctx.context[key];
 }
 
 function expectedValues(predicate: Predicate): Scalar[] {

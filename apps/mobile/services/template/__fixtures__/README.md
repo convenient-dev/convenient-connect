@@ -1,6 +1,6 @@
 # Template fixtures
 
-Real UAT responses to `GET /service-provider/service-form-template` for an **individual** provider, stored as the full `{ status, message, data }` envelope. Used by `../__checks__/phase1.check.ts`, which unwraps `data`.
+Real UAT responses to `GET /service-provider/service-form-template`, stored as the full `{ status, message, data }` envelope. All are for an **individual** provider except where the table says otherwise. Used by `../__checks__/phase1.check.ts`, which unwraps `data`.
 
 | File | Template | Why it is here |
 | --- | --- | --- |
@@ -8,6 +8,7 @@ Real UAT responses to `GET /service-provider/service-form-template` for an **ind
 | `template-laundry.json` | Sanitation / Laundry | no selector: the fulfillment selection picks the format, and the formats allow different price units |
 | `education-tutoring-template.json` | Education / Tutoring | `learner_delivery` selector with a required profile pricing scope for `shared_group`; free-entry subjects; optional CORI dynamic file |
 | `personal-holistic-template.json` | Personal / Holistic | min/max participant relation; CORI and business verification dynamic files |
+| `personal-dietitian-business-template.json` | Personal / Dietitian, fetched as a **business** provider (`provider_type=business&business_id=10`) | identical fields to the individual response; only `currency_context.provider_type` / `business_id` differ. `business_verification` is gated by `field_key: "provider_type"`, which is never an answer: the engine reads it from form state (wizard identity) and falls back to this currency_context |
 | `pet-sitting-template.json` | Pet care / Pet sitting | single `default` format with `fulfillment_by_price_unit`; pricing-driven surcharge |
 | `caregiving-seniors-template.json` | Caregiving / Seniors | Other option with a custom text key; yes/no answers |
 | `editing-template.json` | Media / Editing | `supported_source_media_types`: a required free-entry multi_select (descriptor `set.mode: open`, `entry: free_entry`, no options) rendered as a typed chip input; one of 14 such fields across the catalogue |
@@ -16,4 +17,4 @@ Real UAT responses to `GET /service-provider/service-form-template` for an **ind
 
 Refresh them with `node -r sucrase/register/ts scripts/sweep-templates.ts --save-dir <dir>` (the sweep writes the unwrapped `data`; wrap it to match).
 
-Not covered by any UAT template yet, so the checks tweak a copy in place and say so in the label: a non-USD currency with `can_charge_in_usd`, a required dynamic file, the `on_or_after` relation, and the optional profile pricing scope state. Business listings are out of scope for now.
+Not covered by any UAT template yet, so the checks tweak a copy in place and say so in the label: a non-USD currency with `can_charge_in_usd`, a required dynamic file, the `on_or_after` relation, and the optional profile pricing scope state.

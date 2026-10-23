@@ -1,26 +1,36 @@
 import type { Address } from "@/api/address";
-import type { FormTemplate, FormValues, TemplateField as Field } from "@/services/template";
+import {
+  isFreeEntryField,
+  isLanguagePairField,
+  type FormTemplate,
+  type FormValues,
+  type TemplateField as Field,
+} from "@/services/template";
 import React from "react";
 import { PricingControl } from "./PricingControl";
 import {
   AddressControl,
   CertificateBundleControl,
   FileUploadControl,
+  FreeEntryMultiSelectControl,
+  LanguagePairControl,
   MultiSelectControl,
   NumberControl,
   SingleSelectControl,
   TextControl,
   YesNoControl,
+  type ExistingFilesProps,
 } from "./controls";
 
-interface Props {
+interface Props extends ExistingFilesProps {
   field: Field;
   template: FormTemplate;
   values: FormValues;
   errors: Record<string, string>;
   required: boolean;
   setValue: (key: string, value: unknown) => void;
-  defaultAddress?: Address | null;
+  defaultAddress?: Pick<Address, "address"> | null;
+  /** Omit both address callbacks to show the address read-only (edit flows). */
   onAddAddress?: () => void;
   onChangeAddress?: () => void;
 }
@@ -35,7 +45,7 @@ export function TemplateField(props: Props) {
       <AddressControl
         {...base}
         defaultAddress={defaultAddress}
-        onAddAddress={onAddAddress ?? (() => {})}
+        onAddAddress={onAddAddress}
         onChangeAddress={onChangeAddress}
       />
     );
@@ -53,7 +63,12 @@ export function TemplateField(props: Props) {
     case "single_select":
       return <SingleSelectControl {...base} />;
     case "multi_select":
-      return <MultiSelectControl {...base} />;
+      if (isLanguagePairField(field)) return <LanguagePairControl {...base} />;
+      return isFreeEntryField(field) ? (
+        <FreeEntryMultiSelectControl {...base} />
+      ) : (
+        <MultiSelectControl {...base} />
+      );
     case "yes_no":
       return <YesNoControl {...base} />;
     case "file_upload":

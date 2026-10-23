@@ -9,9 +9,12 @@ import { AddressModal } from "@/components/AddressModal";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { StepProgressHeader } from "@/components/StepProgressHeader";
+import { formatThousands } from "@/components/template-form/number-format";
 import { TemplateSection } from "@/components/template-form/TemplateSection";
 import {
-  CREATE_SERVICE_BASE_STEPS,
+  CREATE_SERVICE_DISPLAY_TOTAL_STEPS,
+  CREATE_SERVICE_FORM_STEP,
+  CREATE_SERVICE_REVIEW_STEP,
   type CreateServiceContextParams,
 } from "@/constants/create-service";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -25,6 +28,8 @@ import {
   PRICING_VALUE_KEYS,
   asTemplate,
   buildCreateFormData,
+  formatLanguagePair,
+  isLanguagePairField,
   resolveCurrency,
   selectedFulfillmentCodes,
   type CertificateBundleValue,
@@ -65,8 +70,13 @@ const ADDRESS_ERROR_HINT = "default address";
 
 function optionLabels(field: TemplateField, value: unknown): string {
   const list = Array.isArray(value) ? value : [value];
+  const pairs = isLanguagePairField(field);
   return list
-    .map((v) => field.options?.find((o) => String(o.value) === String(v))?.label ?? String(v))
+    .map(
+      (v) =>
+        field.options?.find((o) => String(o.value) === String(v))?.label ??
+        (pairs ? formatLanguagePair(v) : String(v)),
+    )
     .join(", ");
 }
 
@@ -87,7 +97,8 @@ function reviewValue(
   switch (field.field_type) {
     case "number": {
       const unit = field.unit_value_key ? values[field.unit_value_key] : undefined;
-      return unit ? `${value} ${unit}` : String(value);
+      const number = formatThousands(String(value));
+      return unit ? `${number} ${unit}` : number;
     }
     case "multi_select":
     case "single_select":
@@ -209,28 +220,58 @@ export default function CreateServiceFormScreen() {
   }
 
   // ── Form state ───────────────────────────────────────────────────────────
-  const form = useTemplateForm(template);
+  const form = useTemplateForm(template, { identity });
   const { sections, fieldsForSection, unsectionedFields } = form;
 
+  /**
+   * Wizard steps: the sections that currently show at least one field, in
+   * template order, with fields outside every section joining the last one.
+   * A section whose fields are all hidden is skipped instead of rendering an
+   * empty page, e.g. Fulfillment Location on a template with no fulfillment
+   * field, where address and service radius never become visible.
+   */
+  const steps = useMemo(
+    () =>
+      sections
+        .map((section, index) => {
+          const fields = fieldsForSection(section);
+          return {
+            section,
+            fields: index === sections.length - 1 ? [...fields, ...unsectionedFields] : fields,
+          };
+        })
+        .filter((step) => step.fields.length > 0),
+    [sections, fieldsForSection, unsectionedFields],
+  );
+
   const [pageIndex, setPageIndex] = useState(0);
-  const reviewIndex = sections.length;
-  const isReview = pageIndex === reviewIndex;
-  const totalSteps = CREATE_SERVICE_BASE_STEPS + sections.length + 1;
-  const currentStep = CREATE_SERVICE_BASE_STEPS + pageIndex + 1;
+  const reviewIndex = steps.length;
+  const isReview = pageIndex >= reviewIndex;
+  // Every form page is the same wizard step; the bar advances within it.
+  const currentStep = isReview ? CREATE_SERVICE_REVIEW_STEP : CREATE_SERVICE_FORM_STEP;
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [pageIndex]);
 
+  // Steps can disappear as values change; never point past the review page.
+  useEffect(() => {
+    if (pageIndex > reviewIndex) setPageIndex(reviewIndex);
+  }, [pageIndex, reviewIndex]);
+
   const pageFields = useCallback(
-    (index: number): TemplateField[] => {
-      const section = sections[index];
-      if (!section) return [];
-      const fields = fieldsForSection(section);
-      return index === sections.length - 1 ? [...fields, ...unsectionedFields] : fields;
+    (index: number): TemplateField[] => steps[index]?.fields ?? [],
+    [steps],
+  );
+
+  /** The step showing the given template section, or the first step when none does. */
+  const stepIndexForSection = useCallback(
+    (sectionIndex: number): number => {
+      const index = steps.findIndex((step) => step.section === sections[sectionIndex]);
+      return index === -1 ? 0 : index;
     },
-    [sections, fieldsForSection, unsectionedFields],
+    [steps, sections],
   );
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -244,7 +285,7 @@ export default function CreateServiceFormScreen() {
    * since the general error box only renders on the review page.
    */
   function showFieldErrors(title: string, result: ServerErrorResult) {
-    if (result.sectionIndex !== -1) setPageIndex(result.sectionIndex);
+    if (result.sectionIndex !== -1) setPageIndex(stepIndexForSection(result.sectionIndex));
     const unmapped = result.general.slice(0, 5).map((m) => `• ${m}`).join("\n");
     const prompt = "Please review the highlighted fields before submitting.";
     setDialog({ title, message: unmapped ? `${prompt}\n\n${unmapped}` : prompt });
@@ -327,7 +368,7 @@ export default function CreateServiceFormScreen() {
   if (templateLoading && !template) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <StepProgressHeader step={CREATE_SERVICE_BASE_STEPS + 1} totalSteps={CREATE_SERVICE_BASE_STEPS + 2} />
+        <StepProgressHeader step={CREATE_SERVICE_FORM_STEP} totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={primary[400]} />
         </View>
@@ -338,7 +379,7 @@ export default function CreateServiceFormScreen() {
   if (!template) {
     return (
       <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-        <StepProgressHeader step={CREATE_SERVICE_BASE_STEPS + 1} totalSteps={CREATE_SERVICE_BASE_STEPS + 2} />
+        <StepProgressHeader step={CREATE_SERVICE_FORM_STEP} totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS} />
         <View style={styles.center}>
           <Feather name="alert-circle" size={36} color={neutral[300]} />
           <Text style={styles.errorText}>{templateError ?? "Couldn't load the service form."}</Text>
@@ -359,7 +400,7 @@ export default function CreateServiceFormScreen() {
     );
   }
 
-  const section = sections[pageIndex];
+  const step = steps[pageIndex];
   // Next stays disabled while the current step shows an error.
   const pageHasErrors =
     !isReview &&
@@ -369,7 +410,12 @@ export default function CreateServiceFormScreen() {
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
-      <StepProgressHeader step={currentStep} totalSteps={totalSteps} />
+      <StepProgressHeader
+        step={currentStep}
+        totalSteps={CREATE_SERVICE_DISPLAY_TOTAL_STEPS}
+        substep={isReview ? undefined : pageIndex + 1}
+        substepCount={isReview ? undefined : steps.length}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -385,13 +431,13 @@ export default function CreateServiceFormScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {!isReview && section ? (
+          {!isReview && step ? (
             <>
-              <Text style={styles.title}>{section.title}</Text>
-              {section.help_text ? <Text style={styles.subtitle}>{section.help_text}</Text> : null}
+              <Text style={styles.title}>{step.section.title}</Text>
+              {step.section.help_text ? <Text style={styles.subtitle}>{step.section.help_text}</Text> : null}
               <TemplateSection
-                section={section}
-                fields={pageFields(pageIndex)}
+                section={step.section}
+                fields={step.fields}
                 template={template}
                 values={form.values}
                 errors={form.errors}
@@ -428,9 +474,7 @@ export default function CreateServiceFormScreen() {
                 />
               </View>
 
-              {sections.map((s, index) => {
-                const fields = pageFields(index);
-                if (!fields.length) return null;
+              {steps.map(({ section: s, fields }, index) => {
                 return (
                   <View key={s.section_key} style={styles.reviewSection}>
                     <View style={styles.reviewHeaderRow}>

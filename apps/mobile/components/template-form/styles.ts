@@ -1,7 +1,8 @@
 import { Colors } from "@/constants/theme";
 import { StyleSheet } from "react-native";
 
-const { primary, secondary, neutral, border, background, status, overlay } = Colors;
+const { primary, secondary, neutral, border, background, status, overlay } =
+  Colors;
 
 /** Shared styles for template-driven form controls. */
 export const formStyles = StyleSheet.create({
@@ -149,6 +150,50 @@ export const formStyles = StyleSheet.create({
     fontSize: 14,
     color: neutral[700],
     lineHeight: 20,
+  },
+  // Free-entry chips (multi choice typed by the user)
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: primary[400],
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 8,
+    backgroundColor: primary[50],
+  },
+  tagText: {
+    fontSize: 14,
+    color: primary[500],
+    fontWeight: "500",
+  },
+  tagInputRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  tagInput: {
+    flex: 1,
+  },
+  // Neutral outline for the Add button beside the chip input
+  tagAddButton: {
+    borderColor: neutral[300],
+  },
+  tagAddText: {
+    color: neutral[700],
+  },
+  pairReverseRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   // Number with unit
   unitRow: {

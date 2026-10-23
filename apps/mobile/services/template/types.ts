@@ -86,6 +86,16 @@ export interface FieldValidation {
   /** yes_no fields that must be answered with this value (acknowledgement). */
   accepted_value?: Scalar;
   integer?: boolean;
+  /**
+   * Template-authored messages. When present they replace the client's generic
+   * wording for the matching rule. Not documented in api-doc.json yet; seen on
+   * the acknowledgement and portfolio fields of the Personal templates.
+   */
+  acceptance_failed_message?: string;
+  minimum_files_failed_message?: string;
+  maximum_files_failed_message?: string;
+  /** Shown when removing a stored file would drop below `minimum_files`. */
+  cannot_remove_last_message?: string;
 }
 
 export interface SelectionRules {
@@ -264,4 +274,22 @@ export const PRICING_VALUE_KEYS = {
   priceUnitId: "price_unit_id",
   profilePricingScope: "profile_pricing_scope",
   chargeInUsd: "charge_in_usd",
+  /**
+   * Derived, never submitted: the saved unit's code, so templates without a
+   * pricing field (the information screen) can still resolve pricing context.
+   */
+  priceUnitCode: "price_unit_code",
+} as const;
+
+/**
+ * Listing identity carried in form values but never submitted as answers.
+ * `provider_type` is chosen in the wizard before the template loads (and is
+ * fixed on a saved service), yet templates gate fields on it with
+ * `field_key: "provider_type"` (business_verification). Seeding it here lets
+ * the condition engine resolve those rules from form state; see
+ * `buildEvaluationContext`, which falls back to `currency_context`.
+ */
+export const IDENTITY_VALUE_KEYS = {
+  providerType: "provider_type",
+  businessId: "business_id",
 } as const;

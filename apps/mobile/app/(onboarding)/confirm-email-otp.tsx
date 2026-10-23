@@ -3,7 +3,11 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
-import { confirmEmail, resendOtpEmail } from "@/api/auth";
+import {
+  confirmEmail,
+  resendOtpEmail,
+  toAuthUserProfile,
+} from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -177,11 +181,7 @@ export default function ConfirmEmailOtpScreen() {
               setLoading(true);
               try {
                 const result = await confirmEmail(email, digits.join(""));
-                await login(result.accessToken, {
-                  user: result.user,
-                  profileImage: result.profileImage,
-                  backgroundVerification: result.backgroundVerification,
-                });
+                await login(result.accessToken, toAuthUserProfile(result));
 
                 // Check if user has completed profile by checking if they have both names.
                 const hasCompletedProfile =

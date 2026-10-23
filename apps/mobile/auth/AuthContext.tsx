@@ -1,4 +1,11 @@
-import { setOnUnauthorized } from "@/api/client";
+import {
+  getAccountStatus,
+  isSuspendedStatus,
+  mapProviderAccountStatus,
+  type ProviderAccountStatus,
+  type ProviderStatusFields,
+} from "@/api/account-status";
+import { setOnSuspended, setOnUnauthorized } from "@/api/client";
 import type { components } from "@/api/generated/api-types";
 import { useRouter, useSegments } from "expo-router";
 import React, {
@@ -17,6 +24,8 @@ export interface AuthUserProfile {
   user: AuthUser;
   profileImage: string | null;
   backgroundVerification: "Pending" | "Verified" | "Not Verified";
+  /** Provider status and open suspension from login, auth-user or account-status. */
+  accountStatus: ProviderAccountStatus;
 }
 
 interface AuthState {
@@ -24,9 +33,16 @@ interface AuthState {
   user: AuthUserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /**
+   * True while the provider account is suspended. The session stays valid and
+   * reads keep working; marketplace writes are rejected with 403 by the API.
+   */
+  isSuspended: boolean;
   login: (token: string, profile: AuthUserProfile) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (profile: AuthUserProfile) => void;
+  /** Re-reads `GET /account-status` into the session. Failures are ignored. */
+  refreshAccountStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -53,6 +69,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout();
     });
   }, [logout]);
+
+  const applyAccountStatus = useCallback((status: ProviderAccountStatus) => {
+    setUser((current) => (current ? { ...current, accountStatus: status } : current));
+  }, []);
+
+  // A suspended 403 carries the current status, so sync it without refetching.
+  useEffect(() => {
+    setOnSuspended((data) => {
+      applyAccountStatus(
+        mapProviderAccountStatus(data as ProviderStatusFields | null),
+      );
+    });
+  }, [applyAccountStatus]);
+
+  const refreshAccountStatus = useCallback(async () => {
+    try {
+      applyAccountStatus(await getAccountStatus());
+    } catch (error) {
+      console.log("[AUTH] Failed to refresh account status:", error);
+    }
+  }, [applyAccountStatus]);
 
   useEffect(() => {
     (async () => {
@@ -123,11 +160,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated: !!token && !!user,
       isLoading,
+      isSuspended: isSuspendedStatus(user?.accountStatus),
       login,
       logout,
       setUser,
+      refreshAccountStatus,
     }),
-    [token, user, isLoading, login, logout],
+    [token, user, isLoading, login, logout, refreshAccountStatus],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -18,6 +18,8 @@ import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import {
   asTemplate,
+  formatLanguagePair,
+  isLanguagePairField,
   type FieldOption,
   type FormTemplate,
   type TemplateField,
@@ -77,6 +79,8 @@ interface DetailField {
   key: string;
   label: string;
   options?: FieldOption[];
+  /** Items are `source->target` language pairs, shown as "Source → Target". */
+  languagePairs?: boolean;
 }
 
 interface DetailSection {
@@ -119,10 +123,11 @@ const FALLBACK_SECTIONS: DetailSection[] = [
 const OTHER_SECTION_KEY = "other_details";
 
 // Short label/value sections read better as single rows than stacked blocks.
+// Service capability holds free-entry lists and language pairs, which wrap
+// badly on one line, so it stays stacked.
 const INLINE_SECTION_KEYS = new Set([
   "fulfillment_location",
   "pricing",
-  "service_capability",
   "service_format",
   "business_format",
 ]);
@@ -158,6 +163,7 @@ function toDetailField(field: TemplateField): DetailField {
     key: field.field_key ?? "",
     label: field.label ?? field.field_key ?? "",
     options: field.options,
+    languagePairs: isLanguagePairField(field),
   };
 }
 
@@ -193,27 +199,39 @@ function sectionsFromTemplate(template: FormTemplate): DetailSection[] {
 // Value formatting
 // ---------------------------------------------------------------------------
 
-function formatPricing(pricing: ServicePricingData | undefined): string {
-  if (!pricing) return "—";
-  const unit = pricing.price_unit?.label;
-  if (pricing.pricing_type === "quote_required" || pricing.amount == null) {
-    return unit ? `Quote required · ${unit}` : "Quote required";
-  }
+/** "$50.00 per hour", or null when no amount is stored. */
+function formatAmount(pricing: ServicePricingData): string | null {
+  if (pricing.amount == null || pricing.amount === "") return null;
   const amount = parseFloat(pricing.amount);
+  if (Number.isNaN(amount)) return null;
   const money = pricing.currency
     ? new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: pricing.currency,
       }).format(amount)
     : amount.toFixed(2);
+  const unit = pricing.price_unit?.label;
   return unit ? `${money} ${unit.toLowerCase()}` : money;
 }
 
 function pricingRows(
   pricing: ServicePricingData | undefined,
 ): { label: string; value: string }[] {
-  const rows = [{ label: "Base Rate", value: formatPricing(pricing) }];
-  if (pricing?.profile_pricing_scope) {
+  if (!pricing) return [{ label: "Base Rate", value: "—" }];
+  const amount = formatAmount(pricing);
+  const rows: { label: string; value: string }[] = [];
+  if (pricing.pricing_type === "quote_required") {
+    // Quote-required services may store a reference price; show it alongside.
+    const unit = pricing.price_unit?.label;
+    rows.push({
+      label: "Pricing",
+      value: unit ? `Quote required · ${unit}` : "Quote required",
+    });
+    if (amount) rows.push({ label: "Base Price", value: amount });
+  } else {
+    rows.push({ label: "Base Rate", value: amount ?? "—" });
+  }
+  if (pricing.profile_pricing_scope) {
     rows.push({
       label: "Applies To",
       value:
@@ -233,7 +251,16 @@ function formatRadius(info: ServiceInfo): string | null {
   return `${value} ${unit}`;
 }
 
-function formatDynamicAnswer(answer: ServiceDynamicAnswer): string | null {
+/**
+ * The template's own option labels win when they cover the stored value: the
+ * API's `display_value` is documented as human-readable, but single selects
+ * have come back with the raw option value (e.g. `defined_project`).
+ */
+function formatDynamicAnswer(answer: ServiceDynamicAnswer, field?: DetailField): string | null {
+  if (field?.options?.length || field?.languagePairs) {
+    const labeled = formatRawValue(answer.value, field.options, field.languagePairs);
+    if (labeled) return labeled;
+  }
   if (answer.display_value) return answer.display_value;
   if (answer.labeled_values?.length) {
     return answer.labeled_values.map((item) => item.label).join(", ");
@@ -242,14 +269,19 @@ function formatDynamicAnswer(answer: ServiceDynamicAnswer): string | null {
 }
 
 /** Raw answers_json values, mapped through template options when available. */
-function formatRawValue(raw: unknown, options?: FieldOption[]): string | null {
+function formatRawValue(
+  raw: unknown,
+  options?: FieldOption[],
+  languagePairs = false,
+): string | null {
   if (raw == null || raw === "") return null;
   if (typeof raw === "boolean") return raw ? "Yes" : "No";
   const list = Array.isArray(raw) ? raw : [raw];
   const labels = list.flatMap((item) => {
     const option = options?.find((o) => String(o.value) === String(item));
     if (option) return [option.label];
-    return typeof item === "object" ? [] : [String(item)];
+    if (typeof item === "object") return [];
+    return [languagePairs ? formatLanguagePair(item) : String(item)];
   });
   return labels.length ? labels.join(", ") : null;
 }
@@ -318,6 +350,8 @@ function contentFor(
       return textContent(labels.join(", "));
     }
     case "address": {
+      // The backend snapshots the provider's default address onto the service
+      // for both individual and business providers.
       const context = service.location_context as
         LocationContext | null | undefined;
       return textContent(context?.address ?? info.address?.address);
@@ -342,9 +376,11 @@ function contentFor(
       return { kind: "pricing", rows: pricingRows(service.pricing) };
     default: {
       const answer = answersByKey.get(field.key);
-      if (answer) return textContent(formatDynamicAnswer(answer));
+      if (answer) return textContent(formatDynamicAnswer(answer, field));
       const answers = (service.answers_json ?? {}) as Record<string, unknown>;
-      return textContent(formatRawValue(answers[field.key], field.options));
+      return textContent(
+        formatRawValue(answers[field.key], field.options, field.languagePairs),
+      );
     }
   }
 }

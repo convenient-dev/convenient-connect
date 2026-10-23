@@ -15,16 +15,27 @@ import {
   type Scalar,
   type TemplateField,
 } from "./types";
+import { isLanguagePairField, languagePairsError } from "./language-pairs";
 import {
   buildEvaluationContext,
   isFieldRequired,
   isFieldVisible,
+  isFreeEntryField,
   selectedPriceUnitCode,
   selectedPricingType,
 } from "./visibility";
 
 /** Field key -> first error message. Pricing errors use the pricing value keys. */
 export type FormErrors = Record<string, string>;
+
+export interface ValidationOptions {
+  /**
+   * Edit flows: files already stored per `field_key`. They count toward a file
+   * field's required / `minimum_files` / `maximum_files` rules, since the
+   * form value only holds new uploads.
+   */
+  existingFileCounts?: Record<string, number>;
+}
 
 function validationOf(field: TemplateField): FieldValidation {
   const v = field.validation;
@@ -108,11 +119,16 @@ function validateMultiSelect(field: TemplateField, value: unknown): string | nul
     return `${field.label} contains an invalid selection.`;
   }
   const v = validationOf(field);
+  const verb = isFreeEntryField(field) ? "Add" : "Select";
   if (v.minimum_selections !== undefined && value.length < v.minimum_selections) {
-    return `Select at least ${v.minimum_selections} for ${field.label}.`;
+    return `${verb} at least ${v.minimum_selections} for ${field.label}.`;
   }
   if (v.maximum_selections !== undefined && value.length > v.maximum_selections) {
-    return `Select at most ${v.maximum_selections} for ${field.label}.`;
+    return `${verb} at most ${v.maximum_selections} for ${field.label}.`;
+  }
+  if (isLanguagePairField(field)) {
+    const pairError = languagePairsError(field, value);
+    if (pairError) return pairError;
   }
   const exclusive = field.selection_rules?.exclusive_values ?? [];
   if (value.length > 1) {
@@ -134,11 +150,24 @@ function validateSingleSelect(field: TemplateField, value: unknown): string | nu
   return null;
 }
 
+/**
+ * Message for a required field left blank. An untouched acknowledgement
+ * checkbox is blank, so it reports its acceptance message rather than
+ * "<whole acknowledgement sentence> is required.".
+ */
+function requiredMessage(field: TemplateField): string {
+  const v = validationOf(field);
+  if (field.field_type === "yes_no" && v.accepted_value !== undefined) {
+    return v.acceptance_failed_message ?? `${field.label} must be accepted.`;
+  }
+  return `${field.label} is required.`;
+}
+
 function validateYesNo(field: TemplateField, value: unknown): string | null {
   if (typeof value !== "boolean") return `${field.label} must be yes or no.`;
   const v = validationOf(field);
   if (v.accepted_value !== undefined && value !== v.accepted_value) {
-    return `${field.label} must be accepted.`;
+    return v.acceptance_failed_message ?? `${field.label} must be accepted.`;
   }
   return null;
 }
@@ -153,15 +182,24 @@ function formatMegabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function validateFiles(field: TemplateField, files: MultipartFile[]): string | null {
+function validateFiles(
+  field: TemplateField,
+  files: MultipartFile[],
+  existing = 0,
+): string | null {
   const min = field.minimum_files ?? 0;
   const max = field.maximum_files ?? Infinity;
-  if (files.length < min) {
+  const total = files.length + existing;
+  const v = validationOf(field);
+  if (total < min) {
+    if (v.minimum_files_failed_message) return v.minimum_files_failed_message;
     return min === 1
       ? `${field.label} requires at least one file.`
       : `${field.label} requires at least ${min} files.`;
   }
-  if (files.length > max) return `${field.label} allows at most ${max} files.`;
+  if (total > max) {
+    return v.maximum_files_failed_message ?? `${field.label} allows at most ${max} files.`;
+  }
   const extensions = (field.allowed_extensions ?? []).map((e) => e.toLowerCase());
   const types = field.allowed_file_types ?? [];
   for (const file of files) {
@@ -366,11 +404,29 @@ function validateRelations(
   return null;
 }
 
+/**
+ * Message to show instead of removing a stored file when doing so would leave
+ * fewer than `minimum_files` (stored plus newly added), or null when the
+ * removal is allowed. Prefers the template's `cannot_remove_last_message`.
+ */
+export function removeFileBlockedMessage(
+  field: TemplateField,
+  keptAfterRemoval: number,
+): string | null {
+  const min = field.minimum_files ?? 0;
+  if (keptAfterRemoval >= min) return null;
+  return (
+    validationOf(field).cannot_remove_last_message ??
+    `Keep at least ${min === 1 ? "one file" : `${min} files`} on ${field.label}. Add another before removing this one.`
+  );
+}
+
 export function validateField(
   field: TemplateField,
   template: FormTemplate,
   values: FormValues,
   ctx: EvaluationContext = buildEvaluationContext(template, values),
+  options: ValidationOptions = {},
 ): [string, string][] {
   if (field.submit_as?.type === "display_only") return [];
 
@@ -381,25 +437,38 @@ export function validateField(
   const required = isFieldRequired(field, template, values, ctx);
   const value = values[field.field_key];
   const errors: [string, string][] = [];
+  const existing = options.existingFileCounts?.[field.field_key] ?? 0;
 
   if (field.submit_as?.type === "certificate_bundle") {
     const bundle = (value ?? {}) as CertificateBundleValue;
     const files = bundle.files ?? [];
-    if (files.length > 0 && isBlank(bundle.description)) {
+    const total = files.length + existing;
+    if (total > 0 && isBlank(bundle.description)) {
       errors.push([field.field_key, `${field.label} needs a description for the uploaded files.`]);
-    } else if (files.length === 0 && !isBlank(bundle.description)) {
+    } else if (total === 0 && !isBlank(bundle.description)) {
       // Mirrors the backend rule: a description without any certificate file is a 422.
       errors.push([field.field_key, `${field.label} needs at least one file for the description.`]);
     }
-    const fileError = validateFiles(field, files);
-    if (fileError && (files.length > 0 || required)) {
+    const fileError = validateFiles(field, files, existing);
+    if (fileError && (total > 0 || required)) {
       errors.push([field.field_key, fileError]);
     }
     return errors;
   }
 
   if (isBlank(value)) {
-    if (required) errors.push([field.field_key, `${field.label} is required.`]);
+    if (field.field_type === "file_upload") {
+      // Stored files count towards the rules. An empty required field reports
+      // its minimum_files rule (with the template's own message when it has
+      // one) and only falls back to "required" when no minimum is set.
+      const fileError = existing > 0 || required ? validateFiles(field, [], existing) : null;
+      if (fileError) errors.push([field.field_key, fileError]);
+      else if (required && existing === 0) {
+        errors.push([field.field_key, `${field.label} is required.`]);
+      }
+      return errors;
+    }
+    if (required) errors.push([field.field_key, requiredMessage(field)]);
     const unitError = validateUnit(field, values, false);
     if (unitError) errors.push(unitError);
     return errors;
@@ -425,7 +494,7 @@ export function validateField(
       break;
     case "file_upload":
       message = Array.isArray(value)
-        ? validateFiles(field, value as MultipartFile[])
+        ? validateFiles(field, value as MultipartFile[], existing)
         : `${field.label} must be a list of files.`;
       break;
     default:
@@ -452,12 +521,13 @@ export function validateField(
 export function validateForm(
   template: FormTemplate,
   values: FormValues,
+  options: ValidationOptions = {},
 ): FormErrors {
   const ctx = buildEvaluationContext(template, values);
   const errors: FormErrors = {};
   for (const field of template.fields) {
     if (!isFieldVisible(field, template, values, ctx)) continue;
-    for (const [key, message] of validateField(field, template, values, ctx)) {
+    for (const [key, message] of validateField(field, template, values, ctx, options)) {
       if (!(key in errors)) errors[key] = message;
     }
   }

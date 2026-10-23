@@ -8,11 +8,12 @@ import type {
 } from "@/services/template";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import type { ExistingFilesProps } from "./controls";
 import { TemplateField } from "./TemplateField";
 
 const { neutral } = Colors;
 
-interface Props {
+interface Props extends ExistingFilesProps {
   section: Pick<ServiceFormTemplateSection, "title" | "help_text">;
   fields: Field[];
   template: FormTemplate;
@@ -20,7 +21,7 @@ interface Props {
   errors: Record<string, string>;
   isRequired: (field: Field) => boolean;
   setValue: (key: string, value: unknown) => void;
-  defaultAddress?: Address | null;
+  defaultAddress?: Pick<Address, "address"> | null;
   onAddAddress?: () => void;
   onChangeAddress?: () => void;
   /** Hide the section title (when the screen already shows it as the page title). */
@@ -40,6 +41,8 @@ export function TemplateSection({
   onAddAddress,
   onChangeAddress,
   hideTitle = false,
+  existingFiles,
+  onRemoveExistingFile,
 }: Props) {
   if (fields.length === 0) return null;
   return (
@@ -62,6 +65,8 @@ export function TemplateSection({
           defaultAddress={defaultAddress}
           onAddAddress={onAddAddress}
           onChangeAddress={onChangeAddress}
+          existingFiles={existingFiles}
+          onRemoveExistingFile={onRemoveExistingFile}
         />
       ))}
     </View>

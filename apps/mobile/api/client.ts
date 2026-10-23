@@ -91,6 +91,20 @@ export function setOnUnauthorized(callback: () => void): void {
   onUnauthorized = callback;
 }
 
+/** `data.code` on the 403 that marketplace writes return while suspended. */
+export const SUSPENDED_ERROR_CODE = "PROVIDER_ACCOUNT_SUSPENDED";
+
+let onSuspended: ((data: unknown) => void) | null = null;
+
+/**
+ * Called with the 403 envelope's `data` (a ProviderAccountStatusData plus
+ * `code`) whenever a write is rejected because the provider is suspended, so
+ * the session can reflect the suspension without an extra request.
+ */
+export function setOnSuspended(callback: (data: unknown) => void): void {
+  onSuspended = callback;
+}
+
 interface FetchOptions {
   method?: string;
   body?: unknown;
@@ -163,6 +177,10 @@ async function laravelRequest<T, M>(
       `[laravelFetch] ${method} ${url} -> ${res.status}`,
       JSON.stringify(json),
     );
+
+    if (res.status === 403 && json?.data?.code === SUSPENDED_ERROR_CODE) {
+      onSuspended?.(json.data);
+    }
 
     // Extract error message from various possible formats. A 403 for a
     // suspended provider carries its message here and is surfaced unchanged.

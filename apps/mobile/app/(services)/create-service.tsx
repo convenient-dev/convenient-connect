@@ -2,6 +2,7 @@ import { listBusinesses, type ProviderBusinessListItem } from "@/api/business";
 import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/Button";
 import { StepProgressHeader } from "@/components/StepProgressHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { CREATE_SERVICE_DISPLAY_TOTAL_STEPS } from "@/constants/create-service";
@@ -60,6 +61,14 @@ function RadioOption({
 }
 
 export default function CreateServiceScreen() {
+  return (
+    <SuspendedGuard>
+      <CreateServiceContent />
+    </SuspendedGuard>
+  );
+}
+
+function CreateServiceContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { user } = useAuth();

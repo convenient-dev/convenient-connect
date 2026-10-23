@@ -1,3 +1,4 @@
+import { mapProviderAccountStatus } from "./account-status";
 import { laravelFetch, toAbsoluteUrl } from "./client";
 import type { components } from "./generated/api-types";
 import type { AuthUserProfile } from "@/auth/AuthContext";
@@ -11,6 +12,7 @@ function mapAuthUserProfile(data: AuthUserProfileData): AuthUserProfile {
     user: data.user!,
     profileImage: toAbsoluteUrl(data.profile_image),
     backgroundVerification: (data.background_verification as "Pending" | "Verified" | "Not Verified") ?? "Pending",
+    accountStatus: mapProviderAccountStatus(data),
   };
 }
 

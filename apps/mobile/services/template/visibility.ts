@@ -6,6 +6,7 @@ import {
 } from "./capability";
 import { evaluatePredicate, type EvaluationContext } from "./predicates";
 import {
+  IDENTITY_VALUE_KEYS,
   PRICING_VALUE_KEYS,
   type FieldOption,
   type FormTemplate,
@@ -22,9 +23,10 @@ export const CUSTOMER_LOCATION_CODE = "customer_location";
 /**
  * Fulfillment codes for which the provider's default address is shown. The
  * template's own `visible_when` only names `provider_location` and
- * `pickup_delivery` (where the backend snapshots the address), but the backend
- * also centres the `customer_location` service radius on that address, so the
- * provider should see it there too.
+ * `pickup_delivery`, where the backend snapshots the address onto the service.
+ * For `customer_location` nothing is stored (address_id stays null); the
+ * backend centres the service radius on the provider's live default address at
+ * match time (confirmed with the backend team), so the provider sees it there too.
  */
 export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
   "provider_location",
@@ -32,12 +34,55 @@ export const ADDRESS_DISPLAY_FULFILLMENT_CODES = [
   CUSTOMER_LOCATION_CODE,
 ];
 
+/**
+ * Sections whose fields only describe the listing: title, description,
+ * additional information, tagline, portfolio and certificates. In every
+ * template these fields carry no applicability rules and no other field's
+ * rules read them, so they are edited on their own screen through the
+ * information endpoint. Everything else (business format, fulfillment,
+ * address, capability answers, pricing) can change which other fields are
+ * valid, so it is edited together and saved in one transaction through the
+ * candidate endpoint.
+ */
+export const LISTING_SECTION_KEYS = [
+  "service_information",
+  "portfolio",
+  "certifications_licenses",
+];
+
+export function isListingSectionKey(key: string | null | undefined): boolean {
+  return !!key && LISTING_SECTION_KEYS.includes(key);
+}
+
+/**
+ * Whether the field belongs to a listing section. Fields outside every
+ * section are treated as setup fields, the safe default.
+ */
+export function isListingField(field: TemplateField, template: FormTemplate): boolean {
+  const key =
+    field.section_key ??
+    template.sections?.find((section) => section.field_keys?.includes(field.field_key))
+      ?.section_key;
+  return isListingSectionKey(key);
+}
+
 /** The display-only field that mirrors the provider's default address. */
 export function isProviderAddressField(field: TemplateField): boolean {
   return (
     field.submit_as?.type === "display_only" &&
     field.submit_as.source === PROVIDER_ADDRESS_SOURCE
   );
+}
+
+/**
+ * A select whose values the provider types rather than picks: the descriptor
+ * set is open / free_entry and no options are supplied. A closed set with no
+ * options is unsatisfiable by contract and is not free entry.
+ */
+export function isFreeEntryField(field: TemplateField): boolean {
+  if (field.options?.length) return false;
+  const set = field.descriptor?.set;
+  return set?.mode !== "closed" && set?.entry !== "options_only";
 }
 
 export function findField(
@@ -81,7 +126,13 @@ export function selectedPriceUnitCode(
   const pricingField = template.fields.find((f) => f.field_type === "pricing");
   const unitId = values[PRICING_VALUE_KEYS.priceUnitId];
   if (unitId === null || unitId === undefined) return null;
-  const unit = pricingField?.price_units?.find(
+  if (!pricingField) {
+    // Information template: no pricing field to map the id, so use the code
+    // seeded from the saved pricing record.
+    const code = values[PRICING_VALUE_KEYS.priceUnitCode];
+    return typeof code === "string" && code ? code : null;
+  }
+  const unit = pricingField.price_units?.find(
     (option) => String(option.value) === String(unitId),
   );
   return unit?.code ?? null;
@@ -120,19 +171,33 @@ export function buildEvaluationContext(
   const pricingType = selectedPricingType(values);
   const priceUnitCode = selectedPriceUnitCode(template, values);
 
+  // Listing identity: the wizard / saved-service value in form state wins; the
+  // template's currency_context (resolved for the same identity) is the
+  // fallback for forms that did not seed it.
+  const providerType =
+    values[IDENTITY_VALUE_KEYS.providerType] ?? template.currency_context?.provider_type;
+  const businessId =
+    values[IDENTITY_VALUE_KEYS.businessId] ?? template.currency_context?.business_id ?? null;
+  fields[IDENTITY_VALUE_KEYS.providerType] = providerType;
+  fields[IDENTITY_VALUE_KEYS.businessId] = businessId;
+
   const context: Record<string, unknown> = {
     pricing_type: pricingType,
     price_unit: priceUnitCode,
     price_unit_code: priceUnitCode,
     price_unit_id: values[PRICING_VALUE_KEYS.priceUnitId],
     fulfillment_types: fulfillmentCodes,
+    // Names from the PublicDescriptorPredicate contract: the Provider array
+    // (`fulfillment_type_codes`, used by Laundry) and the singular form.
+    fulfillment_type_codes: fulfillmentCodes,
+    fulfillment_type_code: fulfillmentCodes[0] ?? null,
     business_format: businessFormatValue,
     format: resolveActiveFormatKey(capability, {
       businessFormatValue,
       fulfillmentCodes,
     }),
-    provider_type: template.currency_context?.provider_type,
-    business_id: template.currency_context?.business_id ?? null,
+    provider_type: providerType,
+    business_id: businessId,
     can_charge_in_usd: template.currency_context?.can_charge_in_usd ?? false,
     is_usd_currency: template.currency_context?.is_usd_currency ?? false,
     default_currency: template.currency_context?.default_currency?.code,
@@ -181,14 +246,43 @@ export function isFieldVisible(
   }
 
   if (submitKey === FULFILLMENT_SUBMIT_KEY && capability) {
-    const formatKey = ctx.context.format as string | null;
-    const format = getFormat(capability, formatKey);
-    if (format && allowedFulfillmentCodes(format, selectedPriceUnitCode(template, values)).length === 0) {
-      return false;
-    }
+    const codes = selectableFulfillmentCodes(template, values, ctx);
+    if (codes !== null && codes.length === 0) return false;
   }
 
   return true;
+}
+
+/**
+ * Fulfillment codes the provider may pick right now, or null when the
+ * capability imposes no limit.
+ *
+ * With a `business_format` selector the chosen format decides. Without one
+ * the format is derived from the fulfillment selection itself (Laundry keys
+ * its formats by fulfillment code), so limiting the options to the current
+ * format would lock in whichever format resolved first; offer the union of
+ * every format's codes instead.
+ */
+export function selectableFulfillmentCodes(
+  template: FormTemplate,
+  values: FormValues,
+  ctx: EvaluationContext = buildEvaluationContext(template, values),
+): string[] | null {
+  const capability = template.provider_listing_capability;
+  if (!capability) return null;
+  const unitCode = selectedPriceUnitCode(template, values);
+  if (!capability.business_format) {
+    const formats = Object.values(capability.formats ?? {});
+    if (formats.length === 0) return null;
+    const union = new Set<string>();
+    for (const format of formats) {
+      for (const code of allowedFulfillmentCodes(format, unitCode)) union.add(code);
+    }
+    return [...union];
+  }
+  const format = getFormat(capability, ctx.context.format as string | null);
+  if (!format) return null;
+  return allowedFulfillmentCodes(format, unitCode);
 }
 
 /** Whether a field must have a value: `is_required` or `required_when` holds. */
@@ -225,14 +319,7 @@ export function allowedFulfillmentOptions(
 ): FieldOption[] {
   const field = findFieldBySubmitKey(template, FULFILLMENT_SUBMIT_KEY);
   const options = field?.options ?? [];
-  const capability = template.provider_listing_capability;
-  if (!capability) return options;
-  const ctx = buildEvaluationContext(template, values);
-  const format = getFormat(capability, ctx.context.format as string | null);
-  if (!format) return options;
-  const allowed = allowedFulfillmentCodes(
-    format,
-    selectedPriceUnitCode(template, values),
-  );
+  const allowed = selectableFulfillmentCodes(template, values);
+  if (allowed === null) return options;
   return options.filter((option) => option.code && allowed.includes(option.code));
 }

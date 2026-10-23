@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -22,6 +23,14 @@ const BULLETS = [
 ];
 
 export default function DeleteServiceScreen() {
+  return (
+    <SuspendedGuard>
+      <DeleteServiceContent />
+    </SuspendedGuard>
+  );
+}
+
+function DeleteServiceContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();

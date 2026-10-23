@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { useSuspendedGuard } from "@/components/SuspendedGuard";
 import {
   ServiceAssignmentChips,
   type ServiceChipItem,
@@ -79,6 +80,10 @@ export default function ManageMemberScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
+  // Viewing the member stays allowed while suspended; adding or removing
+  // services, resending the invite and removing the member are writes the
+  // API rejects, so they go through the guard.
+  const { guard: guardWrite, suspendedModal } = useSuspendedGuard();
 
   // TODO: Wire to a member-earnings endpoint once the API exposes one.
   const earningsTotal = 0;
@@ -358,9 +363,9 @@ export default function ManageMemberScreen() {
             selected={assignedItems}
             available={available}
             disabled={busy}
-            onAdd={handleAddService}
+            onAdd={(service) => guardWrite(() => handleAddService(service))}
             onRemove={(service) =>
-              handleRemoveService(service.id, service.name)
+              guardWrite(() => handleRemoveService(service.id, service.name))
             }
           />
           {available.length === 0 && businessServices.length > 0 && (
@@ -396,7 +401,7 @@ export default function ManageMemberScreen() {
           size="lg"
           disabled={busy}
           loading={busy}
-          onPress={handleRemoveMember}
+          onPress={() => guardWrite(handleRemoveMember)}
         />
         {isPending && (
           <Button
@@ -404,12 +409,13 @@ export default function ManageMemberScreen() {
             variant="ghost"
             size="md"
             disabled={busy}
-            onPress={handleResendInvitation}
+            onPress={() => guardWrite(handleResendInvitation)}
           />
         )}
       </View>
 
       {confirmModal}
+      {suspendedModal}
     </SafeAreaView>
   );
 }

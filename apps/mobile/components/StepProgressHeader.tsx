@@ -7,11 +7,20 @@ const { primary, neutral } = Colors;
 interface Props {
   step: number;
   totalSteps: number;
+  /**
+   * Position within the current step, for steps made of several pages (e.g.
+   * the template-driven form). Keeps the label at "Step N of M" while the bar
+   * advances from the end of step N-1 towards the end of step N.
+   */
+  substep?: number;
+  substepCount?: number;
 }
 
 /** "Step N of M" label with a progress bar, shared by the create-service wizard. */
-export function StepProgressHeader({ step, totalSteps }: Props) {
-  const progress = Math.min(Math.max(step / totalSteps, 0), 1);
+export function StepProgressHeader({ step, totalSteps, substep, substepCount }: Props) {
+  const withinStep =
+    substep !== undefined && substepCount ? Math.min(Math.max(substep / substepCount, 0), 1) : 1;
+  const progress = Math.min(Math.max((step - 1 + withinStep) / totalSteps, 0), 1);
   return (
     <View style={styles.stepHeader}>
       <View style={styles.stepRow}>

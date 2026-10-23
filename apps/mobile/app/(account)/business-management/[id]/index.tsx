@@ -11,6 +11,7 @@ import { toAbsoluteUrl } from "@/api/client";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { useSuspendedGuard } from "@/components/SuspendedGuard";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
@@ -144,6 +145,9 @@ export default function BusinessDetailScreen() {
   const [acceptingJobs, setAcceptingJobs] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ModalState | null>(null);
+  // Status toggle, edit services, invite and delete are marketplace writes
+  // the API rejects while suspended; viewing the business stays allowed.
+  const { guard: guardWrite, suspendedModal } = useSuspendedGuard();
 
   const showError = useCallback((message: string, onConfirm?: () => void) => {
     setConfirmModal({
@@ -394,7 +398,7 @@ export default function BusinessDetailScreen() {
           </View>
           <Switch
             value={isVerified && acceptingJobs}
-            onValueChange={handleToggleStatus}
+            onValueChange={(value) => guardWrite(() => handleToggleStatus(value))}
             disabled={!isVerified}
             trackColor={{ false: neutral[200], true: primary[400] }}
             thumbColor={neutral[0]}
@@ -445,13 +449,16 @@ export default function BusinessDetailScreen() {
           size="lg"
           disabled={!isVerified}
           onPress={() =>
-            router.push({
-              pathname: "/business-management/[id]/invite-member",
-              params: { id: String(business.business_id) },
-            })
+            guardWrite(() =>
+              router.push({
+                pathname: "/business-management/[id]/invite-member",
+                params: { id: String(business.business_id) },
+              }),
+            )
           }
         />
       </View>
+      {suspendedModal}
 
       <BottomSheet
         visible={menuVisible}
@@ -474,13 +481,15 @@ export default function BusinessDetailScreen() {
             icon: require("@/assets/global-icons/edit.svg"),
             onPress: () => {
               setMenuVisible(false);
-              router.push({
-                pathname: "/business-management/steps/select-category",
-                params: {
-                  flow: "edit-business",
-                  businessId: String(business.business_id),
-                },
-              });
+              guardWrite(() =>
+                router.push({
+                  pathname: "/business-management/steps/select-category",
+                  params: {
+                    flow: "edit-business",
+                    businessId: String(business.business_id),
+                  },
+                }),
+              );
             },
           },
           {
@@ -488,7 +497,7 @@ export default function BusinessDetailScreen() {
             icon: require("@/assets/global-icons/cancel.svg"),
             onPress: () => {
               setMenuVisible(false);
-              handleDelete();
+              guardWrite(handleDelete);
             },
           },
         ]}

@@ -7,6 +7,7 @@ import {
   resolveCurrentLocation,
   type ResolvedLocation,
   searchAddresses,
+  setDefaultAddress,
   updateAddress,
 } from "@/api/address";
 import { ApiError } from "@/api/client";
@@ -210,12 +211,7 @@ export default function AddAddressScreen() {
     try {
       const current = addresses.find((a) => a.id === selectedId);
       if (current && !current.isDefault) {
-        await updateAddress(selectedId, {
-          address: current.address,
-          latitude: current.latitude,
-          longitude: current.longitude,
-          is_default: true,
-        });
+        await setDefaultAddress(current);
       }
       router.back();
     } catch (e) {

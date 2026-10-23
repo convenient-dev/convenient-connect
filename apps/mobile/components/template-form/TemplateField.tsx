@@ -1,0 +1,81 @@
+import type { Address } from "@/api/address";
+import {
+  isFreeEntryField,
+  isLanguagePairField,
+  type FormTemplate,
+  type FormValues,
+  type TemplateField as Field,
+} from "@/services/template";
+import React from "react";
+import { PricingControl } from "./PricingControl";
+import {
+  AddressControl,
+  CertificateBundleControl,
+  FileUploadControl,
+  FreeEntryMultiSelectControl,
+  LanguagePairControl,
+  MultiSelectControl,
+  NumberControl,
+  SingleSelectControl,
+  TextControl,
+  YesNoControl,
+  type ExistingFilesProps,
+} from "./controls";
+
+interface Props extends ExistingFilesProps {
+  field: Field;
+  template: FormTemplate;
+  values: FormValues;
+  errors: Record<string, string>;
+  required: boolean;
+  setValue: (key: string, value: unknown) => void;
+  defaultAddress?: Pick<Address, "address"> | null;
+  /** Omit both address callbacks to show the address read-only (edit flows). */
+  onAddAddress?: () => void;
+  onChangeAddress?: () => void;
+}
+
+/** Renders one template field by its `field_type` / `submit_as` type. */
+export function TemplateField(props: Props) {
+  const { field, template, defaultAddress, onAddAddress, onChangeAddress, ...control } = props;
+  const base = { field, template, ...control };
+
+  if (field.submit_as?.type === "display_only" || field.field_type === "address") {
+    return (
+      <AddressControl
+        {...base}
+        defaultAddress={defaultAddress}
+        onAddAddress={onAddAddress}
+        onChangeAddress={onChangeAddress}
+      />
+    );
+  }
+  if (field.submit_as?.type === "certificate_bundle") {
+    return <CertificateBundleControl {...base} />;
+  }
+
+  switch (field.field_type) {
+    case "text":
+    case "textarea":
+      return <TextControl {...base} />;
+    case "number":
+      return <NumberControl {...base} />;
+    case "single_select":
+      return <SingleSelectControl {...base} />;
+    case "multi_select":
+      if (isLanguagePairField(field)) return <LanguagePairControl {...base} />;
+      return isFreeEntryField(field) ? (
+        <FreeEntryMultiSelectControl {...base} />
+      ) : (
+        <MultiSelectControl {...base} />
+      );
+    case "yes_no":
+      return <YesNoControl {...base} />;
+    case "file_upload":
+      return <FileUploadControl {...base} />;
+    case "pricing":
+      return <PricingControl {...base} />;
+    default:
+      return null;
+  }
+}

@@ -2,6 +2,7 @@ import { addBusinessProfile, updateBusinessProfile } from "@/api/business";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,6 +23,14 @@ const { primary, neutral, text, background, status } = Colors;
 const ACCOUNT_LAST_FOUR = "5114"; // TODO: Get from API.
 
 export default function UpdateBankAccountScreen() {
+  return (
+    <SuspendedGuard>
+      <UpdateBankAccountContent />
+    </SuspendedGuard>
+  );
+}
+
+function UpdateBankAccountContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details, services, and documents collected on the previous

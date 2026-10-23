@@ -2,6 +2,8 @@ import bookingsData from "@/assets/data/bookings.json";
 import { BookingCard } from "@/components/BookingCard";
 import {
   BookingRequestCard,
+  formatBookingDate,
+  formatBookingTime,
   type BookingRequest,
 } from "@/components/BookingRequestCard";
 import { CardGrid } from "@/components/CardGrid";
@@ -90,9 +92,9 @@ function toBookingRequest(b: Booking): BookingRequest {
     bookingId: b.bookingId ?? b.id,
     serviceId: b.category ?? "",
     service: b.title,
-    date: b.date,
-    start: b.start,
-    end: b.end,
+    date: formatBookingDate(b.date),
+    start: formatBookingTime(b.start),
+    end: formatBookingTime(b.end),
     client: {
       name: b.clientName,
       location: b.location ?? "",

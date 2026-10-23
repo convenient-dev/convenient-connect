@@ -1,5 +1,6 @@
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -107,6 +108,14 @@ function UploadCard({
 }
 
 export default function VerifyBusinessScreen() {
+  return (
+    <SuspendedGuard>
+      <VerifyBusinessContent />
+    </SuspendedGuard>
+  );
+}
+
+function VerifyBusinessContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   // Business details entered on the previous screen, forwarded through

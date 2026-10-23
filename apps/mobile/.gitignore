@@ -12,3 +12,5 @@ expo-env.d.ts
 
 # agents
 .claude/
+# template sweep output (scripts/sweep-templates.ts)
+.template-sweep/

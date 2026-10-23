@@ -3,6 +3,7 @@ import {
   googleLogin,
   isRestoreRequired,
   numberLogin,
+  toAuthUserProfile,
 } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
@@ -118,11 +119,7 @@ export default function SignupScreen() {
         });
         return;
       }
-      await login(result.accessToken, {
-        user: result.user,
-        profileImage: result.profileImage,
-        backgroundVerification: result.backgroundVerification,
-      });
+      await login(result.accessToken, toAuthUserProfile(result));
 
       // Check if user has completed profile by checking if they have both names.
       const hasCompletedProfile =
@@ -183,11 +180,7 @@ export default function SignupScreen() {
         });
         return;
       }
-      await login(result.accessToken, {
-        user: result.user,
-        profileImage: result.profileImage,
-        backgroundVerification: result.backgroundVerification,
-      });
+      await login(result.accessToken, toAuthUserProfile(result));
 
       // Check if user has completed profile by checking if they have both names.
       const hasCompletedProfile =

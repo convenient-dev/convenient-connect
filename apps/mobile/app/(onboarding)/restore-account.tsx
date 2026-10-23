@@ -5,6 +5,7 @@ import {
   isRestoreRequired,
   numberLogin,
   sendPermanentDeleteOtp,
+  toAuthUserProfile,
 } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/auth/AuthContext";
@@ -103,11 +104,7 @@ export default function RestoreAccountScreen() {
           Alert.alert("Error", "Failed to restore account");
           return;
         }
-        await login(result.accessToken, {
-          user: result.user,
-          profileImage: result.profileImage,
-          backgroundVerification: result.backgroundVerification,
-        });
+        await login(result.accessToken, toAuthUserProfile(result));
         const hasCompletedProfile =
           !!result.user.user_fname?.trim() && !!result.user.user_lname?.trim();
         if (hasCompletedProfile) {

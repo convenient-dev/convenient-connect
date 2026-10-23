@@ -9,6 +9,7 @@ import {
   type ServiceChipItem,
 } from "@/components/ServiceChips";
 import { TabBar } from "@/components/TabBar";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -49,6 +50,14 @@ interface BusinessServicesData {
 }
 
 export default function InviteMemberScreen() {
+  return (
+    <SuspendedGuard>
+      <InviteMemberContent />
+    </SuspendedGuard>
+  );
+}
+
+function InviteMemberContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; tab?: string }>();

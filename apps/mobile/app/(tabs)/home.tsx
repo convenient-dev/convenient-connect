@@ -19,6 +19,7 @@ import {
 import { CardGrid } from "@/components/CardGrid";
 import { MyServiceCard } from "@/components/MyServiceCard";
 import { SideMenu } from "@/components/SideMenu";
+import { SuspendedBanner } from "@/components/SuspendedBanner";
 import { withCount } from "@/constants/labels";
 import { useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -67,7 +68,7 @@ export default function HomeScreen() {
   const { isWideScreen, screenPadding, screenPaddingStyle } =
     useResponsivePadding();
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshAccountStatus } = useAuth();
   const { openMenu } = useLocalSearchParams<{ openMenu?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   // Banners span the content card (padding 22 each side) inside the
@@ -168,9 +169,11 @@ export default function HomeScreen() {
     }
   }, [openMenu, router]);
 
-  // Re-fetch on focus so the services strip and new requests reflect changes
-  // made elsewhere. A failed load keeps whatever was shown last.
+  // Re-fetch on focus so the services strip, new requests and the account
+  // status reflect changes made elsewhere. A failed load keeps whatever was
+  // shown last.
   const refreshHome = useCallback(() => {
+    refreshAccountStatus();
     getProviderHome()
       .then((home) => {
         setServices(home.my_services.items);
@@ -182,7 +185,7 @@ export default function HomeScreen() {
         setNewRequestsTotal(home.new_requests.total);
       })
       .catch(() => {});
-  }, []);
+  }, [refreshAccountStatus]);
 
   useFocusEffect(refreshHome);
 
@@ -266,6 +269,8 @@ export default function HomeScreen() {
             Welcome to Convenient Connect
           </Text>
         </View>
+
+        <SuspendedBanner style={styles.suspendedBanner} />
 
         {/* Content card */}
         <View style={styles.contentCard}>
@@ -514,6 +519,10 @@ const styles = StyleSheet.create({
     color: text.secondary,
     letterSpacing: -0.408,
     marginTop: 2,
+  },
+  suspendedBanner: {
+    marginHorizontal: 22,
+    marginBottom: 12,
   },
   contentCard: {
     backgroundColor: background.card,

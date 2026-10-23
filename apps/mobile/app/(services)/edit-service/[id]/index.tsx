@@ -17,6 +17,7 @@ import {
   ServiceStatusBadge,
   statusFromLabel,
 } from "@/components/ServiceStatusBadge";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -70,6 +71,14 @@ function serviceTypeLabel(overview: ServiceEditOverview): string {
 }
 
 export default function EditServiceScreen() {
+  return (
+    <SuspendedGuard>
+      <EditServiceContent />
+    </SuspendedGuard>
+  );
+}
+
+function EditServiceContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();

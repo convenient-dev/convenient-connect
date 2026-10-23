@@ -2,6 +2,7 @@ import { getCities, getCountries, getStates } from "@/api/location";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useRouter } from "expo-router";
@@ -63,6 +64,14 @@ function Field({
 }
 
 export default function BusinessDetailsScreen() {
+  return (
+    <SuspendedGuard>
+      <BusinessDetailsContent />
+    </SuspendedGuard>
+  );
+}
+
+function BusinessDetailsContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
 

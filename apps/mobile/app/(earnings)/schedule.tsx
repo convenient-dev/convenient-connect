@@ -15,6 +15,7 @@ import { CardGrid } from "@/components/CardGrid";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { useSuspendedGuard } from "@/components/SuspendedGuard";
 import {
   SearchableSelect,
   type SelectOption,
@@ -253,6 +254,9 @@ export default function ScheduleScreen() {
     new Set(),
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Toggling availability and saving the schedule or date overrides are
+  // writes the API rejects while suspended.
+  const { guard: guardWrite, suspendedModal } = useSuspendedGuard();
   const fetchedOverrideDatesRef = useRef<Set<string>>(new Set());
   const [editing, setEditing] = useState<{
     day: DayKey | null;
@@ -955,7 +959,9 @@ export default function ScheduleScreen() {
             </View>
             <Switch
               value={available}
-              onValueChange={handleAvailableChange}
+              onValueChange={(value) =>
+                guardWrite(() => handleAvailableChange(value))
+              }
               trackColor={{ false: neutral[200], true: secondary[500] }}
               thumbColor={neutral[0]}
               ios_backgroundColor={neutral[200]}
@@ -1451,7 +1457,7 @@ export default function ScheduleScreen() {
             size="lg"
             style={{ flex: 1 }}
             loading={saving}
-            onPress={handleSave}
+            onPress={() => guardWrite(handleSave)}
           />
         </View>
       )}
@@ -1512,6 +1518,7 @@ export default function ScheduleScreen() {
         onConfirm={confirmClearOverrides}
         onCancel={cancelClearOverrides}
       />
+      {suspendedModal}
     </SafeAreaView>
   );
 }

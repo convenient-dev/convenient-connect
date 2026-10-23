@@ -1,3 +1,8 @@
+import type { AuthUserProfile } from "@/auth/AuthContext";
+import {
+  mapProviderAccountStatus,
+  type ProviderAccountStatus,
+} from "./account-status";
 import { laravelFetch, toAbsoluteUrl } from "./client";
 import type { components } from "./generated/api-types";
 
@@ -8,6 +13,7 @@ export interface LoginResult {
   user: components["schemas"]["AuthUser"];
   profileImage: string | null;
   backgroundVerification: "Pending" | "Verified" | "Not Verified";
+  accountStatus: ProviderAccountStatus;
 }
 
 function mapLoginData(data: OtpLoginData): LoginResult {
@@ -16,6 +22,17 @@ function mapLoginData(data: OtpLoginData): LoginResult {
     user: data.user!,
     profileImage: toAbsoluteUrl(data.profile_image),
     backgroundVerification: (data.background_verification as "Pending" | "Verified" | "Not Verified") ?? "Pending",
+    accountStatus: mapProviderAccountStatus(data),
+  };
+}
+
+/** The session profile to hand to `AuthContext.login` after a successful login. */
+export function toAuthUserProfile(result: LoginResult): AuthUserProfile {
+  return {
+    user: result.user,
+    profileImage: result.profileImage,
+    backgroundVerification: result.backgroundVerification,
+    accountStatus: result.accountStatus,
   };
 }
 

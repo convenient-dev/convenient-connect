@@ -407,6 +407,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: background.screen,
   },
+  suspendedBanner: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+  },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",

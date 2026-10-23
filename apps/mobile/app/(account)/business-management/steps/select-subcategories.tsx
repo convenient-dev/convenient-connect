@@ -4,6 +4,7 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { IconGrid } from "@/components/IconGrid";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -47,6 +48,14 @@ interface ModalState {
 }
 
 export default function SelectSubcategoriesScreen() {
+  return (
+    <SuspendedGuard>
+      <SelectSubcategoriesContent />
+    </SuspendedGuard>
+  );
+}
+
+function SelectSubcategoriesContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const params = useLocalSearchParams<{

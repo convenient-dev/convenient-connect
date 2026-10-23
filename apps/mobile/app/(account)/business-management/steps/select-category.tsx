@@ -4,6 +4,7 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { IconGrid, type IconGridItem } from "@/components/IconGrid";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,6 +18,14 @@ const { primary, text, background } = Colors;
 type Category = IconGridItem;
 
 export default function SelectCategoryScreen() {
+  return (
+    <SuspendedGuard>
+      <SelectCategoryContent />
+    </SuspendedGuard>
+  );
+}
+
+function SelectCategoryContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const params = useLocalSearchParams<{ flow?: string; businessId?: string }>();

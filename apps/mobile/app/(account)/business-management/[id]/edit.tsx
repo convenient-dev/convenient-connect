@@ -4,6 +4,7 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
+import { SuspendedGuard } from "@/components/SuspendedGuard";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -87,6 +88,14 @@ interface ModalState {
 }
 
 export default function EditBusinessScreen() {
+  return (
+    <SuspendedGuard>
+      <EditBusinessContent />
+    </SuspendedGuard>
+  );
+}
+
+function EditBusinessContent() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();

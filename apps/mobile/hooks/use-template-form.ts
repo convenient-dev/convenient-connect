@@ -47,6 +47,33 @@ export function fieldValueKeys(field: TemplateField): string[] {
   return keys;
 }
 
+/**
+ * Splits mapped server errors into the ones a screen renders (a `scope` field
+ * owns the key) and the rest, returned as general messages prefixed with the
+ * owning field's label. A screen that shows only part of a template would
+ * otherwise hold an error it can neither display nor clear. No scope keeps
+ * every field error.
+ */
+function scopeFieldErrors(
+  template: FormTemplate,
+  fieldErrors: FormErrors,
+  scope: TemplateField[] | undefined,
+): { scoped: FormErrors; general: string[] } {
+  if (!scope) return { scoped: fieldErrors, general: [] };
+  const keys = new Set(scope.flatMap(fieldValueKeys));
+  const scoped: FormErrors = {};
+  const general: string[] = [];
+  for (const [key, message] of Object.entries(fieldErrors)) {
+    if (keys.has(key)) {
+      scoped[key] = message;
+      continue;
+    }
+    const owner = template.fields.find((f) => fieldValueKeys(f).includes(key));
+    general.push(`${owner?.label ?? key}: ${message}`);
+  }
+  return { scoped, general };
+}
+
 function isFileField(field: TemplateField): boolean {
   return field.field_type === "file_upload" || field.submit_as?.type === "certificate_bundle";
 }
@@ -272,9 +299,14 @@ export function useTemplateForm(
   /**
    * Maps a publishability 422 onto field keys. Keys that match a field key or
    * a submit key land on that field; anything else goes to `generalErrors`.
+   * `scope` lists the fields the screen renders; errors on other fields are
+   * reported as general messages instead of highlighted.
    */
   const applyServerErrors = useCallback(
-    (error: ApiError & { data: CommercialPublishabilityErrorData }): ServerErrorResult => {
+    (
+      error: ApiError & { data: CommercialPublishabilityErrorData },
+      scope?: TemplateField[],
+    ): ServerErrorResult => {
       if (!template) return { sectionIndex: -1, general: [] };
       const messages = getPublishabilityFieldMessages(error);
       const fieldErrors: FormErrors = {};
@@ -289,9 +321,11 @@ export function useTemplateForm(
         else if (PRICING_KEYS.includes(key)) fieldErrors[key] = message;
         else general.push(message);
       }
-      setErrors((prev) => ({ ...prev, ...fieldErrors }));
-      setGeneralErrors(general);
-      return { sectionIndex: sectionIndexForKeys(Object.keys(fieldErrors)), general };
+      const split = scopeFieldErrors(template, fieldErrors, scope);
+      const allGeneral = [...general, ...split.general];
+      setErrors((prev) => ({ ...prev, ...split.scoped }));
+      setGeneralErrors(allGeneral);
+      return { sectionIndex: sectionIndexForKeys(Object.keys(split.scoped)), general: allGeneral };
     },
     [template, sectionIndexForKeys],
   );
@@ -299,17 +333,20 @@ export function useTemplateForm(
   /**
    * Maps structured `data.issues` from any 422 onto fields. `path` is a wire
    * path such as `title`, `certificate_files`, `portfolio_images.1` or
-   * `answers_json.qualifications`; `$` and unknown paths go to `generalErrors`.
+   * `answers_json.qualifications`; `$` and unknown paths go to `generalErrors`,
+   * as do issues on fields outside `scope` (the fields the screen renders).
    * Returns null when the error carried no structured issues.
    */
   const applyServerIssues = useCallback(
-    (error: unknown): ServerErrorResult | null => {
+    (error: unknown, scope?: TemplateField[]): ServerErrorResult | null => {
       const issues = getValidationIssues(error);
       if (!template || issues.length === 0) return null;
       const { fieldErrors, general } = mapIssuesToFields(template, values, issues);
-      setErrors((prev) => ({ ...prev, ...fieldErrors }));
-      setGeneralErrors(general);
-      return { sectionIndex: sectionIndexForKeys(Object.keys(fieldErrors)), general };
+      const split = scopeFieldErrors(template, fieldErrors, scope);
+      const allGeneral = [...general, ...split.general];
+      setErrors((prev) => ({ ...prev, ...split.scoped }));
+      setGeneralErrors(allGeneral);
+      return { sectionIndex: sectionIndexForKeys(Object.keys(split.scoped)), general: allGeneral };
     },
     [template, values, sectionIndexForKeys],
   );

@@ -22,6 +22,7 @@ import type { ExistingFile } from "@/components/template-form/controls";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import {
+  fieldValueKeys,
   useTemplateForm,
   type ServerErrorResult,
 } from "@/hooks/use-template-form";
@@ -275,11 +276,13 @@ export default function EditServiceSetupScreen() {
       await saveServiceCandidate(serviceId, buildCandidateFormData(loaded.template, form.values));
       setSavedModalVisible(true);
     } catch (error) {
+      // Errors on the re-sent listing fields cannot be shown here, so they are
+      // reported as general messages rather than silently disabling Save.
       if (isCommercialPublishabilityError(error)) {
-        showFieldErrors("Listing not publishable yet", form.applyServerErrors(error));
+        showFieldErrors("Listing not publishable yet", form.applyServerErrors(error, editable));
         return;
       }
-      const result = form.applyServerIssues(error);
+      const result = form.applyServerIssues(error, editable);
       if (result) {
         showFieldErrors("Some details need attention", result);
         return;
@@ -326,7 +329,11 @@ export default function EditServiceSetupScreen() {
   const sections = form.sections.filter((section) => !isListingSectionKey(section.section_key));
   // Fields the template left outside any section are edited here, the safe default.
   const unsectioned = form.unsectionedFields.filter((f) => isEditableField(f, template));
-  const hasErrors = Object.keys(form.errors).length > 0;
+  // Only errors on fields this screen renders can block Save.
+  const editableKeys = new Set(
+    form.visible.filter((f) => isEditableField(f, template)).flatMap(fieldValueKeys),
+  );
+  const hasErrors = Object.keys(form.errors).some((key) => editableKeys.has(key));
 
   const sectionProps = {
     template,

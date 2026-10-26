@@ -1,9 +1,17 @@
+import {
+  listSupportFaqs,
+  listSupportTopics,
+  searchSupportFaqs,
+  type SupportFaq,
+  type SupportTopic,
+} from "@/api/support";
+import { ApiError } from "@/api/client";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -17,77 +25,130 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-interface FaqItem {
-  question: string;
-  answer: string;
-}
-
-interface Topic {
-  key: string;
-  label: string;
-  questions: FaqItem[];
-}
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function CustomerSupportScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [topics, setTopics] = useState<SupportTopic[]>([]);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+  const [loadingTopics, setLoadingTopics] = useState(true);
+  const [activeTopicId, setActiveTopicId] = useState<number | null>(null);
+  // FAQs are fetched per topic the first time it is opened and kept.
+  const [faqsByTopic, setFaqsByTopic] = useState<Record<number, SupportFaq[]>>({});
+  const [loadingFaqs, setLoadingFaqs] = useState(false);
+  const [expandedFaqId, setExpandedFaqId] = useState<number | null>(null);
   const [searchActive, setSearchActive] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SupportFaq[]>([]);
+  const [searching, setSearching] = useState(false);
   const tabsRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
+  // Ignore search responses that a newer query has superseded.
+  const searchId = useRef(0);
 
   useEffect(() => {
-    // TODO: legacy API removed — implement getFaq via Laravel API
-    console.log("TODO: implement getFaq via Laravel API");
-    setTopics([]);
-    setActiveKey(null);
-    setLoading(false);
+    let active = true;
+    listSupportTopics()
+      .then((list) => {
+        if (!active) return;
+        setTopics(list);
+        setActiveTopicId(list[0]?.id ?? null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setTopicsError(
+          error instanceof ApiError ? error.message : "Couldn't load help topics.",
+        );
+      })
+      .finally(() => {
+        if (active) setLoadingTopics(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const activeTopic =
-    topics.find((t) => t.key === activeKey) ?? topics[0] ?? null;
+  useEffect(() => {
+    if (activeTopicId === null || activeTopicId in faqsByTopic) return;
+    let active = true;
+    setLoadingFaqs(true);
+    listSupportFaqs(activeTopicId)
+      .then((faqs) => {
+        if (active) setFaqsByTopic((prev) => ({ ...prev, [activeTopicId]: faqs }));
+      })
+      .catch(() => {
+        // A failed topic shows as empty; switching back retries.
+        if (active) setFaqsByTopic((prev) => ({ ...prev, [activeTopicId]: [] }));
+      })
+      .finally(() => {
+        if (active) setLoadingFaqs(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeTopicId, faqsByTopic]);
 
-  function handleSelectTopic(key: string) {
-    setActiveKey(key);
-    setExpandedQuestion(null);
+  const trimmedQuery = query.trim();
+
+  useEffect(() => {
+    const id = ++searchId.current;
+    if (!searchActive || !trimmedQuery) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(() => {
+      searchSupportFaqs(trimmedQuery)
+        .then((faqs) => {
+          if (id === searchId.current) setSearchResults(faqs);
+        })
+        .catch(() => {
+          if (id === searchId.current) setSearchResults([]);
+        })
+        .finally(() => {
+          if (id === searchId.current) setSearching(false);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchActive, trimmedQuery]);
+
+  const activeTopic = topics.find((t) => t.id === activeTopicId) ?? null;
+  const activeFaqs = activeTopicId !== null ? faqsByTopic[activeTopicId] : undefined;
+
+  function handleSelectTopic(id: number) {
+    setActiveTopicId(id);
+    setExpandedFaqId(null);
   }
 
-  function toggleQuestion(question: string) {
-    setExpandedQuestion((prev) => (prev === question ? null : question));
+  function toggleFaq(id: number) {
+    setExpandedFaqId((prev) => (prev === id ? null : id));
   }
 
   function openSearch() {
     setSearchActive(true);
-    setExpandedQuestion(null);
+    setExpandedFaqId(null);
     requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
   function closeSearch() {
     setSearchActive(false);
     setQuery("");
-    setExpandedQuestion(null);
+    setExpandedFaqId(null);
   }
 
-  const trimmedQuery = query.trim().toLowerCase();
-  const searchResults = useMemo(() => {
-    if (!trimmedQuery) return [];
-    const matches: { topicLabel: string; faq: FaqItem }[] = [];
-    for (const topic of topics) {
-      for (const faq of topic.questions) {
-        if (
-          faq.question.toLowerCase().includes(trimmedQuery) ||
-          faq.answer.toLowerCase().includes(trimmedQuery)
-        ) {
-          matches.push({ topicLabel: topic.label, faq });
-        }
-      }
-    }
-    return matches;
-  }, [topics, trimmedQuery]);
+  function openFaq(faq: SupportFaq) {
+    router.push({
+      pathname: "/faq-detail",
+      params: {
+        id: faq.id !== undefined ? String(faq.id) : undefined,
+        question: faq.question,
+        answer: faq.answer,
+        topic: faq.topic_name ?? activeTopic?.name,
+      },
+    });
+  }
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -119,6 +180,7 @@ export default function CustomerSupportScreen() {
               returnKeyType="search"
               autoCorrect={false}
               autoCapitalize="none"
+              maxLength={100}
             />
             {query.length > 0 && (
               <TouchableOpacity
@@ -144,33 +206,34 @@ export default function CustomerSupportScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {searchActive && trimmedQuery ? (
           <View style={styles.questionsList}>
-            {searchResults.length === 0 ? (
+            {searching ? (
+              <View style={styles.loader}>
+                <ActivityIndicator size="small" color={primary[400]} />
+              </View>
+            ) : searchResults.length === 0 ? (
               <Text style={styles.emptyText}>
-                No results for &ldquo;{query.trim()}&rdquo;
+                No results for &ldquo;{trimmedQuery}&rdquo;
               </Text>
             ) : (
-              searchResults.map((m, i) => (
-                <React.Fragment key={`${m.topicLabel}:${m.faq.question}`}>
+              searchResults.map((faq, i) => (
+                <React.Fragment key={faq.id ?? `${faq.topic_id}:${faq.question}`}>
                   <TouchableOpacity
                     style={styles.questionRow}
                     activeOpacity={0.7}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/faq-detail",
-                        params: {
-                          question: m.faq.question,
-                          answer: m.faq.answer,
-                          topic: m.topicLabel,
-                        },
-                      })
-                    }
+                    onPress={() => openFaq(faq)}
                   >
-                    <Text style={styles.questionText} numberOfLines={2}>
-                      {m.faq.question}
-                    </Text>
+                    <View style={styles.questionTextWrap}>
+                      {faq.topic_name ? (
+                        <Text style={styles.questionTopic}>{faq.topic_name}</Text>
+                      ) : null}
+                      <Text style={styles.questionText} numberOfLines={2}>
+                        {faq.question}
+                      </Text>
+                    </View>
                     <MaterialIcons
                       name="chevron-right"
                       size={22}
@@ -229,11 +292,15 @@ export default function CustomerSupportScreen() {
 
             <Text style={styles.sectionTitle}>Frequent Questions</Text>
 
-            {loading ? (
+            {loadingTopics ? (
               <View style={styles.loader}>
                 <ActivityIndicator size="small" color={primary[400]} />
               </View>
-            ) : activeTopic ? (
+            ) : topicsError ? (
+              <Text style={styles.emptyText}>{topicsError}</Text>
+            ) : topics.length === 0 ? (
+              <Text style={styles.emptyText}>No help articles yet.</Text>
+            ) : (
               <>
                 <ScrollView
                   ref={tabsRef}
@@ -242,13 +309,13 @@ export default function CustomerSupportScreen() {
                   contentContainerStyle={styles.tabsContent}
                 >
                   {topics.map((t) => {
-                    const active = t.key === activeKey;
+                    const active = t.id === activeTopicId;
                     return (
                       <TouchableOpacity
-                        key={t.key}
+                        key={t.id}
                         style={[styles.tabPill, active && styles.tabPillActive]}
                         activeOpacity={0.8}
-                        onPress={() => handleSelectTopic(t.key)}
+                        onPress={() => t.id !== undefined && handleSelectTopic(t.id)}
                       >
                         <Text
                           style={[
@@ -256,7 +323,7 @@ export default function CustomerSupportScreen() {
                             active && styles.tabPillTextActive,
                           ]}
                         >
-                          {t.label}
+                          {t.name}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -264,41 +331,51 @@ export default function CustomerSupportScreen() {
                 </ScrollView>
 
                 <View style={styles.questionsList}>
-                  {activeTopic.questions.map((q, i) => {
-                    const expanded = expandedQuestion === q.question;
-                    return (
-                      <React.Fragment key={q.question}>
-                        <View>
-                          <TouchableOpacity
-                            style={styles.questionRow}
-                            activeOpacity={0.7}
-                            onPress={() => toggleQuestion(q.question)}
-                          >
-                            <Text
-                              style={styles.questionText}
-                              numberOfLines={expanded ? undefined : 2}
+                  {loadingFaqs || !activeFaqs ? (
+                    <View style={styles.loader}>
+                      <ActivityIndicator size="small" color={primary[400]} />
+                    </View>
+                  ) : activeFaqs.length === 0 ? (
+                    <Text style={styles.emptyText}>
+                      No articles in this topic yet.
+                    </Text>
+                  ) : (
+                    activeFaqs.map((faq, i) => {
+                      const expanded = expandedFaqId === faq.id;
+                      return (
+                        <React.Fragment key={faq.id ?? faq.question}>
+                          <View>
+                            <TouchableOpacity
+                              style={styles.questionRow}
+                              activeOpacity={0.7}
+                              onPress={() => faq.id !== undefined && toggleFaq(faq.id)}
                             >
-                              {q.question}
-                            </Text>
-                            <MaterialIcons
-                              name={expanded ? "expand-less" : "expand-more"}
-                              size={22}
-                              color={neutral[400]}
-                            />
-                          </TouchableOpacity>
-                          {expanded && (
-                            <Text style={styles.answerText}>{q.answer}</Text>
+                              <Text
+                                style={styles.questionText}
+                                numberOfLines={expanded ? undefined : 2}
+                              >
+                                {faq.question}
+                              </Text>
+                              <MaterialIcons
+                                name={expanded ? "expand-less" : "expand-more"}
+                                size={22}
+                                color={neutral[400]}
+                              />
+                            </TouchableOpacity>
+                            {expanded && (
+                              <Text style={styles.answerText}>{faq.answer}</Text>
+                            )}
+                          </View>
+                          {i < activeFaqs.length - 1 && (
+                            <View style={styles.divider} />
                           )}
-                        </View>
-                        {i < activeTopic.questions.length - 1 && (
-                          <View style={styles.divider} />
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
                 </View>
               </>
-            ) : null}
+            )}
           </>
         )}
       </ScrollView>
@@ -455,6 +532,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 14,
+  },
+  questionTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  questionTopic: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: primary[600],
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
   questionText: {
     flex: 1,

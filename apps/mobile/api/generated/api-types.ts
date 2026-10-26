@@ -680,11 +680,192 @@ export interface paths {
         };
         /**
          * Get timezone list.
-         * @description Returns timezone list with id and timezone name.
+         * @description Returns timezones for the authenticated provider default address country only. Each item has id, timezone (continent_city), and country_name.
          */
         get: operations["bde88369a6ccd1508c570c5135ca4ce1"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the provider's service bookings
+         * @description Returns every booking owned by the authenticated provider, newest first. provider_net is the provider withdrawal amount. total is the customer charge stored on the booking and is not a wallet balance.
+         */
+        get: operations["getProviderBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Booking execution timeline and available actions */
+        get: operations["getProviderBookingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Paid booking summary (invitation summary + booking fields) */
+        get: operations["getProviderBookingSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/start-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark booking in progress */
+        post: operations["postProviderStartService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/complete-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark service completed (optional message to customer) */
+        post: operations["postProviderCompleteService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/customer-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Provider review of the customer
+         * @description Returns the provider's private review of the customer for this booking. This review is not included in customer service or provider profile review lists.
+         */
+        get: operations["getProviderCustomerReview"];
+        put?: never;
+        /**
+         * Save the provider review of the customer
+         * @description One review per completed booking. Stored apart from customer service reviews, so it does not appear on the customer app.
+         */
+        post: operations["postProviderCustomerReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a confirmed booking */
+        post: operations["postProviderCancelBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-invite-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List invite codes for a business. */
+        get: operations["98bccac284091d7ded5de2e8276f3fc5"];
+        put?: never;
+        /** Create a one-time invite code. */
+        post: operations["3e31565f77d4a1e53a00bb17f03bb415"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-invite-codes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview a code without using it. */
+        post: operations["92178b1d5d367c9f200bc7e30f9f2200"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/business-invite-codes/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join a business with an invite code. */
+        post: operations["ed04c532c554131e7c8cfb2008c1e173"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1015,6 +1196,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Provider calendar month dots, new requests preview, and confirmed bookings for a day
+         * @description Authenticated provider calendar bootstrap for the mobile/web calendar screen.
+         *
+         *     **Query parameters**
+         *
+         *     | Param | Required | Notes |
+         *     |-------|----------|-------|
+         *     | month | Recommended | `Y-m` month used to aggregate `calendar_dots` and `service_legend`. Server defaults to current month when omitted. |
+         *     | date | Recommended | `Y-m-d` selected day for `confirmed_bookings`. Server defaults to today when omitted. |
+         *     | page | Optional | 1-based page for confirmed bookings on `date` (5 per page). |
+         *
+         *     **calendar_dots** — map of local date → `{ total, colors[], has_more }` for staggered colored dots.
+         *
+         *     **service_legend** — distinct services with bookings in the month (stable colors).
+         *
+         *     **new_requests** — same card shape as home; preview limited to 2 items.
+         *
+         *     **confirmed_bookings** — confirmed status bookings on `selected_date` with `manage_actions`.
+         */
+        get: operations["getProviderCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Provider schedule list (New, Today, Week, All)
+         * @description Authenticated schedule list for the provider app list view (distinct from GET /calendar month grid).
+         *
+         *     | segment | Response shape |
+         *     |---------|----------------|
+         *     | new | Paginated **ProviderHomeNewRequestItem** cards (full list, not capped at 2). |
+         *     | today | Confirmed bookings on provider local today. |
+         *     | week | Confirmed bookings in current ISO week (provider timezone). |
+         *     | all | Grouped sections: past, today, upcoming (no pagination). |
+         *
+         *     **status** — optional comma-separated filter: `active`, `completed`, `cancelled` (includes both `cancelled` and `refunded` booking rows). Default includes active, completed, and all cancelled paths when omitted.
+         */
+        get: operations["getProviderSchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/chats": {
         parameters: {
             query?: never;
@@ -1119,6 +1365,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wallet balances and payout state
+         * @description Available is provider net ready to withdraw. Upcoming is provider net on paid bookings the customer has not completed. Customer totals are not included. Payout state is read live from Stripe.
+         */
+        get: operations["getProviderEarnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/earnings/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Earning calendar or filtered list
+         * @description Calendar days and list rows use provider net. Pending is the upcoming balance. Earnings are released after the customer completes the booking. listing_price and convenient_fee explain the net.
+         */
+        get: operations["getProviderEarningHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/earnings/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Withdrawal history
+         * @description Each row status is the live Stripe transfer status. total_withdrawn and transfers count completed transfers only.
+         */
+        get: operations["getProviderWithdrawals"];
+        put?: never;
+        /**
+         * Withdraw available provider net
+         * @description Transfers the amount to the provider Stripe Connect account. Refused when no account is connected or Stripe reports the account restricted.
+         */
+        post: operations["postProviderWithdrawal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/earnings/payout-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stripe Connect payout state
+         * @description none when no connect account is stored. connected when Stripe payouts are enabled. restricted when the account exists but payouts are disabled or requirements are due. Only connect_account_id is stored.
+         */
+        get: operations["getProviderPayoutAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/earnings/payout-account/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Stripe to create or update the Connect account
+         * @description Creates a Custom Connect account, the same account type used for store payouts, and stores only connect_account_id when the provider has none. Returns a Stripe Account Link for onboarding or update. Bank details are collected by Stripe.
+         */
+        post: operations["postProviderPayoutAccountLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/service-provider/home": {
         parameters: {
             query?: never;
@@ -1214,6 +1564,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/settings/notification/status/{device_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get push notification preference for a device token.
+         * @description Returns 1 when push is enabled for this token, 0 when disabled, or null when the token is not registered for the authenticated provider.
+         */
+        get: operations["c5b2f13d6f7f0ae511532c875ab05503"];
+        /**
+         * Enable or disable push notifications for a device token.
+         * @description Creates the token row when missing. Pass enabled=1 or enabled=0 to set explicitly; omit enabled to toggle.
+         */
+        put: operations["9a6e84c20fbb73b0701ce19fb9251069"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List service booking notification inbox. */
+        get: operations["4b5ba6146b174e8cbab153e2a1b7a68a"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unread service notification count. */
+        get: operations["9e5c940a15653fd601c4f26ca5ad0692"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark all service notifications as read. */
+        patch: operations["d2f8aff19ddbde0fa05dc58d48cf2f26"];
+        trace?: never;
+    };
+    "/service-provider/notifications/{notificationId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark one service notification as read. */
+        patch: operations["c61edb4b35d051babf5d43302444be2e"];
+        trace?: never;
+    };
     "/service-provider/complete-profile": {
         parameters: {
             query?: never;
@@ -1290,6 +1732,90 @@ export interface paths {
          * @description Verifies the OTP received from send-delete-account-otp and permanently deactivates the account. Requires no active orders. Revokes all tokens and removes device tokens on success.
          */
         post: operations["401438c3915898fee9d2914b92e978cd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offers and server-owned actions for an owned invitation
+         * @description Fixed-price Offer v1 is created at customer submit (author_type customer). The provider sees accept, decline, and decline_invitation on GET offers, on chat offer cards, and on home/requests cards via available_actions + pending_offer. Quote-required offers expose create_offer, counter, accept, and decline only when this provider is the opposite party. available_actions is the permission source; clients must not show Make an offer for fixed_price.
+         */
+        get: operations["listProviderRequestOffers"];
+        put?: never;
+        /**
+         * Create or counter a quote-required offer
+         * @description service_price is one total for the whole frozen request. Currency and request terms come from the request. A counter requires supersedes_offer_id of the latest pending offer. Fixed-price requests cannot create or counter.
+         */
+        post: operations["createProviderRequestOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/offers/{offer_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the customer's latest pending offer
+         * @description Agreement to pay. Moves the request to awaiting_payment and pauses other open invitations. Does not create a booking and does not collect payment.
+         */
+        post: operations["acceptProviderRequestOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/offers/{offer_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline the latest pending offer
+         * @description Quote-required: the invitation stays open. Fixed-price Offer V1: declining the offer also closes this provider invitation.
+         */
+        post: operations["declineProviderRequestOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/requests/{invitation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline this provider invitation
+         * @description Closes only this provider path. Other invited providers stay open. A pending offer on this invitation is declined with it.
+         */
+        post: operations["declineProviderRequestInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1535,7 +2061,7 @@ export interface paths {
         put?: never;
         /**
          * Create a service from the resolved template
-         * @description CREATION FLOW: First call GET /service-provider/service-form-template. Render fields[] and provider_listing_capability. Submit generic values at the multipart top level, dynamic non-file values (including business format selectors such as learner_delivery and capability controls) in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. Provider-location fulfillment snapshots the provider default address. booking_policy, schedule_family, and profile_mode are prohibited and return 422. New services use status=3 pending_review. Commercial publishability is evaluated from business fields, unit/format compatibility, durations, bounds, fulfillment, and provider-location prerequisites.
+         * @description CREATION FLOW: First call GET /service-provider/service-form-template. Render fields[] and provider_listing_capability. Submit generic values at the multipart top level, dynamic non-file values (including business format selectors such as learner_delivery and capability controls) in answers_json, and dynamic files using matching dynamic_file_keys[n]/dynamic_files[n]. Do not submit address_id. Provider-location fulfillment and any submitted service_radius freeze the provider default address as the listing service-area centre on service_info. booking_policy, schedule_family, and profile_mode are prohibited and return 422. New services use status=3 pending_review. Commercial publishability is evaluated from business fields, unit/format compatibility, durations, bounds, fulfillment, and provider-location prerequisites.
          */
         post: operations["createProviderService"];
         delete?: never;
@@ -1713,6 +2239,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/service-provider/support/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active support topics
+         * @description Returns the active topic list (chips + category cards) ordered by display_order. Each topic includes a faqs_count.
+         */
+        get: operations["listProviderSupportTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/faqs/{topic_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List FAQs for a topic
+         * @description Returns active FAQs for the given topic, ordered by display_order.
+         */
+        get: operations["listProviderFaqsByTopic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/faqs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search FAQs by keyword
+         * @description Searches question + answer text. Returns up to 20 active FAQs.
+         */
+        get: operations["searchProviderFaqs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/faqs/detail/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a single FAQ (increments view count)
+         * @description Returns one FAQ with topic name. Each call increments view_count.
+         */
+        get: operations["getProviderFaqDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the provider's support tickets (My Tickets)
+         * @description Paginated list with optional status filter. Sorted by last_reply_at desc. Each item includes ticket_number, subject, topic, status, unread flag, and last_message_preview.
+         */
+        get: operations["listProviderSupportTickets"];
+        put?: never;
+        /**
+         * Submit a support ticket
+         * @description Creates a ticket (status=open), stores the first message (the description), optional attachments (max 5, jpg/jpeg/png/pdf, 10MB each), and a status_history row. Optional booking_id is stored only when the ticket is about a specific booking; omit it for a general issue, in which case the detail response returns booking_id as null. idempotency_key prevents duplicate tickets on retry. Max 5 open tickets per provider. FCM notifies the Customer Support admin role.
+         */
+        post: operations["createProviderSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/tickets/{ticket_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get ticket detail (messages, status history, attachments)
+         * @description Returns the full ticket including non-internal messages (oldest first), status history, and attachments. Provider-scoped.
+         */
+        get: operations["getProviderSupportTicketDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/tickets/{ticket_number}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reply to a support ticket
+         * @description Adds a provider message. Sets admin_unread=true, updates last_reply_at. If the ticket was resolved, it auto-reopens to in_progress. Closed tickets cannot be replied to. Optional attachments (same rules as create). FCM notifies admins.
+         */
+        post: operations["replyProviderSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/tickets/{ticket_number}/mark-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a ticket as read (clears the unread red dot)
+         * @description Sets provider_unread=false. Idempotent.
+         */
+        post: operations["markProviderSupportTicketRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-provider/support/tickets/{ticket_number}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close a support ticket
+         * @description Provider closes their own ticket. Idempotent (closing an already-closed ticket is a no-op). Records a status_history row. After closing, the ticket is read-only.
+         */
+        post: operations["closeProviderSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1745,7 +2455,7 @@ export interface components {
             context_key?: string;
             /** @enum {string} */
             operator?: "equals" | "not_equals" | "in" | "not_in" | "empty" | "not_empty" | "contains" | "not_contains" | "contains_any" | "less_than" | "greater_than";
-            value?: (string | number | boolean) | null;
+            value?: string | number | boolean | (never | null);
             values?: (string | number | boolean)[];
         } | null;
         /** @description Additive descriptor v1 for existing controls. Render fields and their validation errors on descriptor.step/section rather than inferring placement from taxonomy names, IDs, or field names. Provider fields whose applicability depends on pricing authority are placed in Pricing; fulfillment-only dependencies are placed in Fulfillment / Location. Applicability restricts base requiredness: invisible or prohibited means omit on write; required_when adds requiredness only when applicable. read_only/server values cannot be submitted. Null payload_path means no single wire path: read-only values have no write path, while writable composite/file controls use transport. Canonical owner determines alias field keys, scopes, predicates, options and descriptors. Source identity may have different display labels. Current canonical schema replaces stale persisted template fields; historical request snapshots are not rewritten. */
@@ -2928,6 +3638,187 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        ProviderBookingListItem: {
+            /** @example 42 */
+            booking_id: number;
+            /** @example 800 */
+            request_id: number;
+            /** @example 1001 */
+            invitation_id: number;
+            /** @example confirmed */
+            status: string;
+            /** @example personal_service */
+            source_type?: string;
+            /** @example USD */
+            currency_code?: string;
+            /** @example 233 */
+            country_id?: number | null;
+            /** @example Doggy Day Care for Boba */
+            service_title?: string | null;
+            /**
+             * @description Customer charge. Not the provider wallet amount.
+             * @example 113.70
+             */
+            total?: string | null;
+            /** @example 42 */
+            confirmed_booking_id?: number;
+            /**
+             * @description Provider withdrawal amount.
+             * @example 95.00
+             */
+            provider_net?: string | null;
+            /** @example 5.00 */
+            cancellation_fee?: string | null;
+            /** @example true */
+            can_cancel: boolean;
+            date_label?: string | null;
+            time_label?: string | null;
+        };
+        ProviderBookingListResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Bookings retrieved successfully. */
+            message: string;
+            data: {
+                bookings?: components["schemas"]["ProviderBookingListItem"][];
+            };
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        ProviderBookingExecutionStep: {
+            /** @example service_started */
+            key: string;
+            /** @example Service Started */
+            label: string;
+            /** @enum {string} */
+            state: "done" | "pending";
+            /** @example 9:15 AM - October 6, 2026 */
+            at?: string | null;
+            message?: string | null;
+            /** @description Present on booking_completed when viewer is provider. */
+            provider_earned?: string | null;
+            /** @description Present on booking_completed when viewer is customer. */
+            customer_paid?: string | null;
+        };
+        ProviderBookingStatusData: {
+            /** @example 42 */
+            booking_id: number;
+            /** @example 800 */
+            request_id: number;
+            /** @example 1001 */
+            invitation_id: number;
+            /** @example confirmed */
+            booking_status: string;
+            /** @example confirmed */
+            execution_status: string;
+            service_title?: string | null;
+            schedule?: Record<string, never>;
+            /**
+             * @example [
+             *       "start_service"
+             *     ]
+             */
+            available_actions: ("start_service" | "complete_service")[];
+            steps: components["schemas"]["ProviderBookingExecutionStep"][];
+        };
+        ProviderBookingStatusResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Booking status retrieved successfully. */
+            message: string;
+            data: components["schemas"]["ProviderBookingStatusData"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        /** @description Combines invitation summary payload with booking execution fields. */
+        ProviderBookingSummaryResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Booking summary retrieved successfully. */
+            message?: string;
+            /** @description Provider request summary fields plus booking_id, booking_status, execution_status, expected_earning, execution. */
+            data?: Record<string, never>;
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        ProviderCompleteServiceRequest: {
+            /** @example All done — thanks! */
+            message?: string | null;
+        };
+        ProviderCustomerReviewRequest: {
+            /** @example 5 */
+            rating: number;
+            /** @example Clear instructions and easy to work with. */
+            review?: string | null;
+        };
+        ProviderCustomerReviewRecord: {
+            /** @example 3 */
+            id?: number;
+            /** @example 5.0 */
+            rating?: string;
+            review?: string | null;
+            /** Format: date-time */
+            created_at?: string | null;
+        };
+        ProviderCustomerReviewResponse: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: {
+                /** @example 42 */
+                booking_id?: number;
+                /** @example Alex Kim */
+                customer_name?: string | null;
+                /** @example false */
+                can_review?: boolean;
+                review?: components["schemas"]["ProviderCustomerReviewRecord"] | (never | null);
+            };
+        };
+        ProviderCancelBookingRequest: {
+            /** @example Provider unavailable */
+            reason?: string;
+        };
+        BusinessInviteCodeCreateRequest: {
+            /** @example 63 */
+            business_id: number;
+            /** @example Sarahh McMahon */
+            name: string;
+            service_sub_category_ids: number[];
+        };
+        BusinessInviteCodeRedeemRequest: {
+            /** @example HTMX8 */
+            code: string;
+        };
+        BusinessInviteCodeModel: {
+            /** @example 10 */
+            id?: number;
+            /** @example 63 */
+            business_id?: number;
+            /** @example Elite Home Services */
+            business_name?: string;
+            /** @example Sarahh McMahon */
+            name?: string;
+            /** @example HTMX8 */
+            code?: string;
+            /**
+             * @example active
+             * @enum {string}
+             */
+            status?: "active" | "used" | "expired";
+            /** @example http://localhost:5174/join/HTMX8 */
+            link?: string;
+            /** Format: date-time */
+            expires_at?: string | null;
+            used_at?: string | null;
+            services?: {
+                /** @example 12 */
+                sub_category_id?: number;
+                /** @example Pet Sitting */
+                sub_category_name?: string;
+            }[];
+            /** @example 1 */
+            extra_services_count?: number;
+        };
         BusinessMemberInviteRequest: {
             /** @example 10 */
             business_id: number;
@@ -3500,6 +4391,195 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        /** @description Per-day calendar indicators for the staggered dot UI (up to 3 dots on the top row; bottom row may show a 4th dot and a plus when has_more is true). */
+        ProviderCalendarDayDots: {
+            /**
+             * @description Confirmed bookings on this local date.
+             * @example 5
+             */
+            total: number;
+            /** @description Stable hex colors derived from source_service_id (one entry per booking until cap). */
+            colors: string[];
+            /**
+             * @description True when total bookings exceed the 4 visible dot slots.
+             * @example true
+             */
+            has_more: boolean;
+        };
+        ProviderCalendarLegendItem: {
+            /** @example 101 */
+            service_id?: number | null;
+            /** @example Dog walking */
+            title: string;
+            /** @example #3498DB */
+            color: string;
+        };
+        ProviderCalendarConfirmedBookingCustomer: {
+            /** @example Jane Doe */
+            name?: string | null;
+            /** @example /storage/profile_images/1.jpg */
+            profile_image_url?: string | null;
+        };
+        ProviderCalendarConfirmedBookingItem: {
+            /** @example 42 */
+            booking_id: number;
+            /** @example 800 */
+            request_id: number;
+            /** @example 1001 */
+            invitation_id: number;
+            /** @example confirmed */
+            status: string;
+            /**
+             * @description confirmed | in_progress | service_completed | completed
+             * @example confirmed
+             */
+            execution_status: string;
+            /** @example Dog walking */
+            service_title: string | null;
+            /** @example #9B59B6 */
+            service_color?: string;
+            /** @example 09:00 AM - 10:00 AM */
+            time_label?: string | null;
+            /** @description Provider schedule display card from schedule_snapshot. */
+            schedule?: Record<string, never>;
+            customer?: components["schemas"]["ProviderCalendarConfirmedBookingCustomer"];
+            /**
+             * @example [
+             *       "booking_status",
+             *       "booking_summary",
+             *       "cancel_booking"
+             *     ]
+             */
+            manage_actions: ("booking_status" | "booking_summary" | "cancel_booking" | "leave_review")[];
+        };
+        ProviderCalendarConfirmedBookingsSection: {
+            /** @example 3 */
+            total: number;
+            items: components["schemas"]["ProviderCalendarConfirmedBookingItem"][];
+            meta: {
+                /** @example 1 */
+                current_page: number;
+                /** @example 5 */
+                per_page: number;
+                /** @example 1 */
+                last_page: number;
+            };
+        };
+        ProviderCalendarData: {
+            /**
+             * @description Y-m month requested.
+             * @example 2026-10
+             */
+            month: string;
+            /**
+             * Format: date
+             * @description Y-m-d day used for confirmed_bookings list.
+             * @example 2026-10-06
+             */
+            selected_date: string;
+            /**
+             * @description Map keyed by Y-m-d local dates within the requested month.
+             * @example {
+             *       "2026-10-06": {
+             *         "total": 2,
+             *         "colors": [
+             *           "#1ABC9C",
+             *           "#3498DB"
+             *         ],
+             *         "has_more": false
+             *       }
+             *     }
+             */
+            calendar_dots: {
+                [key: string]: components["schemas"]["ProviderCalendarDayDots"];
+            };
+            service_legend: components["schemas"]["ProviderCalendarLegendItem"][];
+            new_requests: components["schemas"]["ProviderHomeNewRequestsSection"];
+            confirmed_bookings: components["schemas"]["ProviderCalendarConfirmedBookingsSection"];
+        };
+        ProviderCalendarResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Calendar retrieved successfully. */
+            message: string;
+            data: components["schemas"]["ProviderCalendarData"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
+        /**
+         * @description Schedule list segment. `new` returns invitation cards; other segments return booking cards.
+         * @enum {string}
+         */
+        ProviderScheduleSegment: "new" | "today" | "week" | "all";
+        /**
+         * @description Booking status bucket. `active` = confirmed bookings; repeatable comma-separated in query.
+         * @enum {string}
+         */
+        ProviderScheduleStatusFilter: "active" | "completed" | "cancelled";
+        ProviderScheduleBookingListItem: {
+            /** @example 42 */
+            booking_id: number;
+            /** @example 1001 */
+            invitation_id: number;
+            /** @example 800 */
+            request_id: number;
+            /** @example confirmed */
+            status: string;
+            /** @example confirmed */
+            execution_status?: string;
+            /**
+             * @description Active | Completed | Cancelled
+             * @example Active
+             */
+            list_badge: string;
+            service_title?: string | null;
+            /** @example #E67E22 */
+            service_color?: string;
+            time_label?: string | null;
+            schedule?: Record<string, never>;
+            customer?: components["schemas"]["ProviderCalendarConfirmedBookingCustomer"];
+            /** @example true */
+            chat_enabled: boolean;
+            manage_actions: ("booking_status" | "booking_summary" | "cancel_booking" | "leave_review")[];
+        };
+        ProviderScheduleListMeta: {
+            /** @example 1 */
+            current_page?: number;
+            /** @example 10 */
+            per_page?: number;
+            /** @example 4 */
+            total?: number;
+            /** @example 1 */
+            last_page?: number;
+        };
+        ProviderSchedulePaginatedData: {
+            segment: components["schemas"]["ProviderScheduleSegment"];
+            /** @description Booking cards when segment is today|week; invitation cards when segment is new. */
+            items: (components["schemas"]["ProviderScheduleBookingListItem"] | components["schemas"]["ProviderHomeNewRequestItem"])[];
+            meta: components["schemas"]["ProviderScheduleListMeta"];
+        };
+        ProviderScheduleAllSectionsData: {
+            /** @example all */
+            segment: string;
+            sections: {
+                past?: components["schemas"]["ProviderScheduleBookingListItem"][];
+                today?: components["schemas"]["ProviderScheduleBookingListItem"][];
+                upcoming?: components["schemas"]["ProviderScheduleBookingListItem"][];
+            };
+            meta: {
+                /** @example 12 */
+                total?: number;
+            };
+        };
+        ProviderScheduleResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Schedule retrieved successfully. */
+            message: string;
+            data: components["schemas"]["ProviderSchedulePaginatedData"] | components["schemas"]["ProviderScheduleAllSectionsData"];
+            /** @example [] */
+            meta?: Record<string, never>;
+        };
         /** @description JSON when there are no files. Use multipart form data when attaching files. source is required with attachments: camera (1 image), gallery (up to 3 images and 1 video), or file (up to 2 documents). One source per message. body is required only when attachments are absent. */
         ServiceRequestChatMessageRequest: {
             /** @example Sounds good! My ETA is 11:40 */
@@ -3518,10 +4598,23 @@ export interface components {
             sender_role: "customer" | "provider";
             is_mine: boolean;
             /**
-             * @description request is the original service request. It is the first message only on the oldest page (meta.last_page).
+             * @description request is the original service request and appears only on the oldest page. offer is a structured offer card linked by offer_id; fixed-price requests include customer Offer v1 with accept and decline on the card for the provider (no counter). Message text is never an offer. Hide Make an offer when available_actions omits create_offer and counter.
              * @enum {string}
              */
-            kind?: "message" | "request";
+            kind?: "message" | "request" | "offer";
+            offer_id?: number | null;
+            offer?: {
+                id?: number;
+                version?: number;
+                status?: string;
+                author_type?: string;
+                service_price?: string | null;
+                total?: string | null;
+                currency?: string | null;
+                /** Format: date-time */
+                expires_at?: string | null;
+                available_actions?: string[];
+            } | null;
             body: string;
             /** @description Schedule and price for kind request. Omitted on later chat messages. */
             summary?: {
@@ -3576,8 +4669,20 @@ export interface components {
              * @example Sounds good! My ETA is 11:40
              */
             last_message?: string | null;
-            /** @example 3:41 PM */
+            /**
+             * @description Clock time when the latest message is today. Otherwise the date only, formatted F j, Y, in the viewer timezone.
+             * @example 3:41 PM
+             */
             last_message_time?: string | null;
+            /** @example Today */
+            activity_date?: string | null;
+            /** @example Waiting */
+            status_label?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-25T15:41:00.000000Z
+             */
+            last_message_at?: string | null;
             /** @example 1 */
             unread_count: number;
         };
@@ -3754,7 +4859,7 @@ export interface components {
             status?: string;
             /** @example The email field must be a valid email address. */
             message?: string;
-            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | (never | null);
             /** @example [] */
             meta?: unknown[];
         };
@@ -3974,6 +5079,211 @@ export interface components {
             /** @example [] */
             meta?: unknown[];
         };
+        ProviderWalletBalance: {
+            /**
+             * @example personal_service
+             * @enum {string}
+             */
+            source_type: "personal_service" | "business_service" | "event" | "fundraiser";
+            /** @example USD */
+            currency_code?: string | null;
+            /**
+             * @description Provider net that can be withdrawn now.
+             * @example 148.80
+             */
+            available: string;
+            /**
+             * @description Provider net on paid bookings the customer has not completed. This is the Pending balance.
+             * @example 144.00
+             */
+            upcoming: string;
+        };
+        ProviderPayoutAccount: {
+            /**
+             * @example connected
+             * @enum {string}
+             */
+            state: "none" | "connected" | "restricted";
+            /** @example true */
+            payouts_enabled: boolean;
+            /**
+             * @description Read live from Stripe. Not stored.
+             * @example 5114
+             */
+            bank_last4?: string | null;
+            /** @example Stripe needs more information before payouts can be sent. */
+            message?: string | null;
+        };
+        ProviderEarningsResponse: {
+            /** @example Success */
+            status: string;
+            /** @example Earnings retrieved successfully. */
+            message: string;
+            data: {
+                /** @example personal_service */
+                source_type?: string;
+                balances?: components["schemas"]["ProviderWalletBalance"][];
+                payout?: components["schemas"]["ProviderPayoutAccount"];
+                /** @description Ledger rows for the selected wallet. */
+                history?: Record<string, never>[];
+            };
+        };
+        ProviderWithdrawRequest: {
+            /**
+             * @example personal_service
+             * @enum {string}
+             */
+            source_type: "personal_service" | "business_service" | "event" | "fundraiser";
+            /**
+             * @description Provider net to transfer. Cannot exceed available.
+             * @example 40.00
+             */
+            amount: string;
+        };
+        ProviderWithdrawalItem: {
+            /** @example 9 */
+            id: number;
+            /** @example 95.00 */
+            amount: string;
+            /** @example USD */
+            currency_code?: string;
+            /**
+             * Format: date
+             * @example 2026-05-12
+             */
+            payout_date?: string;
+            /** @example 5114 */
+            bank_last4?: string | null;
+            /**
+             * @description Live Stripe transfer status. Pending and failed transfers are listed but excluded from total_withdrawn.
+             * @example completed
+             * @enum {string}
+             */
+            status: "pending" | "completed" | "failed";
+        };
+        ProviderWithdrawalHistoryResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Withdrawals retrieved successfully. */
+            message?: string;
+            data?: {
+                /** @example personal_service */
+                source_type?: string;
+                /** @example USD */
+                currency_code?: string | null;
+                /**
+                 * @description Sum of completed transfers only.
+                 * @example 165.20
+                 */
+                total_withdrawn?: string;
+                /**
+                 * @description Count of completed transfers.
+                 * @example 2
+                 */
+                transfers?: number;
+                withdrawals?: components["schemas"]["ProviderWithdrawalItem"][];
+            };
+        };
+        ProviderEarningEntry: {
+            /** @example earning-42 */
+            id: string;
+            /** @example 42 */
+            booking_id?: number | null;
+            /**
+             * @example earning
+             * @enum {string}
+             */
+            kind: "earning" | "pending";
+            /** @example Doggy Day Care for Boba */
+            service_title?: string;
+            /** @example 2026/05/08 - 2026/05/09 */
+            date_range?: string;
+            /** @example 54.00 */
+            listing_price?: string | null;
+            /**
+             * @description Provider service fee.
+             * @example 10.80
+             */
+            convenient_fee?: string | null;
+            /**
+             * @description Provider net.
+             * @example 42.20
+             */
+            amount: string;
+            /** @example USD */
+            currency_code?: string | null;
+            /** @example 4 */
+            category_id?: number | null;
+            /** @example Pet Care */
+            category_name?: string | null;
+        };
+        ProviderEarningHistoryResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Earning history retrieved successfully. */
+            message?: string;
+            data?: {
+                /** @example personal_service */
+                source_type?: string;
+                /**
+                 * @example calendar
+                 * @enum {string}
+                 */
+                view?: "calendar" | "list";
+                /** @example USD */
+                currency_code?: string | null;
+                categories?: {
+                    /** @example 4 */
+                    id?: number;
+                    /** @example Pet Care */
+                    name?: string;
+                }[];
+                calendar?: {
+                    /** @example 2026-05 */
+                    month?: string;
+                    /** @example 2026-05-09 */
+                    selected_date?: string;
+                    /** @example 243.20 */
+                    total?: string;
+                    days?: {
+                        [key: string]: {
+                            /** @example 42.20 */
+                            amount?: string;
+                            /** @enum {string} */
+                            kind?: "earning" | "pending" | "mixed";
+                        };
+                    };
+                    entries?: components["schemas"]["ProviderEarningEntry"][];
+                } | null;
+                list?: {
+                    /** @enum {string} */
+                    tab?: "earnings" | "pending";
+                    /** @enum {string|null} */
+                    time?: "today" | "tomorrow" | "this_week" | "this_month" | "this_year" | null;
+                    category_id?: number | null;
+                    entries?: components["schemas"]["ProviderEarningEntry"][];
+                } | null;
+            };
+        };
+        ProviderPayoutLinkRequest: {
+            /**
+             * Format: uri
+             * @example http://localhost:5174/settings/earnings/payout-methods
+             */
+            return_url?: string | null;
+        };
+        ProviderPayoutLinkResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example Stripe account link created successfully. */
+            message?: string;
+            data?: {
+                /** @example https://connect.stripe.com/setup/s/test */
+                url?: string;
+                /** @example 1893456000 */
+                expires_at?: number | null;
+            };
+        };
         /** @description Whether the listing belongs to the provider directly (Freelance) or to an affiliated business. */
         ProviderHomeServiceOwnership: {
             /**
@@ -4161,6 +5471,28 @@ export interface components {
              * @example 2026-09-22T08:00:00+00:00
              */
             expires_at: string | null;
+            /**
+             * @description Frozen pricing on the parent request. fixed_price creates customer Offer v1 at submit; quote_required starts with latest_offer=null until someone creates an offer.
+             * @enum {string}
+             */
+            pricing_type?: "fixed_price" | "quote_required";
+            /** @description Server-owned buttons for this provider on this invitation. Use for Accept request on the card, chat offer actions, and hiding Make an offer when empty or only decline_invitation. */
+            available_actions?: ("create_offer" | "counter" | "accept" | "decline" | "decline_invitation")[];
+            /** @description Latest pending offer when negotiation is open. Pair accept with pending_offer.id for fixed-price Offer v1. */
+            pending_offer?: {
+                /** @example 901 */
+                id?: number;
+                /** @example 1 */
+                version?: number;
+                /** @example pending */
+                status?: string;
+                /** @enum {string} */
+                author_type?: "customer" | "provider";
+                /** @example 85.00 */
+                total?: string | null;
+                /** @example USD */
+                currency?: string | null;
+            } | null;
         };
         /** @description New pending requests preview on home. Sorted invited_at DESC, id DESC. */
         ProviderHomeNewRequestsSection: {
@@ -4240,6 +5572,59 @@ export interface components {
             data?: components["schemas"]["ProviderCityItem"][];
             /** @example [] */
             meta?: unknown[];
+        };
+        ProviderUpdateDeviceNotificationStatusRequest: {
+            /**
+             * @description 1=enable push, 0=disable. Omit to toggle.
+             * @example 1
+             * @enum {integer}
+             */
+            enabled?: 0 | 1;
+            /**
+             * @example web
+             * @enum {string}
+             */
+            device_type?: "web" | "android" | "ios";
+        };
+        ProviderDeviceNotificationStatusResponse: {
+            /** @example Success */
+            status?: string;
+            /** @example  */
+            message?: string;
+            /**
+             * @description 1=enabled, 0=disabled, null=token not registered for this user.
+             * @enum {integer|null}
+             */
+            data?: 0 | 1 | null;
+        };
+        ServiceBookingNotificationItem: {
+            id?: number;
+            event_type?: string;
+            title?: string;
+            body?: string;
+            data?: Record<string, never>;
+            /** Format: date-time */
+            read_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ServiceBookingNotificationInboxResponse: {
+            items?: components["schemas"]["ServiceBookingNotificationItem"][];
+            meta?: {
+                current_page?: number;
+                last_page?: number;
+                per_page?: number;
+                total?: number;
+            };
+        };
+        ServiceBookingNotificationUnreadResponse: {
+            unread_count?: number;
+        };
+        ServiceBookingNotificationMarkAllResponse: {
+            marked_count?: number;
+        };
+        ServiceBookingNotificationMarkOneResponse: {
+            marked?: boolean;
         };
         ProviderProfileSaveRequest: {
             /**
@@ -4616,6 +6001,26 @@ export interface components {
             /** @description Booking-level grouped sections. May coexist with profiles[] on profile-based requests. */
             sections: components["schemas"]["ProviderRequestInfoSection"][];
         };
+        ServiceRequestOfferWriteRequest: {
+            /** @example 40.00 */
+            service_price: string;
+            description?: string | null;
+            supersedes_offer_id?: number | null;
+        };
+        ServiceRequestOfferHistory: {
+            /** @example Success */
+            status?: string;
+            message?: string;
+            data?: {
+                request_id?: number;
+                invitation_id?: number;
+                request_status?: string;
+                invitation_status?: string;
+                pricing_type?: string;
+                available_actions?: string[];
+                offers?: Record<string, never>[];
+            };
+        };
         ProviderRequestChatContext: {
             /** @example 901 */
             invitation_id: number;
@@ -4663,11 +6068,30 @@ export interface components {
              */
             pick_up: string | null;
         };
+        ProviderRequestUploadAttachment: {
+            /** @example /storage/service-request-uploads/1/photo.jpg */
+            path: string;
+            /**
+             * @description Relative storage path; clients prepend API/media base.
+             * @example /storage/service-request-uploads/1/photo.jpg
+             */
+            url: string;
+            /** @example photo.jpg */
+            file_name: string;
+            /** @example image/jpeg */
+            mime_type: string;
+        };
         ProviderRequestInfoField: {
             /** @example Vehicle type */
             label: string;
-            /** @example Suv */
-            value: string;
+            /**
+             * @description Null for file_upload fields; use attachments instead.
+             * @example Suv
+             */
+            value?: string | null;
+            /** @example file_upload */
+            field_type?: string | null;
+            attachments?: components["schemas"]["ProviderRequestUploadAttachment"][];
         };
         ProviderRequestSummaryTips: {
             /**
@@ -4918,7 +6342,7 @@ export interface components {
              * @example 12
              */
             max_guest_count?: number;
-            /** @description Structural party minimum for applicable formats, independent of unit. Personal multi-recipient formats require at least 2; Fitness permits at least 1. Minimum must not exceed maximum. */
+            /** @description Structural party minimum for applicable formats, independent of unit. Shared-group and multi-profile party formats (Education learner_delivery shared_group, Fitness participant_format shared_group, Personal shared formats) require at least 2 when these fields apply. Minimum must not exceed maximum. */
             min_participants?: number;
             /** @description Structural party maximum. Applicable profile-based Fitness/Personal formats may not exceed configured service_requests.maximum_profiles; this is not seat inventory. */
             max_participants?: number;
@@ -4992,7 +6416,7 @@ export interface components {
              *       "minimum": 1
              *     }
              */
-            validation?: (Record<string, never> | unknown[]) | null;
+            validation?: Record<string, never> | unknown[] | (never | null);
             /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
             required_for?: (Record<string, never> | unknown[])[];
             /** @description Legacy conjunction groups: an empty [] group is unconditional; an empty outer group list never matches. New clients should consume descriptor.applicability instead. */
@@ -5102,7 +6526,7 @@ export interface components {
             meta?: Record<string, never>;
         };
         ProviderFieldCondition: components["schemas"]["PublicDescriptorPredicate"];
-        /** @description Complete candidate update using current candidate_template descriptors. Taxonomy, provider identity, business identity, address_id, acknowledgement and raw booking policy are immutable/prohibited. Validate every applicable About/Fulfillment and Pricing field before submitting. Scalars in answers_json replace the prior scalar map; false and 0 are values. Dynamic file paths are never accepted in answers_json; use upload/clear transports. File removal is deferred until transaction success; at least one portfolio image must remain. Unknown predicate operators are errors. Existing section endpoints remain available but cannot pre-seed prohibited values for a later pricing update. */
+        /** @description Complete candidate update using current candidate_template descriptors. Taxonomy, provider identity, business identity, address_id, acknowledgement and raw booking policy are immutable/prohibited. Validate every applicable About/Fulfillment and Pricing field before submitting. Scalars in answers_json replace the prior scalar map; false and 0 are values. Dynamic file paths are never accepted in answers_json; use upload/clear transports. File removal is deferred until transaction success; every listing must keep at least one portfolio image (same rule as create). Unknown predicate operators are errors. Existing section endpoints remain available but cannot pre-seed prohibited values for a later pricing update. */
         ServiceCandidateUpdateRequest: {
             /** @example Online algebra tutoring */
             title: string;
@@ -5173,7 +6597,7 @@ export interface components {
              *       ]
              *     }
              */
-            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | null;
+            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | (never | null);
             portfolio_images?: string[];
             /**
              * @description One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.
@@ -5422,7 +6846,7 @@ export interface components {
              *       "maximum": 1440
              *     }
              */
-            validation?: (Record<string, never> | unknown[]) | null;
+            validation?: Record<string, never> | unknown[] | (never | null);
             /** @description Resolved options. Master-backed options use label, value, and code; static dynamic options use label and value. Never include schedule_family or profile_mode. */
             options?: Record<string, never>[];
             /** @example service_radius_unit */
@@ -7223,7 +8647,7 @@ export interface components {
             status?: string;
             /** @example The selected business does not belong to the authenticated provider. */
             message?: string;
-            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | (never | null);
             meta?: Record<string, never>;
         };
         ServiceFormTemplateNotFoundError: {
@@ -7326,8 +8750,8 @@ export interface components {
              *       ]
              *     }
              */
-            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | null;
-            /** @description Required for service types where visual work samples are meaningful; optional otherwise. Use the resolved Provider template is_required flag as authority. */
+            answers_json?: components["schemas"]["ProviderCapabilityAnswers"] | (never | null);
+            /** @description Required on create. At least one image; up to 10 total. Updates may add images; deleting the last stored image is rejected. */
             portfolio_images?: string[];
             /**
              * @description One description shared by every certificate file for this service. Stored verbatim with original line breaks and spacing.
@@ -7350,7 +8774,7 @@ export interface components {
              */
             information_accuracy_acknowledgement?: boolean;
         };
-        ServiceCreateRequest: WithRequired<components["schemas"]["ServiceWritePayload"], "category_id" | "subcategory_id" | "provider_type" | "title" | "fulfillment_type_ids" | "description" | "pricing_type" | "price_unit_id" | "information_accuracy_acknowledgement">;
+        ServiceCreateRequest: WithRequired<components["schemas"]["ServiceWritePayload"], "category_id" | "subcategory_id" | "provider_type" | "title" | "fulfillment_type_ids" | "description" | "pricing_type" | "price_unit_id" | "portfolio_images" | "information_accuracy_acknowledgement">;
         /** @description Updates service information only. Category, subcategory, provider type, business, pricing fields, and booking_policy are prohibited. Submit current business format and capability answers in answers_json. */
         ServiceInformationUpdateRequest: {
             /** @example Updated online algebra tutoring */
@@ -7729,7 +9153,7 @@ export interface components {
             /** @example Error */
             status?: string;
             message?: string;
-            data?: components["schemas"]["PublicValidationIssueEnvelope"] | null;
+            data?: components["schemas"]["PublicValidationIssueEnvelope"] | (never | null);
             meta?: Record<string, never>;
         };
         ServiceFileDeleteResponse: {
@@ -7753,6 +9177,226 @@ export interface components {
                 file_path?: string;
             };
             meta?: Record<string, never>;
+        };
+        ProviderSupportTopic: {
+            /** @example 1 */
+            id?: number;
+            /** @example Payments & Refunds */
+            name?: string;
+            /** @example payments-refunds */
+            slug?: string;
+            /** @example 3 */
+            display_order?: number;
+            /** @example true */
+            is_active?: boolean;
+            /** @example 2 */
+            faqs_count?: number;
+        };
+        ProviderSupportTopicsResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Support topics retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderSupportTopic"][];
+        };
+        ProviderFaq: {
+            /** @example 1 */
+            id?: number;
+            /** @example 3 */
+            topic_id?: number;
+            /** @example Payments & Refunds */
+            topic_name?: string;
+            /** @example When will I receive my payout? */
+            question?: string;
+            /** @example Payouts are processed per the configured payout cycle... */
+            answer?: string;
+            /** @example 1 */
+            display_order?: number;
+            /** @example 14 */
+            view_count?: number;
+        };
+        ProviderFaqsResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example FAQs retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderFaq"][];
+        };
+        ProviderFaqDetailResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example FAQ retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderFaq"];
+        };
+        StoreProviderSupportTicketRequest: {
+            /** @example 3 */
+            topic_id: number;
+            /** @example Payout not received for booking #B-204 */
+            subject: string;
+            /** @example My payout for booking B-204 is overdue by 5 days. Please check. */
+            description: string;
+            /**
+             * @description Optional booking reference. Send this only when the ticket is about a specific booking (for example a missing payout, cancellation, no-show, or dispute tied to one booking). Omit it, or send null, for a general issue that is not tied to a booking (account, app, profile, or a payout question that is not about one booking). When sent, it is stored on the ticket and returned as booking_id on the ticket detail. When omitted, booking_id is null.
+             * @example B-204
+             */
+            booking_id?: string | null;
+            /** @description Optional UUID to prevent duplicate tickets on retry. */
+            idempotency_key?: string;
+            /** @description Max 5 files. jpg, jpeg, png, pdf. 10MB each. */
+            attachments?: string[];
+        };
+        ReplyProviderSupportTicketRequest: {
+            /** @example Thanks, the issue is still happening today. */
+            body: string;
+            /** @description Max 5 files. jpg, jpeg, png, pdf. 10MB each. */
+            attachments?: string[];
+        };
+        ProviderSupportTicketListItem: {
+            /** @example P-10001 */
+            ticket_number?: string;
+            /** @example Payout not received for booking #B-204 */
+            subject?: string;
+            /** @example Payments & Refunds */
+            topic?: string;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status?: "open" | "in_progress" | "resolved" | "closed";
+            /** @example false */
+            unread?: boolean;
+            /** @example We're checking with the payments team... */
+            last_message_preview?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ProviderSupportTicketListResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Tickets retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderSupportTicketListItem"][];
+            meta?: {
+                /** @example 1 */
+                current_page?: number;
+                /** @example 1 */
+                last_page?: number;
+                /** @example 15 */
+                per_page?: number;
+                /** @example 3 */
+                total?: number;
+            };
+        };
+        ProviderTicketAttachment: {
+            /** @example 1 */
+            id?: number;
+            /** @example screenshot.png */
+            file_name?: string;
+            /** @example image/png */
+            mime_type?: string;
+            /** @example 204800 */
+            file_size_bytes?: number;
+            /** @example /storage/support/provider/P-10001/abc.png */
+            url?: string;
+        };
+        ProviderTicketMessage: {
+            /** @example 1 */
+            id?: number;
+            /**
+             * @example provider
+             * @enum {string}
+             */
+            sender_type?: "provider" | "admin";
+            /** @example John */
+            sender_name?: string;
+            /** @example My payout for booking B-204 is overdue. */
+            body?: string;
+            /** @example false */
+            is_internal_note?: boolean;
+            attachments?: components["schemas"]["ProviderTicketAttachment"][];
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ProviderTicketStatusHistoryItem: {
+            /** @example 1 */
+            id?: number;
+            /** @example null */
+            from_status?: string | null;
+            /** @example open */
+            to_status?: string;
+            /** @example null */
+            note?: string | null;
+            /** @example 5 */
+            changed_by?: number | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ProviderSupportTicketDetail: {
+            /** @example P-10001 */
+            ticket_number?: string;
+            /** @example Payout not received for booking #B-204 */
+            subject?: string;
+            /** @example My payout for booking B-204 is overdue by 5 days. */
+            description?: string;
+            /**
+             * @description Present when the provider attached a booking reference while creating the ticket (the issue is about that booking). Null when the ticket is a general issue and no booking_id was sent.
+             * @example B-204
+             */
+            booking_id?: string | null;
+            /** @example Payments & Refunds */
+            topic?: string;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status?: "open" | "in_progress" | "resolved" | "closed";
+            /** @example false */
+            provider_unread?: boolean;
+            /** Format: date-time */
+            opened_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** Format: date-time */
+            resolved_at?: string | null;
+            /** Format: date-time */
+            closed_at?: string | null;
+            messages?: components["schemas"]["ProviderTicketMessage"][];
+            status_history?: components["schemas"]["ProviderTicketStatusHistoryItem"][];
+            attachments?: components["schemas"]["ProviderTicketAttachment"][];
+        };
+        ProviderSupportTicketDetailResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Ticket retrieved successfully. */
+            message?: string;
+            data?: components["schemas"]["ProviderSupportTicketDetail"];
+        };
+        ProviderSupportReplyResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Reply sent successfully. */
+            message?: string;
+            data?: {
+                /** @example 2 */
+                id?: number;
+                /** @example Thanks, the issue is still happening today. */
+                body?: string;
+                /** @example provider */
+                sender_type?: string;
+                /** Format: date-time */
+                created_at?: string;
+            };
+        };
+        ProviderSupportSimpleResponse: {
+            /** @example true */
+            success?: boolean;
+            /** @example Ticket marked as read. */
+            message?: string;
+            /** @example [] */
+            data?: unknown[];
         };
     };
     responses: never;
@@ -9953,6 +11597,594 @@ export interface operations {
             };
         };
     };
+    getProviderBookings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bookings retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBookingListResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderBookingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Booking status retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBookingStatusResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Booking belongs to another provider. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenResponse"];
+                };
+            };
+            /** @description Booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderBookingSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Booking summary retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBookingSummaryResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Booking belongs to another provider. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenResponse"];
+                };
+            };
+            /** @description Booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    postProviderStartService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service started successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBookingStatusResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Service already started or booking not active. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    postProviderCompleteService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProviderCompleteServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Service completed successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderBookingStatusResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Start the service before marking complete. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error or booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderCustomerReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Customer review retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCustomerReviewResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postProviderCustomerReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCustomerReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Customer review saved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCustomerReviewResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description The booking is not completed or was already reviewed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error or booking not found. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postProviderCancelBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProviderCancelBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description Booking cancelled successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenResponse"];
+                };
+            };
+            /** @description Conflict (e.g. already cancelled). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Booking not found or invalid reason. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "98bccac284091d7ded5de2e8276f3fc5": {
+        parameters: {
+            query: {
+                business_id: number;
+                status?: "active" | "used" | "expired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invite codes retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "3e31565f77d4a1e53a00bb17f03bb415": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessInviteCodeCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Invite code created successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Business profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "92178b1d5d367c9f200bc7e30f9f2200": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessInviteCodeRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description Invite code is valid. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid code. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired, used, own business, or already a member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ed04c532c554131e7c8cfb2008c1e173: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessInviteCodeRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description You have joined this business. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider account is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid code. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired, used, own business, or already a member. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "2aabc461bc1236b9c777497ed83e95a8": {
         parameters: {
             query?: never;
@@ -10937,6 +13169,131 @@ export interface operations {
             };
         };
     };
+    getProviderCalendar: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Y-m month for dot aggregation
+                 * @example 2026-10
+                 */
+                month?: string;
+                /**
+                 * @description Y-m-d selected day for confirmed list
+                 * @example 2026-10-06
+                 */
+                date?: string;
+                /**
+                 * @description Confirmed bookings page (5 per page)
+                 * @example 1
+                 */
+                page?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCalendarResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Invalid calendar month or date format. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderSchedule: {
+        parameters: {
+            query?: {
+                /** @description List segment. Defaults to today when omitted. */
+                segment?: components["schemas"]["ProviderScheduleSegment"];
+                /**
+                 * @description Comma-separated status filters
+                 * @example active,completed
+                 */
+                status?: string;
+                /** @example 1 */
+                page?: string;
+                /**
+                 * @description Clamped 1–50
+                 * @example 10
+                 */
+                per_page?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Schedule retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderScheduleResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Invalid schedule segment. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
     listProviderChats: {
         parameters: {
             query?: {
@@ -11234,6 +13591,274 @@ export interface operations {
             };
         };
     };
+    getProviderEarnings: {
+        parameters: {
+            query?: {
+                source_type?: "personal_service" | "business_service" | "event" | "fundraiser";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earnings retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderEarningsResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Unknown wallet source. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderEarningHistory: {
+        parameters: {
+            query?: {
+                source_type?: "personal_service" | "business_service" | "event" | "fundraiser";
+                view?: "calendar" | "list";
+                /** @description Calendar month YYYY-MM */
+                month?: string;
+                /** @description Selected calendar day YYYY-MM-DD */
+                date?: string;
+                tab?: "earnings" | "pending";
+                time?: "today" | "tomorrow" | "this_week" | "this_month" | "this_year";
+                category_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earning history retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderEarningHistoryResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Unknown wallet source. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderWithdrawals: {
+        parameters: {
+            query?: {
+                source_type?: "personal_service" | "business_service" | "event" | "fundraiser";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Withdrawals retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWithdrawalHistoryResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Unknown wallet source. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postProviderWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderWithdrawRequest"];
+            };
+        };
+        responses: {
+            /** @description Withdrawal submitted successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Success */
+                        status?: string;
+                        /** @example Withdrawal submitted successfully. */
+                        message?: string;
+                        data?: {
+                            /** @example USD */
+                            currency_code?: string | null;
+                            /** @example 0.00 */
+                            available?: string;
+                            /** @example 0.00 */
+                            upcoming?: string;
+                        };
+                    };
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Payout account is restricted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Amount or payout account is invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProviderPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payout account retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example Success */
+                        status?: string;
+                        message?: string;
+                        data?: components["schemas"]["ProviderPayoutAccount"];
+                    };
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+        };
+    };
+    postProviderPayoutAccountLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProviderPayoutLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Stripe account link created successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderPayoutLinkResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Stripe could not create the account link. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getProviderHome: {
         parameters: {
             query?: never;
@@ -11415,6 +14040,185 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    c5b2f13d6f7f0ae511532c875ab05503: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description FCM device token for this browser or app installation. */
+                device_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDeviceNotificationStatusResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "9a6e84c20fbb73b0701ce19fb9251069": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdateDeviceNotificationStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated status (0 or 1). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDeviceNotificationStatusResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerErrorResponse"];
+                };
+            };
+        };
+    };
+    "4b5ba6146b174e8cbab153e2a1b7a68a": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated inbox. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceBookingNotificationInboxResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedResponse"];
+                };
+            };
+        };
+    };
+    "9e5c940a15653fd601c4f26ca5ad0692": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unread count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceBookingNotificationUnreadResponse"];
+                };
+            };
+        };
+    };
+    d2f8aff19ddbde0fa05dc58d48cf2f26: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Marked count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceBookingNotificationMarkAllResponse"];
+                };
+            };
+        };
+    };
+    c61edb4b35d051babf5d43302444be2e: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Marked flag. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceBookingNotificationMarkOneResponse"];
                 };
             };
         };
@@ -11651,6 +14455,275 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ServerErrorResponse"];
                 };
+            };
+        };
+    };
+    listProviderRequestOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offer history. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestOfferHistory"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation or provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createProviderRequestOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceRequestOfferWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Offer created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestOfferHistory"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The provider cannot act on this offer. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale or parallel offer action. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation, fixed-price, or deadline failure. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    acceptProviderRequestOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+                offer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offer accepted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestOfferHistory"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The author cannot accept their own offer. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The offer is no longer pending. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The deadline has passed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    declineProviderRequestOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+                offer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offer declined. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestOfferHistory"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The author cannot decline their own offer. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The offer is no longer pending. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The deadline has passed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    declineProviderRequestInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    decline_reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Invitation declined. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestOfferHistory"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This invitation is not open. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The deadline has passed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -12621,6 +15694,379 @@ export interface operations {
             };
             /** @description Unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProviderSupportTopics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Topic list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportTopicsResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProviderFaqsByTopic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                topic_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description FAQ list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderFaqsResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    searchProviderFaqs: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderFaqsResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProviderFaqDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description FAQ detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderFaqDetailResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description FAQ not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProviderSupportTickets: {
+        parameters: {
+            query?: {
+                status?: "all" | "open" | "in_progress" | "resolved" | "closed";
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated ticket list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportTicketListResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Provider profile not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createProviderSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["StoreProviderSupportTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Ticket created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportTicketDetailResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error or too many open tickets. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProviderSupportTicketDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ticket detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportTicketDetailResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ticket not found or unauthorized. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    replyProviderSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReplyProviderSupportTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Reply sent. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportReplyResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ticket not found or unauthorized. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ticket closed or validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    markProviderSupportTicketRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Marked as read. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportSimpleResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ticket not found or unauthorized. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    closeProviderSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ticket closed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSupportTicketDetailResponse"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ticket not found or unauthorized. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

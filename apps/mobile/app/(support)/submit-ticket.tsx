@@ -1,13 +1,26 @@
+import { ApiError } from "@/api/client";
+import type { MultipartFile } from "@/api/multipart";
+import {
+  SUPPORT_ATTACHMENT_LIMIT,
+  SUPPORT_ATTACHMENT_TYPES,
+  attachmentProblem,
+  createSupportTicket,
+  isBookingTopic,
+  listSupportTopics,
+  newIdempotencyKey,
+  type SupportTopic,
+} from "@/api/support";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { useCurrentUser } from "@/constants/session";
+import { pickDocuments } from "@/components/template-form/file-pickers";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,57 +32,103 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background, border } = Colors;
-
-const TOPIC_OPTIONS: { key: string; label: string }[] = [
-  { key: "account", label: "Account & App Usages" },
-  { key: "bookings", label: "Bookings" },
-  { key: "payments", label: "Payments & Refunds" },
-  { key: "membership", label: "Membership" },
-  { key: "background-check", label: "Background Check" },
-  { key: "other", label: "Other" },
-];
+const { primary, neutral, text, background, border, status } = Colors;
 
 const SUBJECT_MAX = 80;
 const DESCRIPTION_MAX = 1000;
+const BOOKING_ID_MAX = 50;
 
 export default function SubmitTicketScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [topicKey, setTopicKey] = useState<string>(TOPIC_OPTIONS[0].key);
+  const [topics, setTopics] = useState<SupportTopic[]>([]);
+  const [loadingTopics, setLoadingTopics] = useState(true);
+  const [topicId, setTopicId] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [bookingId, setBookingId] = useState("");
+  const [attachments, setAttachments] = useState<MultipartFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedTicketId, setSubmittedTicketId] = useState<string | null>(
-    null,
-  );
+  const [submittedTicketNumber, setSubmittedTicketNumber] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // One key per ticket attempt: a retry after a network failure returns the
+  // ticket the first attempt may already have created.
+  const idempotencyKey = useRef(newIdempotencyKey());
+
+  useEffect(() => {
+    let active = true;
+    listSupportTopics()
+      .then((list) => {
+        if (!active) return;
+        setTopics(list);
+        setTopicId(list[0]?.id ?? null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setErrorMessage(
+          error instanceof ApiError ? error.message : "Couldn't load support topics.",
+        );
+      })
+      .finally(() => {
+        if (active) setLoadingTopics(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedTopic = topics.find((t) => t.id === topicId) ?? null;
+  const showBookingId = isBookingTopic(selectedTopic);
 
   const trimmedSubject = subject.trim();
   const trimmedDescription = description.trim();
   const canSubmit =
+    topicId !== null &&
     trimmedSubject.length > 0 &&
     trimmedDescription.length > 0 &&
     !submitting;
 
+  async function handleAddAttachment() {
+    const remaining = SUPPORT_ATTACHMENT_LIMIT - attachments.length;
+    if (remaining <= 0) return;
+    const picked = await pickDocuments(SUPPORT_ATTACHMENT_TYPES, remaining > 1);
+    if (!picked.length) return;
+    const problem = attachmentProblem(picked, attachments.length);
+    if (problem) {
+      setErrorMessage(problem);
+      return;
+    }
+    setErrorMessage(null);
+    setAttachments((prev) => [...prev, ...picked].slice(0, SUPPORT_ATTACHMENT_LIMIT));
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit() {
-    if (!canSubmit) return;
+    if (!canSubmit || topicId === null) return;
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      // TODO: legacy API removed — implement createTicket via Laravel API
-      console.log("TODO: implement createTicket via Laravel API", {
-        userId,
-        topicKey,
+      const ticket = await createSupportTicket({
+        topicId,
         subject: trimmedSubject,
         description: trimmedDescription,
+        bookingId: showBookingId ? bookingId.trim() || null : null,
+        idempotencyKey: idempotencyKey.current,
+        attachments,
       });
-      setSubmittedTicketId(null);
-      setSubmitted(true);
-    } catch {
-      setErrorMessage("Network error. Please check your connection and try again.");
+      setSubmittedTicketNumber(ticket.ticket_number ?? null);
+      idempotencyKey.current = newIdempotencyKey();
+    } catch (error) {
+      // Keep the form as typed; the API message names the problem (too many
+      // open tickets, a rejected file, a validation error).
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Network error. Please check your connection and try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -91,29 +150,53 @@ export default function SubmitTicketScreen() {
         >
           <View style={styles.field}>
             <Text style={styles.label}>Topic</Text>
-            <View style={styles.topicWrap}>
-              {TOPIC_OPTIONS.map((t) => {
-                const active = t.key === topicKey;
-                return (
-                  <TouchableOpacity
-                    key={t.key}
-                    style={[styles.topicPill, active && styles.topicPillActive]}
-                    activeOpacity={0.8}
-                    onPress={() => setTopicKey(t.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.topicPillText,
-                        active && styles.topicPillTextActive,
-                      ]}
+            {loadingTopics ? (
+              <ActivityIndicator size="small" color={primary[400]} style={styles.topicsLoader} />
+            ) : topics.length === 0 ? (
+              <Text style={styles.hint}>Support topics are unavailable right now.</Text>
+            ) : (
+              <View style={styles.topicWrap}>
+                {topics.map((t) => {
+                  const active = t.id === topicId;
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={[styles.topicPill, active && styles.topicPillActive]}
+                      activeOpacity={0.8}
+                      disabled={submitting}
+                      onPress={() => t.id !== undefined && setTopicId(t.id)}
                     >
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <Text
+                        style={[
+                          styles.topicPillText,
+                          active && styles.topicPillTextActive,
+                        ]}
+                      >
+                        {t.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
+
+          {showBookingId && (
+            <View style={styles.field}>
+              <Text style={styles.label}>Booking ID (optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. BK-20261022-001"
+                placeholderTextColor={neutral[400]}
+                value={bookingId}
+                onChangeText={(v) => setBookingId(v.slice(0, BOOKING_ID_MAX))}
+                editable={!submitting}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
+          )}
 
           <View style={styles.field}>
             <Text style={styles.label}>Subject</Text>
@@ -152,10 +235,13 @@ export default function SubmitTicketScreen() {
 
           <View style={styles.attachmentRow}>
             <TouchableOpacity
-              style={styles.attachmentButton}
+              style={[
+                styles.attachmentButton,
+                attachments.length >= SUPPORT_ATTACHMENT_LIMIT && styles.attachmentButtonDisabled,
+              ]}
               activeOpacity={0.7}
-              // TODO: wire up image/file picker for attachments.
-              onPress={() => {}}
+              disabled={submitting || attachments.length >= SUPPORT_ATTACHMENT_LIMIT}
+              onPress={handleAddAttachment}
             >
               <MaterialIcons
                 name="attach-file"
@@ -164,8 +250,37 @@ export default function SubmitTicketScreen() {
               />
               <Text style={styles.attachmentText}>Add attachment</Text>
             </TouchableOpacity>
-            <Text style={styles.attachmentHint}>Optional · up to 5 files</Text>
+            <Text style={styles.attachmentHint}>
+              {attachments.length
+                ? `${attachments.length}/${SUPPORT_ATTACHMENT_LIMIT} files`
+                : `Optional · up to ${SUPPORT_ATTACHMENT_LIMIT} files`}
+            </Text>
           </View>
+
+          {attachments.length > 0 && (
+            <View style={styles.attachmentList}>
+              {attachments.map((file, index) => (
+                <View key={`${file.uri}-${index}`} style={styles.attachmentChip}>
+                  <MaterialIcons
+                    name={file.type === "application/pdf" ? "picture-as-pdf" : "image"}
+                    size={16}
+                    color={neutral[500]}
+                  />
+                  <Text style={styles.attachmentName} numberOfLines={1}>
+                    {file.name}
+                  </Text>
+                  <TouchableOpacity
+                    hitSlop={8}
+                    disabled={submitting}
+                    onPress={() => removeAttachment(index)}
+                  >
+                    <MaterialIcons name="close" size={16} color={neutral[500]} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          <Text style={styles.hint}>JPG, PNG or PDF, 10 MB each.</Text>
         </ScrollView>
 
         <View style={[styles.footer, contentWidthStyle]}>
@@ -184,12 +299,12 @@ export default function SubmitTicketScreen() {
       </KeyboardAvoidingView>
 
       <ConfirmModal
-        visible={submitted}
+        visible={submittedTicketNumber !== null}
         icon="success"
         title="Ticket submitted"
         message={
-          submittedTicketId
-            ? `Your ticket ${submittedTicketId} has been received. You can track its status in My Tickets.`
+          submittedTicketNumber
+            ? `Your ticket ${submittedTicketNumber} has been received. You can track its status in My Tickets.`
             : "We've received your request and will get back to you shortly. You can track its status in My Tickets."
         }
         confirmLabel="View My Tickets"
@@ -222,7 +337,16 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
+  hint: {
+    fontSize: 12,
+    color: neutral[400],
+    letterSpacing: -0.408,
+  },
 
+  topicsLoader: {
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+  },
   topicWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -290,6 +414,9 @@ const styles = StyleSheet.create({
     borderColor: border.default,
     backgroundColor: background.card,
   },
+  attachmentButtonDisabled: {
+    opacity: 0.5,
+  },
   attachmentText: {
     fontSize: 13,
     fontWeight: "500",
@@ -301,6 +428,27 @@ const styles = StyleSheet.create({
     color: neutral[400],
     letterSpacing: -0.408,
   },
+  attachmentList: {
+    gap: 8,
+    marginTop: -8,
+  },
+  attachmentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: border.default,
+    backgroundColor: background.card,
+  },
+  attachmentName: {
+    flex: 1,
+    fontSize: 13,
+    color: text.primary,
+    letterSpacing: -0.408,
+  },
 
   footer: {
     paddingHorizontal: 20,
@@ -310,7 +458,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: "#C0392B",
+    color: status.error,
     textAlign: "center",
     letterSpacing: -0.408,
   },

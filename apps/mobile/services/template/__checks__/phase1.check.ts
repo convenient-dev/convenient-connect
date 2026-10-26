@@ -22,6 +22,7 @@ import {
   buildEvaluationContext,
   buildInformationFormData,
   buildPayload,
+  buildPricingBody,
   evaluatePredicate,
   filterPriceUnits,
   getFormat,
@@ -450,6 +451,35 @@ check(!kCand.includes("information_accuracy_acknowledgement") && !kCand.includes
 check(!kCand.some((k) => ["category_id", "subcategory_id", "provider_type", "business_id"].includes(k)), "candidate: identity omitted");
 check(get(fdCand, "clear_dynamic_file_keys[]").join() === "cori_background_check" && get(fdCand, "delete_portfolio_ids[]").join() === "301", "candidate: clear_dynamic_file_keys and delete ids pass through");
 check(get(fdCand, "pricing_type")[0] === "fixed_price" && get(fdCand, "price_unit_id")[0] === String(uid(tutoring, "per_session")) && get(fdCand, "profile_pricing_scope")[0] === "per_request", "candidate: pricing included with required scope");
+
+// Pricing-only body (POST /services/{id}/pricing): the create/candidate routing as typed JSON.
+const scopedValues: FormValues = { ...baseValues(), learner_delivery: "shared_group", profile_pricing_scope: "per_request" };
+const pricingBody = buildPricingBody(tutoring, scopedValues)!;
+const fdParity = buildCreateFormData(tutoring, scopedValues, tutoringIdentity);
+check(pricingBody !== null && pricingBody.pricing_type === "fixed_price" && pricingBody.price_unit_id === uid(tutoring, "per_session") && pricingBody.amount === 50 && pricingBody.currency === "USD" && pricingBody.profile_pricing_scope === "per_request", "pricing body: unit and amount as numbers, USD, and the required scope", pricingBody);
+check(String(pricingBody.price_unit_id) === get(fdParity, "price_unit_id")[0] && String(pricingBody.amount) === get(fdParity, "amount")[0] && pricingBody.currency === get(fdParity, "currency")[0] && pricingBody.profile_pricing_scope === get(fdParity, "profile_pricing_scope")[0], "pricing body: same unit, amount, currency and scope the create path sends");
+const petScope = buildPricingBody(pet, { pricing_type: "fixed_price", amount: 125, price_unit_id: uid(pet, "per_hour"), profile_pricing_scope: "per_profile" })!;
+check(!("profile_pricing_scope" in petScope) && petScope.currency === "USD", "pricing body: prohibited scope omitted (pet default format)", petScope);
+const quoteBody = buildPricingBody(tutoring, { ...baseValues(), pricing_type: "quote_required", amount: undefined })!;
+check(quoteBody.pricing_type === "quote_required" && !("amount" in quoteBody) && !("currency" in quoteBody) && quoteBody.price_unit_id === uid(tutoring, "per_session"), "pricing body: quote_required omits amount and currency", quoteBody);
+check(buildPricingBody(tutoring, { ...baseValues(), pricing_type: undefined }) === null, "pricing body: null without a pricing type");
+
+// Cleared text: edit endpoints receive "" to clear a stored value; create omits a blank.
+const clearedValues: FormValues = { ...baseValues(), title: "", qualifications: "   " };
+const clearedCreate = buildPayload(tutoring, clearedValues, "create");
+check(!("title" in clearedCreate.entries) && !("qualifications" in clearedCreate.answers), "create: blank text omitted, never sent as \"\"", Object.keys(clearedCreate.entries));
+const clearedInfo = buildInformationFormData(tutoring, clearedValues);
+check(get(clearedInfo, "title")[0] === "" && JSON.parse(get(clearedInfo, "answers_json")[0] as string).qualifications === "", "information: cleared text and textarea sent as \"\"");
+const clearedCand = buildPayload(tutoring, clearedValues, "candidate");
+check(clearedCand.entries.title === "" && clearedCand.answers.qualifications === "", "candidate: cleared text and textarea sent as \"\"");
+check(!("session_duration_minutes" in buildPayload(tutoring, { ...baseValues(), session_duration_minutes: "" }, "candidate").answers), "candidate: a blank number is omitted, not sent as \"\"");
+
+// Number controls hold typed text; answers_json carries numbers.
+const typedNumber = buildCreateFormData(tutoring, { ...baseValues(), session_duration_minutes: "50" }, tutoringIdentity);
+check(JSON.parse(get(typedNumber, "answers_json")[0] as string).session_duration_minutes === 50, "answers_json: number field typed as \"50\" is the number 50");
+const junkNumber = buildPayload(tutoring, { ...baseValues(), session_duration_minutes: "not-a-number" }, "create").answers;
+check(junkNumber.session_duration_minutes === "not-a-number", "answers_json: unparseable number text passes through for the backend to reject");
+check(buildPayload(tutoring, { ...baseValues(), qualifications: "12" }, "create").answers.qualifications === "12", "answers_json: a numeric string in a text field stays a string");
 
 // Never-submit keys are stripped even if a template mistakenly routes them.
 const badTemplate = copyOf(tutoring);

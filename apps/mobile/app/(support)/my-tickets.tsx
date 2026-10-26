@@ -1,14 +1,22 @@
+import { ApiError } from "@/api/client";
+import {
+  listSupportTickets,
+  type SupportTicketListItem,
+  type SupportTicketStatusFilter,
+} from "@/api/support";
 import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useCurrentUser } from "@/constants/session";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
+import { formatSupportDate, ticketStatusLabel } from "@/constants/support";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,22 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, secondary, neutral, text, background, border } = Colors;
 
-
-type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-
-interface Ticket {
-  id: string;
-  subject: string;
-  topicLabel: string;
-  status: TicketStatus;
-  updatedAt: string;
-  lastMessage: string;
-  unread: boolean;
-}
-
-type FilterKey = "all" | TicketStatus;
-
-const FILTERS: { key: FilterKey; label: string }[] = [
+const FILTERS: { key: SupportTicketStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "open", label: "Open" },
   { key: "in_progress", label: "In Progress" },
@@ -42,32 +35,90 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "closed", label: "Closed" },
 ];
 
-const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
+const PER_PAGE = 15;
 
 export default function MyTicketsScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
-  const { userId } = useCurrentUser();
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
+  const [filter, setFilter] = useState<SupportTicketStatusFilter>("all");
+  const [tickets, setTickets] = useState<SupportTicketListItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Ignore responses from a superseded request (filter switched, refocused).
+  const requestId = useRef(0);
 
-  useEffect(() => {
-    // TODO: legacy API removed — implement getTickets via Laravel API
-    console.log("TODO: implement getTickets via Laravel API", { userId });
-    setAllTickets([]);
-    setLoading(false);
-  }, [userId]);
+  const loadTickets = useCallback(
+    async (
+      status: SupportTicketStatusFilter,
+      pageToLoad: number,
+      { silent = false }: { silent?: boolean } = {},
+    ) => {
+      const id = ++requestId.current;
+      const isFirstPage = pageToLoad === 1;
+      if (!isFirstPage) setLoadingMore(true);
+      else if (!silent) setLoading(true);
+      try {
+        const result = await listSupportTickets({
+          status,
+          page: pageToLoad,
+          perPage: PER_PAGE,
+        });
+        if (id !== requestId.current) return;
+        setTickets((prev) =>
+          isFirstPage ? result.data ?? [] : [...prev, ...(result.data ?? [])],
+        );
+        setPage(result.meta?.current_page ?? pageToLoad);
+        setLastPage(result.meta?.last_page ?? pageToLoad);
+        setError(null);
+      } catch (err) {
+        if (id !== requestId.current) return;
+        if (isFirstPage) setTickets([]);
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong while loading your tickets.",
+        );
+      } finally {
+        if (id === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [],
+  );
 
-  const tickets =
-    filter === "all"
-      ? allTickets
-      : allTickets.filter((t) => t.status === filter);
+  // Reload on focus so unread dots and statuses reflect a ticket just opened
+  // or replied to. The spinner is skipped once a list is already shown.
+  useFocusEffect(
+    useCallback(() => {
+      loadTickets(filter, 1, { silent: tickets.length > 0 });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filter, loadTickets]),
+  );
+
+  function handleSelectFilter(next: SupportTicketStatusFilter) {
+    if (next === filter) return;
+    setFilter(next);
+    setTickets([]);
+    setPage(1);
+    setLastPage(1);
+  }
+
+  function handleEndReached() {
+    if (loading || loadingMore || refreshing || page >= lastPage) return;
+    loadTickets(filter, page + 1);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadTickets(filter, 1, { silent: true });
+    setRefreshing(false);
+  }
 
   return (
     <SafeAreaView style={[styles.container, screenPaddingStyle]}>
@@ -98,7 +149,7 @@ export default function MyTicketsScreen() {
               key={f.key}
               style={[styles.filterPill, active && styles.filterPillActive]}
               activeOpacity={0.8}
-              onPress={() => setFilter(f.key)}
+              onPress={() => handleSelectFilter(f.key)}
             >
               <Text
                 style={[
@@ -116,6 +167,21 @@ export default function MyTicketsScreen() {
       {loading ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator size="large" color={primary[400]} />
+        </View>
+      ) : error && tickets.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIcon}>
+            <MaterialIcons name="error-outline" size={36} color={neutral[400]} />
+          </View>
+          <Text style={styles.emptyTitle}>Couldn&apos;t load tickets</Text>
+          <Text style={styles.emptySub}>{error}</Text>
+          <Button
+            title="Try again"
+            variant="secondary"
+            size="sm"
+            style={{ marginTop: 18, alignSelf: "center" }}
+            onPress={() => loadTickets(filter, 1)}
+          />
         </View>
       ) : tickets.length === 0 ? (
         <View style={styles.emptyWrap}>
@@ -140,26 +206,46 @@ export default function MyTicketsScreen() {
           />
         </View>
       ) : (
-        <ScrollView
+        <FlatList
+          data={tickets}
+          keyExtractor={(t) => t.ticket_number ?? `${t.subject}-${t.created_at}`}
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
-        >
-          {tickets.map((t) => (
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={primary[400]}
+              colors={[primary[400]]}
+            />
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator
+                size="small"
+                color={primary[400]}
+                style={styles.footerLoader}
+              />
+            ) : null
+          }
+          renderItem={({ item: t }) => (
             <TouchableOpacity
-              key={t.id}
               style={styles.ticketCard}
               activeOpacity={0.85}
               onPress={() =>
+                t.ticket_number &&
                 router.push({
                   pathname: "/ticket-detail/[id]",
-                  params: { id: t.id },
+                  params: { id: t.ticket_number },
                 })
               }
             >
               <View style={styles.ticketHeaderRow}>
-                <Text style={styles.ticketId}>{t.id}</Text>
-                <StatusBadge label={TICKET_STATUS_LABEL[t.status]} />
+                <Text style={styles.ticketId}>{t.ticket_number}</Text>
+                <StatusBadge label={ticketStatusLabel(t.status)} />
               </View>
 
               <View style={styles.ticketSubjectRow}>
@@ -169,17 +255,21 @@ export default function MyTicketsScreen() {
                 {t.unread && <View style={styles.unreadDot} />}
               </View>
 
-              <Text style={styles.ticketLastMessage} numberOfLines={2}>
-                {t.lastMessage}
-              </Text>
+              {t.last_message_preview ? (
+                <Text style={styles.ticketLastMessage} numberOfLines={2}>
+                  {t.last_message_preview}
+                </Text>
+              ) : null}
 
               <View style={styles.ticketMetaRow}>
-                <Text style={styles.ticketTopic}>{t.topicLabel}</Text>
-                <Text style={styles.ticketDate}>Updated {t.updatedAt}</Text>
+                <Text style={styles.ticketTopic}>{t.topic}</Text>
+                <Text style={styles.ticketDate}>
+                  Updated {formatSupportDate(t.updated_at)}
+                </Text>
               </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          )}
+        />
       )}
     </SafeAreaView>
   );
@@ -238,6 +328,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 32,
     gap: 12,
+  },
+  footerLoader: {
+    paddingVertical: 12,
   },
 
   ticketCard: {

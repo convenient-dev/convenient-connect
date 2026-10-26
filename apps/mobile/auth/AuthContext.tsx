@@ -5,7 +5,7 @@ import {
   type ProviderAccountStatus,
   type ProviderStatusFields,
 } from "@/api/account-status";
-import { setOnSuspended, setOnUnauthorized } from "@/api/client";
+import { ApiError, setOnSuspended, setOnUnauthorized } from "@/api/client";
 import type { components } from "@/api/generated/api-types";
 import { useRouter, useSegments } from "expo-router";
 import React, {
@@ -121,9 +121,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log("[AUTH] User profile loaded:", profile.user.user_email);
           setUser(profile);
         } catch (error) {
-          console.log("[AUTH] Failed to load profile, clearing token:", error);
-          await clearToken();
-          setTokenState(null);
+          // A 401 already cleared the token in laravelFetch and fired logout.
+          // Any other failure (offline, timeout, 5xx) keeps the token so the
+          // user stays signed in and the next request retries.
+          console.log("[AUTH] Failed to load profile on app start:", error);
+          if (error instanceof ApiError && error.statusCode === 401) {
+            setTokenState(null);
+          }
         }
       } else {
         console.log("[AUTH] No stored token found");
@@ -142,8 +146,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!token && !inAuthGroup) {
       router.replace("/");
+      return;
     }
-  }, [token, segments, isLoading, router]);
+
+    // Cold start lands on the welcome screen. Send a restored session with a
+    // completed profile to the tabs; onboarding screens handle the rest.
+    const hasCompletedProfile =
+      !!user?.user.user_fname?.trim() && !!user?.user.user_lname?.trim();
+    if (token && !firstSegment && hasCompletedProfile) {
+      router.replace("/(tabs)/home");
+    }
+  }, [token, user, segments, isLoading, router]);
 
   const login = useCallback(
     async (newToken: string, profile: AuthUserProfile) => {

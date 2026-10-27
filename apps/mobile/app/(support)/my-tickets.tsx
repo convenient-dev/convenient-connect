@@ -69,7 +69,7 @@ export default function MyTicketsScreen() {
         });
         if (id !== requestId.current) return;
         setTickets((prev) =>
-          isFirstPage ? result.data ?? [] : [...prev, ...(result.data ?? [])],
+          isFirstPage ? (result.data ?? []) : [...prev, ...(result.data ?? [])],
         );
         setPage(result.meta?.current_page ?? pageToLoad);
         setLastPage(result.meta?.last_page ?? pageToLoad);
@@ -171,7 +171,11 @@ export default function MyTicketsScreen() {
       ) : error && tickets.length === 0 ? (
         <View style={styles.emptyWrap}>
           <View style={styles.emptyIcon}>
-            <MaterialIcons name="error-outline" size={36} color={neutral[400]} />
+            <MaterialIcons
+              name="error-outline"
+              size={36}
+              color={neutral[400]}
+            />
           </View>
           <Text style={styles.emptyTitle}>Couldn&apos;t load tickets</Text>
           <Text style={styles.emptySub}>{error}</Text>
@@ -208,7 +212,9 @@ export default function MyTicketsScreen() {
       ) : (
         <FlatList
           data={tickets}
-          keyExtractor={(t) => t.ticket_number ?? `${t.subject}-${t.created_at}`}
+          keyExtractor={(t) =>
+            t.ticket_number ?? `${t.subject}-${t.created_at}`
+          }
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, contentWidthStyle]}
           showsVerticalScrollIndicator={false}
@@ -255,11 +261,11 @@ export default function MyTicketsScreen() {
                 {t.unread && <View style={styles.unreadDot} />}
               </View>
 
-              {t.last_message_preview ? (
+              {/* {t.last_message_preview ? (
                 <Text style={styles.ticketLastMessage} numberOfLines={2}>
                   {t.last_message_preview}
                 </Text>
-              ) : null}
+              ) : null} */}
 
               <View style={styles.ticketMetaRow}>
                 <Text style={styles.ticketTopic}>{t.topic}</Text>

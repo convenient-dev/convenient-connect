@@ -12,8 +12,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { BusinessGuidelinesForm } from "@/components/BusinessGuidelinesForm";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useSuspendedGuard } from "@/components/SuspendedGuard";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { useSuspendedGuard } from "@/components/SuspendedGuard";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
@@ -399,7 +399,9 @@ export default function BusinessDetailScreen() {
           </View>
           <Switch
             value={isVerified && acceptingJobs}
-            onValueChange={(value) => guardWrite(() => handleToggleStatus(value))}
+            onValueChange={(value) =>
+              guardWrite(() => handleToggleStatus(value))
+            }
             disabled={!isVerified}
             trackColor={{ false: neutral[200], true: primary[400] }}
             thumbColor={neutral[0]}
@@ -415,7 +417,8 @@ export default function BusinessDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {activeTab === "members" ? (
-          membersLoading && activeMembers.length + pendingMembers.length === 0 ? (
+          membersLoading &&
+          activeMembers.length + pendingMembers.length === 0 ? (
             <ActivityIndicator
               color={primary[400]}
               style={styles.membersLoader}

@@ -1,7 +1,7 @@
 import { listBusinesses, type ProviderBusinessListItem } from "@/api/business";
+import { toAbsoluteUrl } from "@/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ServiceChips } from "@/components/ServiceChips";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import { Image as ExpoImage } from "expo-image";
@@ -65,6 +65,7 @@ export default function CollaborationDetailScreen() {
   const services = (business?.services ?? []).map((s) => ({
     id: s.sub_category_id ?? 0,
     name: s.sub_category_name ?? "",
+    logo: s.sub_category_logo ?? "",
   }));
 
   const modal = (
@@ -118,7 +119,10 @@ export default function CollaborationDetailScreen() {
           <View style={styles.heroDecor} pointerEvents="none" />
           <IconTile />
           <Text style={styles.businessName}>{business.business_name}</Text>
-          <Text style={styles.businessSubtitle}>Active affiliation</Text>
+          <Text style={styles.businessSubtitle}>
+            {/* TODO: Placeholder for now, update with real join date  */}
+            Joined {business.joined_date ?? "MM/DD/YYYY"}
+          </Text>
         </View>
 
         <View style={styles.statsCard}>
@@ -128,9 +132,25 @@ export default function CollaborationDetailScreen() {
         </View>
 
         <View style={styles.servicesCard}>
-          <Text style={styles.sectionTitle}>Provided Services</Text>
+          <Text style={styles.sectionTitle}>Approved Services</Text>
           {services.length > 0 ? (
-            <ServiceChips services={services} />
+            <View style={styles.chipRow}>
+              {services.map((service) => {
+                const logo = toAbsoluteUrl(service.logo);
+                return (
+                  <View key={service.id} style={styles.chip}>
+                    {logo && (
+                      <ExpoImage
+                        source={{ uri: logo }}
+                        style={styles.chipIcon}
+                        contentFit="contain"
+                      />
+                    )}
+                    <Text style={styles.chipText}>{service.name}</Text>
+                  </View>
+                );
+              })}
+            </View>
           ) : (
             <Text style={styles.emptyText}>
               No services have been assigned to you yet.
@@ -147,7 +167,11 @@ export default function CollaborationDetailScreen() {
 function IconTile() {
   return (
     <View style={styles.iconTile}>
-      <ExpoImage source={COMPANY_ICON} style={styles.icon} contentFit="contain" />
+      <ExpoImage
+        source={COMPANY_ICON}
+        style={styles.icon}
+        contentFit="contain"
+      />
     </View>
   );
 }
@@ -256,12 +280,12 @@ const styles = StyleSheet.create({
 
   servicesCard: {
     borderRadius: 16,
-    backgroundColor: neutral[50],
+    // backgroundColor: neutral[50],
     padding: 20,
     gap: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
     color: text.primary,
     letterSpacing: -0.408,
@@ -284,5 +308,28 @@ const styles = StyleSheet.create({
   icon: {
     width: 24,
     height: 24,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: primary[50],
+  },
+  chipIcon: {
+    width: 18,
+    height: 18,
+  },
+  chipText: {
+    fontSize: 12,
+    color: text.primary,
+    letterSpacing: -0.408,
   },
 });

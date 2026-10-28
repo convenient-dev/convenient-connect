@@ -26,9 +26,6 @@ const { primary, neutral, text, background, status } = Colors;
 type CodeTab = "active" | "used";
 type CopyKind = "code" | "link";
 
-/** Services shown by name before collapsing the rest into a "+N" chip. */
-const VISIBLE_SERVICES = 2;
-
 interface ModalState {
   type: "success" | "error" | "warning";
   title: string;
@@ -39,14 +36,33 @@ interface ModalState {
   onConfirm?: () => void | Promise<void>;
 }
 
-function formatExpiry(iso: string | null): string | null {
-  if (!iso) return null;
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function CopyIconButton({
+  icon,
+  label,
+  copied,
+  onPress,
+}: {
+  icon: "content-copy" | "link";
+  label: string;
+  copied: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.iconButton}
+      onPress={onPress}
+      activeOpacity={0.7}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={copied ? "Copied" : label}
+    >
+      <MaterialIcons
+        name={copied ? "check" : icon}
+        size={18}
+        color={copied ? status.active : text.primary}
+      />
+    </TouchableOpacity>
+  );
 }
 
 function InviteCodeCard({
@@ -60,83 +76,66 @@ function InviteCodeCard({
 }) {
   const isActive = code.status === "active";
   const isExpired = code.status === "expired";
-  const expiry = formatExpiry(code.expires_at);
 
-  // The API caps `extra_services_count` at services beyond the first two.
-  const serviceChips = code.services
-    .slice(0, VISIBLE_SERVICES)
-    .map((s) => ({ id: s.sub_category_id, name: s.sub_category_name }));
-  if (code.extra_services_count > 0) {
-    serviceChips.push({ id: -1, name: `+${code.extra_services_count}` });
-  }
+  const serviceChips = code.services.map((s) => ({
+    id: s.sub_category_id,
+    name: s.sub_category_name,
+  }));
 
   return (
     <View style={[styles.card, !isActive && styles.cardInactive]}>
-      <Text style={styles.cardTitle} numberOfLines={1}>
-        {code.name}
-      </Text>
-
-      {serviceChips.length > 0 && (
-        <ServiceChips services={serviceChips} size="sm" centered />
-      )}
-
-      <Text
-        style={[styles.code, !isActive && styles.codeInactive]}
-        selectable
-        accessibilityLabel={`Invite code ${code.code.split("").join(" ")}`}
-      >
-        {code.code}
-      </Text>
-
-      {!isActive ? (
-        <View style={[styles.statusPill, isExpired && styles.statusPillExpired]}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {code.name}
+          </Text>
           <Text
-            style={[
-              styles.statusPillText,
-              isExpired && styles.statusPillTextExpired,
-            ]}
+            style={[styles.code, !isActive && styles.codeInactive]}
+            selectable
+            accessibilityLabel={`Invite code ${code.code.split("").join(" ")}`}
           >
-            {isExpired ? "Expired" : "Used"}
+            {code.code}
           </Text>
         </View>
-      ) : (
-        <>
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onCopy("code")}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name={copied === "code" ? "check" : "content-copy"}
-                size={20}
-                color={copied === "code" ? status.active : text.primary}
-              />
-              <Text style={styles.actionText}>
-                {copied === "code" ? "Copied" : "Copy code"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onCopy("link")}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name={copied === "link" ? "check" : "link"}
-                size={20}
-                color={copied === "link" ? status.active : text.primary}
-              />
-              <Text style={styles.actionText}>
-                {copied === "link" ? "Copied" : "Copy link"}
-              </Text>
-            </TouchableOpacity>
-          </View>
 
-          <Text style={styles.url} numberOfLines={1} selectable>
-            {code.link}
+        {isActive ? (
+          <View style={styles.actions}>
+            <CopyIconButton
+              icon="content-copy"
+              label="Copy code"
+              copied={copied === "code"}
+              onPress={() => onCopy("code")}
+            />
+            <CopyIconButton
+              icon="link"
+              label="Copy link"
+              copied={copied === "link"}
+              onPress={() => onCopy("link")}
+            />
+          </View>
+        ) : (
+          <View
+            style={[styles.statusPill, isExpired && styles.statusPillExpired]}
+          >
+            <Text
+              style={[
+                styles.statusPillText,
+                isExpired && styles.statusPillTextExpired,
+              ]}
+            >
+              {isExpired ? "Expired" : "Used"}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {serviceChips.length > 0 && (
+        <View style={styles.cardServices}>
+          <Text style={styles.servicesLabel}>
+            Approved {serviceChips.length} services
           </Text>
-          {!!expiry && <Text style={styles.expiresLabel}>Expires {expiry}</Text>}
-        </>
+          <ServiceChips services={serviceChips} size="sm" />
+        </View>
       )}
     </View>
   );
@@ -223,8 +222,8 @@ export default function InviteCodesScreen() {
       <ScreenHeader title="Invite Codes" />
 
       <Text style={styles.description}>
-        Create invite codes as needed, each one grants its own set of
-        applicable services when activated.
+        Create invite codes as needed, each one grants its own set of applicable
+        services when activated.
       </Text>
 
       <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
@@ -318,10 +317,8 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    alignItems: "center",
-    gap: 12,
-    padding: 18,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: neutral[200],
     backgroundColor: neutral[50],
@@ -329,18 +326,26 @@ const styles = StyleSheet.create({
   cardInactive: {
     opacity: 0.85,
   },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardInfo: {
+    flex: 1,
+    gap: 2,
+  },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "500",
     color: neutral[500],
     letterSpacing: -0.408,
   },
   code: {
-    fontSize: 40,
+    fontSize: 26,
     fontWeight: "700",
     color: text.primary,
     letterSpacing: 1,
-    paddingVertical: 2,
   },
   codeInactive: {
     color: neutral[300],
@@ -348,37 +353,32 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    width: "100%",
+    alignItems: "center",
+    gap: 6,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
+  iconButton: {
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    height: 48,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: neutral[200],
     backgroundColor: neutral[0],
   },
-  actionText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
+  cardServices: {
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: neutral[200],
   },
-  url: {
-    fontSize: 14,
+  servicesLabel: {
+    fontSize: 12,
+    fontWeight: "600",
     color: neutral[400],
     letterSpacing: -0.408,
-  },
-  expiresLabel: {
-    fontSize: 12,
-    color: neutral[300],
-    letterSpacing: -0.408,
+    textTransform: "uppercase",
   },
   statusPill: {
     paddingVertical: 4,

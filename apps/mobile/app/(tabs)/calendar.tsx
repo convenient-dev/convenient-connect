@@ -335,7 +335,10 @@ export default function CalendarScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top"]}
+    >
       <ScreenHeader
         title="Calendar"
         rightAccessory={

@@ -18,6 +18,7 @@ import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Image as ExpoImage } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -411,60 +412,79 @@ export default function BusinessDetailScreen() {
 
       <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
 
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.content, contentWidthStyle]}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === "members" ? (
-          membersLoading &&
-          activeMembers.length + pendingMembers.length === 0 ? (
-            <ActivityIndicator
-              color={primary[400]}
-              style={styles.membersLoader}
-            />
-          ) : activeMembers.length === 0 && pendingMembers.length === 0 ? (
-            <Text style={styles.emptyText}>No members yet</Text>
-          ) : (
-            <>
-              <MemberSection
-                title="Active"
-                members={activeMembers}
-                onPressMember={openMember}
+      <View style={styles.flex}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.content,
+            activeTab === "members" && styles.contentWithFloatingFooter,
+            contentWidthStyle,
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === "members" ? (
+            membersLoading &&
+            activeMembers.length + pendingMembers.length === 0 ? (
+              <ActivityIndicator
+                color={primary[400]}
+                style={styles.membersLoader}
               />
-              <MemberSection
-                title="Pending"
-                members={pendingMembers}
-                onPressMember={openMember}
-              />
-            </>
-          )
-        ) : (
-          <BusinessGuidelinesForm
-            businessId={business.business_id}
-            services={services.map((service) => ({
-              id: service.sub_category_id,
-              name: service.sub_category_name,
-            }))}
-          />
-        )}
-      </ScrollView>
-
-      <View style={[styles.footer, contentWidthStyle]}>
-        <Button
-          title="Invite New Member"
-          variant="primary"
-          size="lg"
-          disabled={!isVerified}
-          onPress={() =>
-            guardWrite(() =>
-              router.push({
-                pathname: "/business-management/[id]/invite-member",
-                params: { id: String(business.business_id) },
-              }),
+            ) : activeMembers.length === 0 && pendingMembers.length === 0 ? (
+              <Text style={styles.emptyText}>No members yet</Text>
+            ) : (
+              <>
+                <MemberSection
+                  title="Active"
+                  members={activeMembers}
+                  onPressMember={openMember}
+                />
+                <MemberSection
+                  title="Pending"
+                  members={pendingMembers}
+                  onPressMember={openMember}
+                />
+              </>
             )
-          }
-        />
+          ) : (
+            <BusinessGuidelinesForm
+              businessId={business.business_id}
+              services={services.map((service) => ({
+                id: service.sub_category_id,
+                name: service.sub_category_name,
+              }))}
+            />
+          )}
+        </ScrollView>
+
+        {activeTab === "members" && (
+          <View
+            style={[styles.footer, contentWidthStyle]}
+            pointerEvents="box-none"
+          >
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", neutral[0]]}
+              locations={[0, 0.45]}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <View style={styles.footerContent}>
+              <Button
+                title="Invite New Member"
+                variant="primary"
+                size="lg"
+                disabled={!isVerified}
+                onPress={() =>
+                  guardWrite(() =>
+                    router.push({
+                      pathname: "/business-management/[id]/invite-member",
+                      params: { id: String(business.business_id) },
+                    }),
+                  )
+                }
+              />
+            </View>
+          </View>
+        )}
       </View>
       {suspendedModal}
 
@@ -687,9 +707,19 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
 
+  // Leaves room under the last member for the floating footer.
+  contentWithFloatingFooter: {
+    paddingBottom: 120,
+  },
   footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  footerContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 40,
     paddingBottom: 20,
   },
 });

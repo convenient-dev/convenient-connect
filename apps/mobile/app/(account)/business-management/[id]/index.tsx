@@ -9,6 +9,7 @@ import {
 } from "@/api/business-members";
 import { toAbsoluteUrl } from "@/api/client";
 import { BottomSheet } from "@/components/BottomSheet";
+import { BusinessGuidelinesForm } from "@/components/BusinessGuidelinesForm";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useSuspendedGuard } from "@/components/SuspendedGuard";
@@ -436,9 +437,13 @@ export default function BusinessDetailScreen() {
             </>
           )
         ) : (
-          <Text style={styles.emptyText}>
-            Guidelines for your business will appear here.
-          </Text>
+          <BusinessGuidelinesForm
+            businessId={business.business_id}
+            services={services.map((service) => ({
+              id: service.sub_category_id,
+              name: service.sub_category_name,
+            }))}
+          />
         )}
       </ScrollView>
 

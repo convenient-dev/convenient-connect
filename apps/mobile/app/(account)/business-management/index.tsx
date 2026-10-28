@@ -12,11 +12,14 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  type LayoutChangeEvent,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -29,6 +32,97 @@ function titleCase(s: string): string {
     .split(/[\s-]+/)
     .map((p) => (p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
     .join(" ");
+}
+
+type CollapsingChipRowProps = {
+  count: number;
+  gap: number;
+  renderChip: (index: number) => React.ReactNode;
+  renderOverflow: (hidden: number) => React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+};
+
+/**
+ * Single-line chip row that never wraps: chips that don't fit are replaced by
+ * a trailing "+N" pill. Chips and the pill are measured in a hidden layer so
+ * the visible count can be computed from real widths.
+ */
+function CollapsingChipRow({
+  count,
+  gap,
+  renderChip,
+  renderOverflow,
+  style,
+}: CollapsingChipRowProps) {
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [chipWidths, setChipWidths] = useState<number[]>([]);
+  const [overflowWidth, setOverflowWidth] = useState(0);
+
+  const onContainerLayout = useCallback((e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  const onChipLayout = useCallback((index: number, width: number) => {
+    setChipWidths((prev) => {
+      if (prev[index] === width) return prev;
+      const next = prev.slice();
+      next[index] = width;
+      return next;
+    });
+  }, []);
+
+  if (count === 0) return null;
+
+  const measured =
+    containerWidth > 0 &&
+    overflowWidth > 0 &&
+    Array.from({ length: count }, (_, i) => chipWidths[i] ?? 0).every(
+      (w) => w > 0,
+    );
+
+  let visible = count;
+  if (measured) {
+    const fits = (n: number, withOverflow: boolean) => {
+      let w = 0;
+      for (let i = 0; i < n; i++) w += chipWidths[i] + (i > 0 ? gap : 0);
+      if (withOverflow) w += (n > 0 ? gap : 0) + overflowWidth;
+      return w <= containerWidth + 0.5;
+    };
+    if (!fits(count, false)) {
+      visible = count - 1;
+      while (visible > 0 && !fits(visible, true)) visible--;
+    }
+  }
+  const hidden = count - visible;
+
+  return (
+    <View style={[styles.collapsingRow, style]} onLayout={onContainerLayout}>
+      <View style={[styles.collapsingVisible, { gap }]}>
+        {Array.from({ length: visible }, (_, i) => renderChip(i))}
+        {hidden > 0 && renderOverflow(hidden)}
+      </View>
+      <View
+        style={[styles.collapsingMeasure, { gap }]}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {Array.from({ length: count }, (_, i) => (
+          <View
+            key={i}
+            onLayout={(e) => onChipLayout(i, e.nativeEvent.layout.width)}
+          >
+            {renderChip(i)}
+          </View>
+        ))}
+        <View
+          onLayout={(e) => setOverflowWidth(e.nativeEvent.layout.width)}
+        >
+          {renderOverflow(count)}
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function BusinessManagementScreen() {
@@ -130,12 +224,11 @@ export default function BusinessManagementScreen() {
                         }
                       />
                     </View>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.chipRow}
-                    >
-                      {(business.services ?? []).map((service) => {
+                    <CollapsingChipRow
+                      count={(business.services ?? []).length}
+                      gap={6}
+                      renderChip={(i) => {
+                        const service = (business.services ?? [])[i];
                         const logo = toAbsoluteUrl(service.sub_category_logo);
                         return (
                           <View
@@ -149,13 +242,18 @@ export default function BusinessManagementScreen() {
                                 contentFit="contain"
                               />
                             )}
-                            <Text style={styles.chipText}>
+                            <Text style={styles.chipText} numberOfLines={1}>
                               {service.sub_category_name}
                             </Text>
                           </View>
                         );
-                      })}
-                    </ScrollView>
+                      }}
+                      renderOverflow={(hidden) => (
+                        <View key="overflow" style={styles.chip}>
+                          <Text style={styles.chipText}>+{hidden}</Text>
+                        </View>
+                      )}
+                    />
                   </View>
                   <MaterialIcons
                     name="chevron-right"
@@ -224,20 +322,32 @@ export default function BusinessManagementScreen() {
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.affiliationName}>{a.business_name}</Text>
-                  {(a.services ?? []).length > 0 && (
-                    <View style={styles.affiliationChipsRow}>
-                      {(a.services ?? []).map((service) => (
+                  <CollapsingChipRow
+                    count={(a.services ?? []).length}
+                    gap={6}
+                    style={styles.affiliationChipsRow}
+                    renderChip={(i) => {
+                      const service = (a.services ?? [])[i];
+                      return (
                         <View
                           key={service.sub_category_id}
                           style={styles.affiliationChip}
                         >
-                          <Text style={styles.affiliationChipText}>
+                          <Text
+                            style={styles.affiliationChipText}
+                            numberOfLines={1}
+                          >
                             {titleCase(service.sub_category_name ?? "")}
                           </Text>
                         </View>
-                      ))}
-                    </View>
-                  )}
+                      );
+                    }}
+                    renderOverflow={(hidden) => (
+                      <View key="overflow" style={styles.affiliationChip}>
+                        <Text style={styles.affiliationChipText}>+{hidden}</Text>
+                      </View>
+                    )}
+                  />
                 </View>
               </TouchableOpacity>
             ))
@@ -304,9 +414,21 @@ const styles = StyleSheet.create({
     color: text.primary,
     letterSpacing: -0.408,
   },
-  chipRow: {
+  collapsingRow: {
+    alignSelf: "stretch",
+    overflow: "hidden",
+  },
+  collapsingVisible: {
     flexDirection: "row",
-    gap: 6,
+    alignItems: "center",
+  },
+  collapsingMeasure: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    opacity: 0,
   },
   chip: {
     flexDirection: "row",
@@ -391,9 +513,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.408,
   },
   affiliationChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
     marginTop: 6,
   },
   affiliationChip: {

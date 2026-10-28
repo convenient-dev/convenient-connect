@@ -9,7 +9,10 @@ const { background, neutral } = Colors;
 export default function ShareScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top"]}
+    >
       <View style={[styles.content, contentWidthStyle]}>
         <Text style={styles.title}>Share</Text>
       </View>

@@ -105,14 +105,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: Colors.background.screen,
     paddingHorizontal: 30,
-    paddingTop: 8,
+    paddingTop: 15,
     alignItems: "center",
     justifyContent: "space-between",
+    // Hairline keeps the edge visible on Android, where elevation shadows
+    // barely render above a view; the shadow adds the soft glow on iOS.
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border.default,
     shadowColor: Colors.neutral[1000],
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 16,
   },
   tabItem: {
     alignItems: "center",

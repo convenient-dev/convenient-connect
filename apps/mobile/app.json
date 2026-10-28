@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Connect",
+    "name": "ConvenientConnect",
     "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yulaiconvenient.myapp",
       "infoPlist": {
+        "CFBundleDisplayName": "Connect",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

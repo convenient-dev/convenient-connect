@@ -197,7 +197,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top"]}
+    >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}

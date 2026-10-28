@@ -3,11 +3,21 @@ import type { components } from "./generated/api-types";
 
 type ProviderBusinessModel = components["schemas"]["ProviderBusinessModel"];
 
+export type ProviderBusinessUpsertData =
+  components["schemas"]["ProviderBusinessUpsertData"];
+
 export type ProviderBusinessAssignedSubCategoryItem =
   components["schemas"]["ProviderBusinessAssignedSubCategoryItem"];
 
+export type BusinessMembershipRole = "owner" | "member";
+
+// The live API returns `membership_role` on each list item ("owner" for
+// businesses the provider created, "member" for ones joined by invite), but
+// the OpenAPI schema does not document it yet.
 export type ProviderBusinessListItem =
-  components["schemas"]["ProviderBusinessListItem"];
+  components["schemas"]["ProviderBusinessListItem"] & {
+    membership_role?: BusinessMembershipRole;
+  };
 
 const BUSINESS_PREFIX = "/service-provider/business";
 
@@ -39,7 +49,7 @@ export async function addBusinessProfile(params: {
     | { uri: string; name: string; type: string };
   businessEin?: string | null;
   serviceSubCategoryIds: number[];
-}): Promise<any> {
+}): Promise<ProviderBusinessUpsertData> {
   const formData = new FormData();
   formData.append("business_name", params.businessName);
   formData.append("business_address", params.businessAddress);
@@ -59,7 +69,7 @@ export async function addBusinessProfile(params: {
     formData.append("service_sub_category_ids[]", id.toString());
   });
 
-  return laravelFetch<any>(`${BUSINESS_PREFIX}/add`, {
+  return laravelFetch<ProviderBusinessUpsertData>(`${BUSINESS_PREFIX}/add`, {
     method: "POST",
     body: formData,
     isFormData: true,
@@ -90,7 +100,7 @@ export async function updateBusinessProfile(
     businessEin?: string | null;
     serviceSubCategoryIds: number[];
   },
-): Promise<any> {
+): Promise<ProviderBusinessUpsertData> {
   const formData = new FormData();
   formData.append("business_name", params.businessName);
   formData.append("business_address", params.businessAddress);
@@ -110,11 +120,10 @@ export async function updateBusinessProfile(
     formData.append("service_sub_category_ids[]", id.toString());
   });
 
-  return laravelFetch<any>(`${BUSINESS_PREFIX}/update/${businessId}`, {
-    method: "POST",
-    body: formData,
-    isFormData: true,
-  });
+  return laravelFetch<ProviderBusinessUpsertData>(
+    `${BUSINESS_PREFIX}/update/${businessId}`,
+    { method: "POST", body: formData, isFormData: true },
+  );
 }
 
 /**

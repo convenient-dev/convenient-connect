@@ -4,7 +4,6 @@ import { Button } from "@/components/Button";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TabBar } from "@/components/TabBar";
 import { contentWidthStyle, useResponsivePadding } from "@/constants/layout";
-import { useCurrentUser } from "@/constants/session";
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image as ExpoImage } from "expo-image";
@@ -25,22 +24,6 @@ const { primary, neutral, text, background, status } = Colors;
 
 type TabKey = "businesses" | "affiliations";
 
-interface Affiliation {
-  id: number;
-  name: string;
-  joinedAt: string;
-  categories: { id: number; name: string }[];
-}
-
-function formatJoinDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function titleCase(s: string): string {
   return s
     .split(/[\s-]+/)
@@ -52,33 +35,30 @@ export default function BusinessManagementScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const { userId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<TabKey>(
     tab === "affiliations" ? "affiliations" : "businesses",
   );
-  const [businesses, setBusinesses] = useState<ProviderBusinessListItem[]>([]);
-  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
-  const [affiliations, setAffiliations] = useState<Affiliation[]>([]);
-  const [loadingAffiliations, setLoadingAffiliations] = useState(true);
+  const [allBusinesses, setAllBusinesses] = useState<ProviderBusinessListItem[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
 
+  // One list covers both tabs; reloaded on focus so a business created or
+  // joined by invite code shows up right away.
   useFocusEffect(
     useCallback(() => {
-      setLoadingBusinesses(true);
+      setLoading(true);
       listBusinesses()
-        .then((data) => setBusinesses(data ?? []))
-        .catch(() => setBusinesses([]))
-        .finally(() => setLoadingBusinesses(false));
+        .then((data) => setAllBusinesses(data ?? []))
+        .catch(() => setAllBusinesses([]))
+        .finally(() => setLoading(false));
+    }, []),
+  );
 
-      setLoadingAffiliations(true);
-      // TODO: legacy API removed — implement getUserAffiliations via Laravel API
-      console.log("TODO: implement getUserAffiliations via Laravel API", {
-        userId,
-      });
-      Promise.resolve<Affiliation[]>([])
-        .then((data: Affiliation[]) => setAffiliations(data ?? []))
-        .catch(() => setAffiliations([]))
-        .finally(() => setLoadingAffiliations(false));
-    }, [userId]),
+  // Items without a role predate the field and can only be owned businesses.
+  const businesses = allBusinesses.filter((b) => b.membership_role !== "member");
+  const affiliations = allBusinesses.filter(
+    (b) => b.membership_role === "member",
   );
 
   const tabs: { key: TabKey; label: string }[] = [
@@ -99,7 +79,7 @@ export default function BusinessManagementScreen() {
 
       {activeTab === "businesses" ? (
         <>
-          {loadingBusinesses ? (
+          {loading ? (
             <ActivityIndicator
               size="large"
               color={primary[400]}
@@ -196,7 +176,7 @@ export default function BusinessManagementScreen() {
             />
           </View>
         </>
-      ) : loadingAffiliations ? (
+      ) : loading ? (
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -224,7 +204,17 @@ export default function BusinessManagementScreen() {
             </View>
           ) : (
             affiliations.map((a) => (
-              <View key={a.id} style={styles.card}>
+              <TouchableOpacity
+                key={a.business_id}
+                style={styles.card}
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push({
+                    pathname: "/business-management/collaboration/[id]",
+                    params: { id: String(a.business_id) },
+                  })
+                }
+              >
                 <View style={styles.iconTile}>
                   <ExpoImage
                     source={require("@/assets/global-icons/company.svg")}
@@ -233,26 +223,37 @@ export default function BusinessManagementScreen() {
                   />
                 </View>
                 <View style={styles.cardBody}>
-                  <Text style={styles.affiliationName}>{a.name}</Text>
-                  <Text style={styles.joinDate}>
-                    Join {formatJoinDate(a.joinedAt)}
-                  </Text>
-                  {a.categories.length > 0 && (
+                  <Text style={styles.affiliationName}>{a.business_name}</Text>
+                  {(a.services ?? []).length > 0 && (
                     <View style={styles.affiliationChipsRow}>
-                      {a.categories.map((c) => (
-                        <View key={c.id} style={styles.affiliationChip}>
+                      {(a.services ?? []).map((service) => (
+                        <View
+                          key={service.sub_category_id}
+                          style={styles.affiliationChip}
+                        >
                           <Text style={styles.affiliationChipText}>
-                            {titleCase(c.name)}
+                            {titleCase(service.sub_category_name ?? "")}
                           </Text>
                         </View>
                       ))}
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
+      )}
+
+      {activeTab === "affiliations" && !loading && (
+        <View style={[styles.footer, contentWidthStyle]}>
+          <Button
+            title="Add Collaboration"
+            variant="secondary"
+            size="lg"
+            onPress={() => router.push("/business-management/join")}
+          />
+        </View>
       )}
     </SafeAreaView>
   );
@@ -387,11 +388,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: text.primary,
-    letterSpacing: -0.408,
-  },
-  joinDate: {
-    fontSize: 13,
-    color: neutral[400],
     letterSpacing: -0.408,
   },
   affiliationChipsRow: {

@@ -112,7 +112,7 @@ function InviteMemberContent() {
     useCallback(() => {
       if (!businessId) return;
       listInviteCodes(businessId)
-        .then((codes) => setExistingCodeCount(codes.active.length))
+        .then((codes) => setExistingCodeCount(codes.totalCount))
         .catch(() => setExistingCodeCount(0));
     }, [businessId]),
   );
@@ -169,11 +169,8 @@ function InviteMemberContent() {
     try {
       await createInviteCode({
         businessId,
-        name: codeName,
-        services: selectedServices.map((s) => ({
-          sub_category_id: s.id,
-          sub_category_name: s.name,
-        })),
+        name: codeName.trim(),
+        serviceSubCategoryIds: selectedServiceIds,
       });
       setCodeName("");
       router.push({

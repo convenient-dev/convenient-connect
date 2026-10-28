@@ -1,8 +1,4 @@
-import {
-  deleteInviteCode,
-  listInviteCodes,
-  type InviteCode,
-} from "@/api/invite-codes";
+import { listInviteCodes, type InviteCode } from "@/api/invite-codes";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -27,8 +23,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
 
-type CodeTab = "active" | "expired";
+type CodeTab = "active" | "used";
 type CopyKind = "code" | "link";
+
+/** Services shown by name before collapsing the rest into a "+N" chip. */
+const VISIBLE_SERVICES = 2;
 
 interface ModalState {
   type: "success" | "error" | "warning";
@@ -40,9 +39,9 @@ interface ModalState {
   onConfirm?: () => void | Promise<void>;
 }
 
-function formatExpiry(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleString(undefined, {
+function formatExpiry(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -52,57 +51,54 @@ function formatExpiry(iso: string): string {
 
 function InviteCodeCard({
   code,
-  expired,
   copied,
   onCopy,
-  onDelete,
 }: {
   code: InviteCode;
-  expired: boolean;
   copied: CopyKind | null;
   onCopy: (kind: CopyKind) => void;
-  onDelete: () => void;
 }) {
+  const isActive = code.status === "active";
+  const isExpired = code.status === "expired";
+  const expiry = formatExpiry(code.expires_at);
+
+  // The API caps `extra_services_count` at services beyond the first two.
+  const serviceChips = code.services
+    .slice(0, VISIBLE_SERVICES)
+    .map((s) => ({ id: s.sub_category_id, name: s.sub_category_name }));
+  if (code.extra_services_count > 0) {
+    serviceChips.push({ id: -1, name: `+${code.extra_services_count}` });
+  }
+
   return (
-    <View style={[styles.card, expired && styles.cardExpired]}>
+    <View style={[styles.card, !isActive && styles.cardInactive]}>
       <Text style={styles.cardTitle} numberOfLines={1}>
         {code.name}
       </Text>
 
-      {code.services.length > 0 && (
-        <ServiceChips
-          services={code.services.map((s) => ({
-            id: s.sub_category_id,
-            name: s.sub_category_name,
-          }))}
-          size="sm"
-          centered
-        />
+      {serviceChips.length > 0 && (
+        <ServiceChips services={serviceChips} size="sm" centered />
       )}
 
       <Text
-        style={[styles.code, expired && styles.codeExpired]}
+        style={[styles.code, !isActive && styles.codeInactive]}
         selectable
         accessibilityLabel={`Invite code ${code.code.split("").join(" ")}`}
       >
         {code.code}
       </Text>
 
-      {expired ? (
-        <>
-          <Text style={styles.expiredLabel}>
-            Expired {formatExpiry(code.expires_at)}
-          </Text>
-          <TouchableOpacity
-            style={styles.deleteLink}
-            onPress={onDelete}
-            activeOpacity={0.7}
-            hitSlop={8}
+      {!isActive ? (
+        <View style={[styles.statusPill, isExpired && styles.statusPillExpired]}>
+          <Text
+            style={[
+              styles.statusPillText,
+              isExpired && styles.statusPillTextExpired,
+            ]}
           >
-            <MaterialIcons name="delete-outline" size={18} color={neutral[500]} />
-            <Text style={styles.deleteLinkText}>Remove</Text>
-          </TouchableOpacity>
-        </>
+            {isExpired ? "Expired" : "Used"}
+          </Text>
+        </View>
       ) : (
         <>
           <View style={styles.actions}>
@@ -137,11 +133,9 @@ function InviteCodeCard({
           </View>
 
           <Text style={styles.url} numberOfLines={1} selectable>
-            {code.url}
+            {code.link}
           </Text>
-          <Text style={styles.expiresLabel}>
-            Expires {formatExpiry(code.expires_at)}
-          </Text>
+          {!!expiry && <Text style={styles.expiresLabel}>Expires {expiry}</Text>}
         </>
       )}
     </View>
@@ -156,7 +150,7 @@ export default function InviteCodesScreen() {
 
   const [activeTab, setActiveTab] = useState<CodeTab>("active");
   const [activeCodes, setActiveCodes] = useState<InviteCode[]>([]);
-  const [expiredCodes, setExpiredCodes] = useState<InviteCode[]>([]);
+  const [usedCodes, setUsedCodes] = useState<InviteCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<{ id: number; kind: CopyKind } | null>(
     null,
@@ -170,7 +164,7 @@ export default function InviteCodesScreen() {
       setLoading(true);
       const codes = await listInviteCodes(businessId);
       setActiveCodes(codes.active);
-      setExpiredCodes(codes.expired);
+      setUsedCodes(codes.used);
     } catch (error: any) {
       setModal({
         type: "error",
@@ -199,34 +193,10 @@ export default function InviteCodesScreen() {
   );
 
   async function handleCopy(code: InviteCode, kind: CopyKind) {
-    await Clipboard.setStringAsync(kind === "code" ? code.code : code.url);
+    await Clipboard.setStringAsync(kind === "code" ? code.code : code.link);
     setCopied({ id: code.id, kind });
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
     copiedTimer.current = setTimeout(() => setCopied(null), 1800);
-  }
-
-  function handleDelete(code: InviteCode) {
-    setModal({
-      type: "warning",
-      title: "Remove Code",
-      message: `Remove the expired code "${code.name}" from this list?`,
-      confirmLabel: "Remove",
-      cancelLabel: "Cancel",
-      onConfirm: async () => {
-        try {
-          await deleteInviteCode(code.id);
-          await load();
-        } catch (error: any) {
-          setModal({
-            type: "error",
-            title: "Error",
-            message: error?.message || "Failed to remove code",
-            confirmLabel: "OK",
-            showCancel: false,
-          });
-        }
-      },
-    });
   }
 
   function handleCreateCode() {
@@ -239,9 +209,9 @@ export default function InviteCodesScreen() {
 
   const tabs: { key: CodeTab; label: string }[] = [
     { key: "active", label: "Active" },
-    { key: "expired", label: "Expired" },
+    { key: "used", label: "Used" },
   ];
-  const codes = activeTab === "active" ? activeCodes : expiredCodes;
+  const codes = activeTab === "active" ? activeCodes : usedCodes;
 
   return (
     <SafeAreaView
@@ -275,7 +245,7 @@ export default function InviteCodesScreen() {
               <Text style={styles.emptyText}>
                 {activeTab === "active"
                   ? "No active codes. Create one to start inviting members."
-                  : "No expired codes."}
+                  : "No used or expired codes."}
               </Text>
             </View>
           ) : (
@@ -283,10 +253,8 @@ export default function InviteCodesScreen() {
               <InviteCodeCard
                 key={code.id}
                 code={code}
-                expired={activeTab === "expired"}
                 copied={copied?.id === code.id ? copied.kind : null}
                 onCopy={(kind) => handleCopy(code, kind)}
-                onDelete={() => handleDelete(code)}
               />
             ))
           )}
@@ -358,7 +326,7 @@ const styles = StyleSheet.create({
     borderColor: neutral[200],
     backgroundColor: neutral[50],
   },
-  cardExpired: {
+  cardInactive: {
     opacity: 0.85,
   },
   cardTitle: {
@@ -374,7 +342,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     paddingVertical: 2,
   },
-  codeExpired: {
+  codeInactive: {
     color: neutral[300],
     textDecorationLine: "line-through",
   },
@@ -412,21 +380,26 @@ const styles = StyleSheet.create({
     color: neutral[300],
     letterSpacing: -0.408,
   },
-  expiredLabel: {
-    fontSize: 14,
-    color: neutral[400],
-    letterSpacing: -0.408,
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: neutral[200],
+    backgroundColor: neutral[100],
   },
-  deleteLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  statusPillExpired: {
+    borderColor: status.error,
+    backgroundColor: neutral[0],
   },
-  deleteLinkText: {
-    fontSize: 14,
-    fontWeight: "500",
+  statusPillText: {
+    fontSize: 13,
+    fontWeight: "600",
     color: neutral[500],
     letterSpacing: -0.408,
+  },
+  statusPillTextExpired: {
+    color: status.error,
   },
 
   empty: {

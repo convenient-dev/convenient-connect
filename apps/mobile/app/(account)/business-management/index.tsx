@@ -27,13 +27,6 @@ const { primary, neutral, text, background, status } = Colors;
 
 type TabKey = "businesses" | "affiliations";
 
-function titleCase(s: string): string {
-  return s
-    .split(/[\s-]+/)
-    .map((p) => (p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
-    .join(" ");
-}
-
 type CollapsingChipRowProps = {
   count: number;
   gap: number;
@@ -125,6 +118,67 @@ function CollapsingChipRow({
   );
 }
 
+/** One business in either tab: name with verification badge, service chips, chevron. */
+function BusinessListRow({
+  business,
+  onPress,
+}: {
+  business: ProviderBusinessListItem;
+  onPress: () => void;
+}) {
+  const services = business.services ?? [];
+  return (
+    <TouchableOpacity
+      style={styles.businessRow}
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <View style={styles.businessInfo}>
+        <View style={styles.nameRow}>
+          <Text style={styles.businessName} numberOfLines={1}>
+            {business.business_name}
+          </Text>
+          <MaterialIcons
+            name={business.business_verification ? "check-circle" : "error"}
+            size={14}
+            color={
+              business.business_verification ? status.active : status.error
+            }
+          />
+        </View>
+        <CollapsingChipRow
+          count={services.length}
+          gap={6}
+          renderChip={(i) => {
+            const service = services[i];
+            const logo = toAbsoluteUrl(service.sub_category_logo);
+            return (
+              <View key={service.sub_category_id} style={styles.chip}>
+                {logo && (
+                  <ExpoImage
+                    source={{ uri: logo }}
+                    style={styles.chipIcon}
+                    contentFit="contain"
+                  />
+                )}
+                <Text style={styles.chipText} numberOfLines={1}>
+                  {service.sub_category_name}
+                </Text>
+              </View>
+            );
+          }}
+          renderOverflow={(hidden) => (
+            <View key="overflow" style={styles.chip}>
+              <Text style={styles.chipText}>+{hidden}</Text>
+            </View>
+          )}
+        />
+      </View>
+      <MaterialIcons name="chevron-right" size={26} color={neutral[800]} />
+    </TouchableOpacity>
+  );
+}
+
 export default function BusinessManagementScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
   const router = useRouter();
@@ -194,73 +248,16 @@ export default function BusinessManagementScreen() {
               showsVerticalScrollIndicator={false}
             >
               {businesses.map((business) => (
-                <TouchableOpacity
+                <BusinessListRow
                   key={business.business_id}
-                  style={styles.businessRow}
-                  activeOpacity={0.7}
+                  business={business}
                   onPress={() =>
                     router.push({
                       pathname: "/business-management/[id]",
                       params: { id: String(business.business_id) },
                     })
                   }
-                >
-                  <View style={styles.businessInfo}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.businessName} numberOfLines={1}>
-                        {business.business_name}
-                      </Text>
-                      <MaterialIcons
-                        name={
-                          business.business_verification
-                            ? "check-circle"
-                            : "error"
-                        }
-                        size={14}
-                        color={
-                          business.business_verification
-                            ? status.active
-                            : status.error
-                        }
-                      />
-                    </View>
-                    <CollapsingChipRow
-                      count={(business.services ?? []).length}
-                      gap={6}
-                      renderChip={(i) => {
-                        const service = (business.services ?? [])[i];
-                        const logo = toAbsoluteUrl(service.sub_category_logo);
-                        return (
-                          <View
-                            key={service.sub_category_id}
-                            style={styles.chip}
-                          >
-                            {logo && (
-                              <ExpoImage
-                                source={{ uri: logo }}
-                                style={styles.chipIcon}
-                                contentFit="contain"
-                              />
-                            )}
-                            <Text style={styles.chipText} numberOfLines={1}>
-                              {service.sub_category_name}
-                            </Text>
-                          </View>
-                        );
-                      }}
-                      renderOverflow={(hidden) => (
-                        <View key="overflow" style={styles.chip}>
-                          <Text style={styles.chipText}>+{hidden}</Text>
-                        </View>
-                      )}
-                    />
-                  </View>
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={26}
-                    color={neutral[800]}
-                  />
-                </TouchableOpacity>
+                />
               ))}
             </ScrollView>
           )}
@@ -302,54 +299,16 @@ export default function BusinessManagementScreen() {
             </View>
           ) : (
             affiliations.map((a) => (
-              <TouchableOpacity
+              <BusinessListRow
                 key={a.business_id}
-                style={styles.card}
-                activeOpacity={0.7}
+                business={a}
                 onPress={() =>
                   router.push({
                     pathname: "/business-management/collaboration/[id]",
                     params: { id: String(a.business_id) },
                   })
                 }
-              >
-                <View style={styles.iconTile}>
-                  <ExpoImage
-                    source={require("@/assets/global-icons/company.svg")}
-                    style={styles.icon}
-                    contentFit="contain"
-                  />
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.affiliationName}>{a.business_name}</Text>
-                  <CollapsingChipRow
-                    count={(a.services ?? []).length}
-                    gap={6}
-                    style={styles.affiliationChipsRow}
-                    renderChip={(i) => {
-                      const service = (a.services ?? [])[i];
-                      return (
-                        <View
-                          key={service.sub_category_id}
-                          style={styles.affiliationChip}
-                        >
-                          <Text
-                            style={styles.affiliationChipText}
-                            numberOfLines={1}
-                          >
-                            {titleCase(service.sub_category_name ?? "")}
-                          </Text>
-                        </View>
-                      );
-                    }}
-                    renderOverflow={(hidden) => (
-                      <View key="overflow" style={styles.affiliationChip}>
-                        <Text style={styles.affiliationChipText}>+{hidden}</Text>
-                      </View>
-                    )}
-                  />
-                </View>
-              </TouchableOpacity>
+              />
             ))
           )}
         </ScrollView>
@@ -368,8 +327,6 @@ export default function BusinessManagementScreen() {
     </SafeAreaView>
   );
 }
-
-const ICON_TILE_SIZE = 44;
 
 const styles = StyleSheet.create({
   container: {
@@ -463,9 +420,9 @@ const styles = StyleSheet.create({
   affiliationListContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 40,
-    gap: 12,
+    paddingTop: 24,
+    paddingBottom: 24,
+    gap: 24,
   },
   emptyState: {
     flex: 1,
@@ -481,50 +438,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: neutral[400],
     textAlign: "center",
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: neutral[50],
-  },
-  iconTile: {
-    width: ICON_TILE_SIZE,
-    height: ICON_TILE_SIZE,
-    borderRadius: 8,
-    backgroundColor: primary[100],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  icon: {
-    width: 22,
-    height: 22,
-  },
-  cardBody: {
-    flex: 1,
-    gap: 4,
-  },
-  affiliationName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
-  },
-  affiliationChipsRow: {
-    marginTop: 6,
-  },
-  affiliationChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: neutral[300],
-  },
-  affiliationChipText: {
-    fontSize: 12,
-    color: neutral[800],
-    letterSpacing: -0.408,
   },
 });

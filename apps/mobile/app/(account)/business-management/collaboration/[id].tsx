@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { primary, neutral, text, background } = Colors;
+const { primary, neutral, text, background, border } = Colors;
 
 const ICON_TILE_SIZE = 44;
 const COMPANY_ICON = require("@/assets/global-icons/company.svg");
@@ -28,8 +28,7 @@ const COMPANY_ICON = require("@/assets/global-icons/company.svg");
  * The contract has no per-collaboration endpoint, so this reads the entry
  * from the business list. The list carries name and assigned services but
  * no joined date, and bookings are not attributable to a business, so the
- * affiliation date, completed-bookings count and booking history from the
- * design are placeholders until the API exposes them.
+ * completed-bookings count is a placeholder until the API exposes it.
  */
 export default function CollaborationDetailScreen() {
   const { screenPaddingStyle } = useResponsivePadding();
@@ -68,6 +67,40 @@ export default function CollaborationDetailScreen() {
     name: s.sub_category_name ?? "",
   }));
 
+  const modal = (
+    <ConfirmModal
+      visible={errorMessage !== null}
+      type="error"
+      title="Error"
+      message={errorMessage ?? ""}
+      confirmLabel="OK"
+      onConfirm={() => {
+        setErrorMessage(null);
+        router.back();
+      }}
+    />
+  );
+
+  if (loading || !business) {
+    return (
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top", "bottom"]}
+      >
+        <StatusBar style="dark" />
+        <ScreenHeader title="Collaboration" />
+        <View style={styles.centered}>
+          {loading ? (
+            <ActivityIndicator size="large" color={primary[400]} />
+          ) : (
+            <Text style={styles.notFoundText}>Collaboration not found</Text>
+          )}
+        </View>
+        {modal}
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, screenPaddingStyle]}
@@ -76,37 +109,25 @@ export default function CollaborationDetailScreen() {
       <StatusBar style="dark" />
       <ScreenHeader title="Collaboration" />
 
-      {loading || !business ? (
-        <View style={styles.loader}>
-          {loading && <ActivityIndicator size="large" color={primary[400]} />}
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <View style={styles.heroDecor} pointerEvents="none" />
+          <IconTile />
+          <Text style={styles.businessName}>{business.business_name}</Text>
+          <Text style={styles.businessSubtitle}>Active affiliation</Text>
         </View>
-      ) : (
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={[styles.content, contentWidthStyle]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.businessCard}>
-            <View style={styles.iconTile}>
-              <ExpoImage
-                source={COMPANY_ICON}
-                style={styles.icon}
-                contentFit="contain"
-              />
-            </View>
-            <View style={styles.businessInfo}>
-              <Text style={styles.businessName} numberOfLines={2}>
-                {business.business_name}
-              </Text>
-              <Text style={styles.businessSubtitle}>Active affiliation</Text>
-            </View>
-          </View>
 
-          <View style={styles.statsRow}>
-            <StatCard label="Approved services" value={String(services.length)} />
-            <StatCard label="Completed bookings" value="—" />
-          </View>
+        <View style={styles.statsCard}>
+          <Stat label="Approved services" value={String(services.length)} />
+          <View style={styles.statsDivider} />
+          <Stat label="Completed bookings" value="—" />
+        </View>
 
+        <View style={styles.servicesCard}>
           <Text style={styles.sectionTitle}>Provided Services</Text>
           {services.length > 0 ? (
             <ServiceChips services={services} />
@@ -115,39 +136,28 @@ export default function CollaborationDetailScreen() {
               No services have been assigned to you yet.
             </Text>
           )}
+        </View>
+      </ScrollView>
 
-          <Text style={styles.sectionTitle}>Booking History</Text>
-          <Text style={styles.emptyText}>
-            Booking history for this collaboration isn&apos;t available yet.
-          </Text>
-        </ScrollView>
-      )}
-
-      <ConfirmModal
-        visible={errorMessage !== null}
-        type="error"
-        title="Error"
-        message={errorMessage ?? ""}
-        confirmLabel="OK"
-        onConfirm={() => {
-          setErrorMessage(null);
-          router.back();
-        }}
-      />
+      {modal}
     </SafeAreaView>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function IconTile() {
   return (
-    <View style={styles.statCard}>
-      <View style={styles.iconTile}>
-        <ExpoImage source={COMPANY_ICON} style={styles.icon} contentFit="contain" />
-      </View>
+    <View style={styles.iconTile}>
+      <ExpoImage source={COMPANY_ICON} style={styles.icon} contentFit="contain" />
+    </View>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <IconTile />
       <View style={styles.statInfo}>
-        <Text style={styles.statLabel} numberOfLines={1}>
-          {label}
-        </Text>
+        <Text style={styles.statLabel}>{label}</Text>
         <Text style={styles.statValue}>{value}</Text>
       </View>
     </View>
@@ -160,54 +170,68 @@ const styles = StyleSheet.create({
     backgroundColor: background.screen,
   },
   flex: { flex: 1 },
-  loader: {
+  centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notFoundText: {
+    fontSize: 15,
+    color: neutral[400],
+    letterSpacing: -0.408,
   },
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 32,
-    gap: 16,
+    gap: 12,
   },
 
-  businessCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: neutral[50],
+  hero: {
+    borderRadius: 16,
+    backgroundColor: primary[50],
+    padding: 20,
+    paddingTop: 24,
+    overflow: "hidden",
   },
-  businessInfo: {
-    flex: 1,
-    gap: 2,
+  heroDecor: {
+    position: "absolute",
+    top: -70,
+    right: -50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: primary[100],
   },
   businessName: {
-    fontSize: 17,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: text.primary,
     letterSpacing: -0.408,
+    marginTop: 28,
   },
   businessSubtitle: {
     fontSize: 15,
-    color: neutral[400],
+    color: neutral[500],
     letterSpacing: -0.408,
+    marginTop: 4,
   },
 
-  statsRow: {
+  statsCard: {
     flexDirection: "row",
-    gap: 12,
+    alignItems: "stretch",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: border.default,
+    backgroundColor: background.card,
+    paddingVertical: 14,
   },
-  statCard: {
+  stat: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: neutral[50],
+    paddingHorizontal: 14,
   },
   statInfo: {
     flex: 1,
@@ -215,40 +239,50 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 13,
+    lineHeight: 18,
     color: text.primary,
     letterSpacing: -0.408,
   },
   statValue: {
-    fontSize: 17,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: text.primary,
     letterSpacing: -0.408,
   },
-
-  iconTile: {
-    width: ICON_TILE_SIZE,
-    height: ICON_TILE_SIZE,
-    borderRadius: 8,
-    backgroundColor: primary[100],
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  icon: {
-    width: 22,
-    height: 22,
+  statsDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: border.default,
   },
 
+  servicesCard: {
+    borderRadius: 16,
+    backgroundColor: neutral[50],
+    padding: 20,
+    gap: 16,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: text.primary,
     letterSpacing: -0.408,
-    marginTop: 8,
   },
   emptyText: {
     fontSize: 14,
     lineHeight: 20,
     color: neutral[400],
     letterSpacing: -0.408,
+  },
+
+  iconTile: {
+    width: ICON_TILE_SIZE,
+    height: ICON_TILE_SIZE,
+    borderRadius: 10,
+    backgroundColor: primary[100],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  icon: {
+    width: 24,
+    height: 24,
   },
 });

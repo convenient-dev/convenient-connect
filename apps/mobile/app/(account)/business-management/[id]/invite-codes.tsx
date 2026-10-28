@@ -1,8 +1,4 @@
-import {
-  deleteInviteCode,
-  listInviteCodes,
-  type InviteCode,
-} from "@/api/invite-codes";
+import { listInviteCodes, type InviteCode } from "@/api/invite-codes";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -27,7 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { primary, neutral, text, background, status } = Colors;
 
-type CodeTab = "active" | "expired";
+type CodeTab = "active" | "used";
 type CopyKind = "code" | "link";
 
 interface ModalState {
@@ -40,109 +36,106 @@ interface ModalState {
   onConfirm?: () => void | Promise<void>;
 }
 
-function formatExpiry(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function CopyIconButton({
+  icon,
+  label,
+  copied,
+  onPress,
+}: {
+  icon: "content-copy" | "link";
+  label: string;
+  copied: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.iconButton}
+      onPress={onPress}
+      activeOpacity={0.7}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={copied ? "Copied" : label}
+    >
+      <MaterialIcons
+        name={copied ? "check" : icon}
+        size={18}
+        color={copied ? status.active : text.primary}
+      />
+    </TouchableOpacity>
+  );
 }
 
 function InviteCodeCard({
   code,
-  expired,
   copied,
   onCopy,
-  onDelete,
 }: {
   code: InviteCode;
-  expired: boolean;
   copied: CopyKind | null;
   onCopy: (kind: CopyKind) => void;
-  onDelete: () => void;
 }) {
+  const isActive = code.status === "active";
+  const isExpired = code.status === "expired";
+
+  const serviceChips = code.services.map((s) => ({
+    id: s.sub_category_id,
+    name: s.sub_category_name,
+  }));
+
   return (
-    <View style={[styles.card, expired && styles.cardExpired]}>
-      <Text style={styles.cardTitle} numberOfLines={1}>
-        {code.name}
-      </Text>
-
-      {code.services.length > 0 && (
-        <ServiceChips
-          services={code.services.map((s) => ({
-            id: s.sub_category_id,
-            name: s.sub_category_name,
-          }))}
-          size="sm"
-          centered
-        />
-      )}
-
-      <Text
-        style={[styles.code, expired && styles.codeExpired]}
-        selectable
-        accessibilityLabel={`Invite code ${code.code.split("").join(" ")}`}
-      >
-        {code.code}
-      </Text>
-
-      {expired ? (
-        <>
-          <Text style={styles.expiredLabel}>
-            Expired {formatExpiry(code.expires_at)}
+    <View style={[styles.card, !isActive && styles.cardInactive]}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {code.name}
           </Text>
-          <TouchableOpacity
-            style={styles.deleteLink}
-            onPress={onDelete}
-            activeOpacity={0.7}
-            hitSlop={8}
+          <Text
+            style={[styles.code, !isActive && styles.codeInactive]}
+            selectable
+            accessibilityLabel={`Invite code ${code.code.split("").join(" ")}`}
           >
-            <MaterialIcons name="delete-outline" size={18} color={neutral[500]} />
-            <Text style={styles.deleteLinkText}>Remove</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onCopy("code")}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name={copied === "code" ? "check" : "content-copy"}
-                size={20}
-                color={copied === "code" ? status.active : text.primary}
-              />
-              <Text style={styles.actionText}>
-                {copied === "code" ? "Copied" : "Copy code"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onCopy("link")}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name={copied === "link" ? "check" : "link"}
-                size={20}
-                color={copied === "link" ? status.active : text.primary}
-              />
-              <Text style={styles.actionText}>
-                {copied === "link" ? "Copied" : "Copy link"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            {code.code}
+          </Text>
+        </View>
 
-          <Text style={styles.url} numberOfLines={1} selectable>
-            {code.url}
+        {isActive ? (
+          <View style={styles.actions}>
+            <CopyIconButton
+              icon="content-copy"
+              label="Copy code"
+              copied={copied === "code"}
+              onPress={() => onCopy("code")}
+            />
+            <CopyIconButton
+              icon="link"
+              label="Copy link"
+              copied={copied === "link"}
+              onPress={() => onCopy("link")}
+            />
+          </View>
+        ) : (
+          <View
+            style={[styles.statusPill, isExpired && styles.statusPillExpired]}
+          >
+            <Text
+              style={[
+                styles.statusPillText,
+                isExpired && styles.statusPillTextExpired,
+              ]}
+            >
+              {isExpired ? "Expired" : "Used"}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {serviceChips.length > 0 && (
+        <View style={styles.cardServices}>
+          <Text style={styles.servicesLabel}>
+            Approved {serviceChips.length} services
           </Text>
-          <Text style={styles.expiresLabel}>
-            Expires {formatExpiry(code.expires_at)}
-          </Text>
-        </>
+          <ServiceChips services={serviceChips} size="sm" />
+        </View>
       )}
     </View>
   );
@@ -156,7 +149,7 @@ export default function InviteCodesScreen() {
 
   const [activeTab, setActiveTab] = useState<CodeTab>("active");
   const [activeCodes, setActiveCodes] = useState<InviteCode[]>([]);
-  const [expiredCodes, setExpiredCodes] = useState<InviteCode[]>([]);
+  const [usedCodes, setUsedCodes] = useState<InviteCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<{ id: number; kind: CopyKind } | null>(
     null,
@@ -170,7 +163,7 @@ export default function InviteCodesScreen() {
       setLoading(true);
       const codes = await listInviteCodes(businessId);
       setActiveCodes(codes.active);
-      setExpiredCodes(codes.expired);
+      setUsedCodes(codes.used);
     } catch (error: any) {
       setModal({
         type: "error",
@@ -199,34 +192,10 @@ export default function InviteCodesScreen() {
   );
 
   async function handleCopy(code: InviteCode, kind: CopyKind) {
-    await Clipboard.setStringAsync(kind === "code" ? code.code : code.url);
+    await Clipboard.setStringAsync(kind === "code" ? code.code : code.link);
     setCopied({ id: code.id, kind });
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
     copiedTimer.current = setTimeout(() => setCopied(null), 1800);
-  }
-
-  function handleDelete(code: InviteCode) {
-    setModal({
-      type: "warning",
-      title: "Remove Code",
-      message: `Remove the expired code "${code.name}" from this list?`,
-      confirmLabel: "Remove",
-      cancelLabel: "Cancel",
-      onConfirm: async () => {
-        try {
-          await deleteInviteCode(code.id);
-          await load();
-        } catch (error: any) {
-          setModal({
-            type: "error",
-            title: "Error",
-            message: error?.message || "Failed to remove code",
-            confirmLabel: "OK",
-            showCancel: false,
-          });
-        }
-      },
-    });
   }
 
   function handleCreateCode() {
@@ -239,9 +208,9 @@ export default function InviteCodesScreen() {
 
   const tabs: { key: CodeTab; label: string }[] = [
     { key: "active", label: "Active" },
-    { key: "expired", label: "Expired" },
+    { key: "used", label: "Used" },
   ];
-  const codes = activeTab === "active" ? activeCodes : expiredCodes;
+  const codes = activeTab === "active" ? activeCodes : usedCodes;
 
   return (
     <SafeAreaView
@@ -253,8 +222,8 @@ export default function InviteCodesScreen() {
       <ScreenHeader title="Invite Codes" />
 
       <Text style={styles.description}>
-        Create invite codes as needed, each one grants its own set of
-        applicable services when activated.
+        Create invite codes as needed, each one grants its own set of applicable
+        services when activated.
       </Text>
 
       <TabBar tabs={tabs} activeKey={activeTab} onChange={setActiveTab} />
@@ -275,7 +244,7 @@ export default function InviteCodesScreen() {
               <Text style={styles.emptyText}>
                 {activeTab === "active"
                   ? "No active codes. Create one to start inviting members."
-                  : "No expired codes."}
+                  : "No used or expired codes."}
               </Text>
             </View>
           ) : (
@@ -283,10 +252,8 @@ export default function InviteCodesScreen() {
               <InviteCodeCard
                 key={code.id}
                 code={code}
-                expired={activeTab === "expired"}
                 copied={copied?.id === code.id ? copied.kind : null}
                 onCopy={(kind) => handleCopy(code, kind)}
-                onDelete={() => handleDelete(code)}
               />
             ))
           )}
@@ -350,83 +317,89 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    alignItems: "center",
-    gap: 12,
-    padding: 18,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: neutral[200],
     backgroundColor: neutral[50],
   },
-  cardExpired: {
+  cardInactive: {
     opacity: 0.85,
   },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardInfo: {
+    flex: 1,
+    gap: 2,
+  },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "500",
     color: neutral[500],
     letterSpacing: -0.408,
   },
   code: {
-    fontSize: 40,
+    fontSize: 26,
     fontWeight: "700",
     color: text.primary,
     letterSpacing: 1,
-    paddingVertical: 2,
   },
-  codeExpired: {
+  codeInactive: {
     color: neutral[300],
     textDecorationLine: "line-through",
   },
   actions: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    width: "100%",
+    alignItems: "center",
+    gap: 6,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
+  iconButton: {
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    height: 48,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: neutral[200],
     backgroundColor: neutral[0],
   },
-  actionText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: text.primary,
-    letterSpacing: -0.408,
+  cardServices: {
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: neutral[200],
   },
-  url: {
-    fontSize: 14,
-    color: neutral[400],
-    letterSpacing: -0.408,
-  },
-  expiresLabel: {
+  servicesLabel: {
     fontSize: 12,
-    color: neutral[300],
-    letterSpacing: -0.408,
-  },
-  expiredLabel: {
-    fontSize: 14,
+    fontWeight: "600",
     color: neutral[400],
     letterSpacing: -0.408,
+    textTransform: "uppercase",
   },
-  deleteLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: neutral[200],
+    backgroundColor: neutral[100],
   },
-  deleteLinkText: {
-    fontSize: 14,
-    fontWeight: "500",
+  statusPillExpired: {
+    borderColor: status.error,
+    backgroundColor: neutral[0],
+  },
+  statusPillText: {
+    fontSize: 13,
+    fontWeight: "600",
     color: neutral[500],
     letterSpacing: -0.408,
+  },
+  statusPillTextExpired: {
+    color: status.error,
   },
 
   empty: {

@@ -248,7 +248,10 @@ export default function ServicesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top"]}
+    >
       <ScreenHeader
         title="My Services"
         onBack={() => router.push("/home")}

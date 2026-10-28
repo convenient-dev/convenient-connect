@@ -1912,7 +1912,7 @@ export interface paths {
          *
          *     **schedule vs home card**
          *
-         *     `schedule.drop_off` / `pick_up` use expanded interval labels; `pick_up` may be null for single-window services.
+         *     `schedule.start_time` / `end_time` match chat summary formatting; `end_time` may be null for single-window services.
          */
         get: operations["getProviderRequestSummary"];
         put?: never;
@@ -4598,10 +4598,10 @@ export interface components {
             sender_role: "customer" | "provider";
             is_mine: boolean;
             /**
-             * @description request is the original service request and appears only on the oldest page. offer is a structured offer card linked by offer_id; fixed-price requests include customer Offer v1 with accept and decline on the card for the provider (no counter). Message text is never an offer. Hide Make an offer when available_actions omits create_offer and counter.
+             * @description request is the original service request and appears only on the oldest page. request_updated is a stored card after the customer modifies the request. offer is a structured offer card linked by offer_id. Fixed-price customer Offer v1 is merged into the opening request card (offer + offer_id on kind=request) with accept and decline; the separate Offer v1 row is omitted until a counter (v2+) exists. Message text is never an offer. Hide Make an offer when available_actions omits create_offer and counter.
              * @enum {string}
              */
-            kind?: "message" | "request" | "offer";
+            kind?: "message" | "request" | "request_updated" | "offer" | "booking_timeline";
             offer_id?: number | null;
             offer?: {
                 id?: number;
@@ -4616,7 +4616,7 @@ export interface components {
                 available_actions?: string[];
             } | null;
             body: string;
-            /** @description Schedule and price for kind request. Omitted on later chat messages. */
+            /** @description Schedule and price for kind request and request_updated. Omitted on plain messages. */
             summary?: {
                 date?: string | null;
                 start_time?: string | null;
@@ -4625,6 +4625,15 @@ export interface components {
                 price?: string | null;
                 /** @example $90.00 */
                 total?: string | null;
+                /** @example Request updated */
+                revision_label?: string | null;
+            } | null;
+            /** @description Provider-only on kind request_updated. Prompt to review customer changes. */
+            provider_alert?: {
+                /** @example request_modified */
+                kind?: string;
+                /** @example Review updated request */
+                label?: string;
             } | null;
             /** Format: date-time */
             created_at?: string | null;
@@ -4665,7 +4674,7 @@ export interface components {
             /** @example Overnight Boarding */
             service_title?: string | null;
             /**
-             * @description Latest chat message. When the thread has no message body, this is the original request_message. Null only when that is missing too.
+             * @description Latest chat message. When the thread has no message body, this is the original request_message. After a customer modify, shows Review updated request. Null only when that is missing too.
              * @example Sounds good! My ETA is 11:40
              */
             last_message?: string | null;
@@ -4676,8 +4685,16 @@ export interface components {
             last_message_time?: string | null;
             /** @example Today */
             activity_date?: string | null;
-            /** @example Waiting */
+            /**
+             * @description Lifecycle status for the inbox row (separate from last_message chat preview).
+             * @example New request
+             */
             status_label?: string;
+            /**
+             * @description Stable slug for inbox status filters.
+             * @example request_sent
+             */
+            status_key?: string;
             /**
              * Format: date-time
              * @example 2026-09-25T15:41:00.000000Z
@@ -4726,6 +4743,15 @@ export interface components {
             request_status?: string;
             /** @example true */
             can_send?: boolean;
+            /** @description Present when the latest thread message is request_updated (customer modified the request). Provider should review schedule/price on that card. */
+            request_revision_review?: {
+                /** @example true */
+                required?: boolean;
+                /** @example Review updated request */
+                label?: string;
+                /** @example request_modified */
+                kind?: string;
+            } | null;
             messages?: components["schemas"]["ServiceRequestChatMessage"][];
         };
         ProviderChatThreadResponse: {
@@ -6050,7 +6076,7 @@ export interface components {
             /** @example Dog Walking | July 25, 2026 */
             subtitle?: string | null;
         };
-        /** @description Expanded schedule block for the summary screen (distinct from home card schedule). Times use provider timezone. */
+        /** @description Expanded schedule block for the summary screen (distinct from home card schedule). Aligns with chat message summary fields. Times use provider timezone. */
         ProviderRequestSummarySchedule: {
             /**
              * @description Single day or start–end range label.
@@ -6058,15 +6084,15 @@ export interface components {
              */
             dates: string | null;
             /**
-             * @description Start/drop-off interval label. May be a single time (9:00 AM) or range (6:30 PM – 7:30 PM). Null when schedule snapshot missing.
-             * @example 10:00 AM – 10:00 AM
+             * @description Formatted start time (g:i A) or interval range when the service uses a start window. Null when schedule snapshot missing.
+             * @example 10:00 AM
              */
-            drop_off: string | null;
+            start_time: string | null;
             /**
-             * @description End/pick-up interval label. Null when end time unknown or same-window service (e.g. single-point booking).
+             * @description Formatted end time (g:i A) or interval range. Null when end time unknown or not applicable.
              * @example 9:30 AM
              */
-            pick_up: string | null;
+            end_time: string | null;
         };
         ProviderRequestUploadAttachment: {
             /** @example /storage/service-request-uploads/1/photo.jpg */

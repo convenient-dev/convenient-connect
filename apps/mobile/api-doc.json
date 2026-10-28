@@ -6949,7 +6949,7 @@
       "get": {
         "tags": ["Service Provider Requests"],
         "summary": "Get request summary for provider review",
-        "description": "Provider summary screen for one invitation. No query parameters.\n\n**Stable top-level keys:** invitation_id, request_id, request_number, invitation_status, request_status, header, schedule, request_info, pricing, service_ownership.\n\n**request_info — two shapes (important for frontend)**\n\nSee schema **ProviderRequestSummaryInfoVariantRules**.\n\n| Case | title | items[] |\n|------|-------|---------|\n| **Profile-based** (pets, students, vehicles, etc.) | `Request info (N)` | N rows, each with **profile_id**, name, summary_line |\n| **Booking-only** (no profiles) | `Request details` | **One** row, **no profile_id**, name=`Request details`, summary_line=booking field preview |\n| **Empty** | `Request info` | `[]`, count=0, has_detail=false |\n\n**Navigation from summary → details**\n\n- Row **with** profile_id → `GET /requests/{invitation_id}/details?profile_id={profile_id}`\n- Row **without** profile_id → `GET /requests/{invitation_id}/details`\n\n**schedule vs home card**\n\n`schedule.drop_off` / `pick_up` use expanded interval labels; `pick_up` may be null for single-window services.",
+        "description": "Provider summary screen for one invitation. No query parameters.\n\n**Stable top-level keys:** invitation_id, request_id, request_number, invitation_status, request_status, header, schedule, request_info, pricing, service_ownership.\n\n**request_info — two shapes (important for frontend)**\n\nSee schema **ProviderRequestSummaryInfoVariantRules**.\n\n| Case | title | items[] |\n|------|-------|---------|\n| **Profile-based** (pets, students, vehicles, etc.) | `Request info (N)` | N rows, each with **profile_id**, name, summary_line |\n| **Booking-only** (no profiles) | `Request details` | **One** row, **no profile_id**, name=`Request details`, summary_line=booking field preview |\n| **Empty** | `Request info` | `[]`, count=0, has_detail=false |\n\n**Navigation from summary → details**\n\n- Row **with** profile_id → `GET /requests/{invitation_id}/details?profile_id={profile_id}`\n- Row **without** profile_id → `GET /requests/{invitation_id}/details`\n\n**schedule vs home card**\n\n`schedule.start_time` / `end_time` match chat summary formatting; `end_time` may be null for single-window services.",
         "operationId": "getProviderRequestSummary",
         "parameters": [
           {
@@ -16397,9 +16397,15 @@
             "type": "boolean"
           },
           "kind": {
-            "description": "request is the original service request and appears only on the oldest page. offer is a structured offer card linked by offer_id; fixed-price requests include customer Offer v1 with accept and decline on the card for the provider (no counter). Message text is never an offer. Hide Make an offer when available_actions omits create_offer and counter.",
+            "description": "request is the original service request and appears only on the oldest page. request_updated is a stored card after the customer modifies the request. offer is a structured offer card linked by offer_id. Fixed-price customer Offer v1 is merged into the opening request card (offer + offer_id on kind=request) with accept and decline; the separate Offer v1 row is omitted until a counter (v2+) exists. Message text is never an offer. Hide Make an offer when available_actions omits create_offer and counter.",
             "type": "string",
-            "enum": ["message", "request", "offer"]
+            "enum": [
+              "message",
+              "request",
+              "request_updated",
+              "offer",
+              "booking_timeline"
+            ]
           },
           "offer_id": {
             "type": "integer",
@@ -16450,7 +16456,7 @@
             "type": "string"
           },
           "summary": {
-            "description": "Schedule and price for kind request. Omitted on later chat messages.",
+            "description": "Schedule and price for kind request and request_updated. Omitted on plain messages.",
             "properties": {
               "date": {
                 "type": "string",
@@ -16473,6 +16479,26 @@
                 "type": "string",
                 "example": "$90.00",
                 "nullable": true
+              },
+              "revision_label": {
+                "type": "string",
+                "example": "Request updated",
+                "nullable": true
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "provider_alert": {
+            "description": "Provider-only on kind request_updated. Prompt to review customer changes.",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "example": "request_modified"
+              },
+              "label": {
+                "type": "string",
+                "example": "Review updated request"
               }
             },
             "type": "object",
@@ -16559,7 +16585,7 @@
             "nullable": true
           },
           "last_message": {
-            "description": "Latest chat message. When the thread has no message body, this is the original request_message. Null only when that is missing too.",
+            "description": "Latest chat message. When the thread has no message body, this is the original request_message. After a customer modify, shows Review updated request. Null only when that is missing too.",
             "type": "string",
             "example": "Sounds good! My ETA is 11:40",
             "nullable": true
@@ -16576,8 +16602,14 @@
             "nullable": true
           },
           "status_label": {
+            "description": "Lifecycle status for the inbox row (separate from last_message chat preview).",
             "type": "string",
-            "example": "Waiting"
+            "example": "New request"
+          },
+          "status_key": {
+            "description": "Stable slug for inbox status filters.",
+            "type": "string",
+            "example": "request_sent"
           },
           "last_message_at": {
             "type": "string",
@@ -16681,6 +16713,25 @@
               "can_send": {
                 "type": "boolean",
                 "example": true
+              },
+              "request_revision_review": {
+                "description": "Present when the latest thread message is request_updated (customer modified the request). Provider should review schedule/price on that card.",
+                "properties": {
+                  "required": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "label": {
+                    "type": "string",
+                    "example": "Review updated request"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "example": "request_modified"
+                  }
+                },
+                "type": "object",
+                "nullable": true
               },
               "messages": {
                 "type": "array",
@@ -19215,8 +19266,8 @@
         "type": "object"
       },
       "ProviderRequestSummarySchedule": {
-        "description": "Expanded schedule block for the summary screen (distinct from home card schedule). Times use provider timezone.",
-        "required": ["dates", "drop_off", "pick_up"],
+        "description": "Expanded schedule block for the summary screen (distinct from home card schedule). Aligns with chat message summary fields. Times use provider timezone.",
+        "required": ["dates", "start_time", "end_time"],
         "properties": {
           "dates": {
             "description": "Single day or start–end range label.",
@@ -19224,14 +19275,14 @@
             "example": "September 22, 2026",
             "nullable": true
           },
-          "drop_off": {
-            "description": "Start/drop-off interval label. May be a single time (9:00 AM) or range (6:30 PM – 7:30 PM). Null when schedule snapshot missing.",
+          "start_time": {
+            "description": "Formatted start time (g:i A) or interval range when the service uses a start window. Null when schedule snapshot missing.",
             "type": "string",
-            "example": "10:00 AM – 10:00 AM",
+            "example": "10:00 AM",
             "nullable": true
           },
-          "pick_up": {
-            "description": "End/pick-up interval label. Null when end time unknown or same-window service (e.g. single-point booking).",
+          "end_time": {
+            "description": "Formatted end time (g:i A) or interval range. Null when end time unknown or not applicable.",
             "type": "string",
             "example": "9:30 AM",
             "nullable": true

@@ -177,7 +177,10 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+      <SafeAreaView
+        style={[styles.container, screenPaddingStyle]}
+        edges={["top"]}
+      >
         <ActivityIndicator
           size="large"
           color={primary[400]}
@@ -200,7 +203,10 @@ export default function ProfileScreen() {
     backgroundStatus === "Verified" ? "verified" : ("warning" as const);
 
   return (
-    <SafeAreaView style={[styles.container, screenPaddingStyle]}>
+    <SafeAreaView
+      style={[styles.container, screenPaddingStyle]}
+      edges={["top"]}
+    >
       <ScreenHeader
         title="My Profile"
         onBack={handleBack}
